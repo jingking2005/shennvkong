@@ -6,6 +6,7 @@ import { buildAnimationQueue, getAttackOffset, type AnimStep } from '../ui/Battl
 import { CardSprite } from '../ui/CardSprite';
 import { spawnDamageText, spawnSkillBanner } from '../ui/DamageText';
 import { buildEnemyTeam } from '../systems/StageManager';
+import { BackgroundFX } from '../ui/BackgroundFX';
 
 export class BattleScene extends Phaser.Scene {
   private cardSprites = new Map<string, CardSprite>();
@@ -20,6 +21,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create(): void {
+    // 战斗氛围背景
+    new BackgroundFX(this, 'battle');
+    this.cameras.main.fadeIn(500, 0, 0, 0);
+
     const cards = this.registry.get('cards') as Card[];
     const deckIds = this.registry.get('playerDeck') as string[];
 

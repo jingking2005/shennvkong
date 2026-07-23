@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { BattleResult, SaveData, Stage } from '../data/schema/types';
+import { BackgroundFX } from '../ui/BackgroundFX';
 
 export class ResultScene extends Phaser.Scene {
   constructor() {
@@ -7,6 +8,8 @@ export class ResultScene extends Phaser.Scene {
   }
 
   create(): void {
+    new BackgroundFX(this, 'menu');
+    this.cameras.main.fadeIn(400, 0, 0, 0);
     const result = this.registry.get('battleResult') as BattleResult | undefined;
     const currentStage = this.registry.get('currentStage') as Stage | undefined;
     const { width, height } = this.scale;

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { SaveData } from '../data/schema/types';
 import { stages } from '../data/stages';
 import { getUnlockedStages, getStageDifficultyLabel } from '../systems/StageManager';
+import { BackgroundFX } from '../ui/BackgroundFX';
 
 export class StageSelectScene extends Phaser.Scene {
   constructor() {
@@ -10,6 +11,8 @@ export class StageSelectScene extends Phaser.Scene {
 
   create(): void {
     const { width } = this.scale;
+    new BackgroundFX(this, 'stage');
+    this.cameras.main.fadeIn(400, 0, 0, 0);
     const save: SaveData | undefined = this.registry.get('save');
     const clearedIds = save?.clearedStages || [];
     const unlocked = getUnlockedStages(stages, clearedIds);
@@ -40,7 +43,8 @@ export class StageSelectScene extends Phaser.Scene {
         panel.on('pointerout', () => panel.setFillStyle(bgColor, 0.8));
         panel.on('pointerdown', () => {
           this.registry.set('currentStage', stage);
-          this.scene.start('TeamScene');
+          this.cameras.main.fadeOut(300, 0, 0, 0);
+          this.time.delayedCall(300, () => this.scene.start('TeamScene'));
         });
       }
 

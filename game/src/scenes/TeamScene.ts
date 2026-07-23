@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { Card, Element } from '../data/schema/types';
 import { generateCardTexture, getCardTextureKey } from '../ui/CardTextureGenerator';
 import { getRarityBorderColor } from '../ui/CardImageResolver';
+import { BackgroundFX } from '../ui/BackgroundFX';
 
 const ELEMENT_LABELS: Record<Element, string> = {
   Passion: '火', Cool: '冰', Light: '光', Dark: '暗', Special: '特',
@@ -33,6 +34,8 @@ export class TeamScene extends Phaser.Scene {
   }
 
   create(): void {
+    new BackgroundFX(this, 'team');
+    this.cameras.main.fadeIn(400, 0, 0, 0);
     const cards = this.registry.get('cards') as Card[];
     this.selectedIds = [];
     this.slots = [];
