@@ -29,7 +29,7 @@ export class MenuScene extends Phaser.Scene {
 
     btn.on('pointerover', () => btn.setColor('#ffffff'));
     btn.on('pointerout', () => btn.setColor('#66ccff'));
-    btn.on('pointerdown', () => this.scene.start('TeamScene'));
+    btn.on('pointerdown', () => this.scene.start('StageSelectScene'));
 
     // 卡牌图鉴按钮
     const galleryBtn = this.add.text(width / 2, height * 0.70, '[ 卡牌图鉴 ]', {

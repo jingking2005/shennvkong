@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
-import type { Card, BattleResult, BattleUnit } from '../data/schema/types';
+import type { Card, BattleResult, BattleUnit, Stage } from '../data/schema/types';
 import { initBattle, executeTurn } from '../systems/BattleEngine';
 import { getSkillById } from '../data/skills';
 import { buildAnimationQueue, getAttackOffset, type AnimStep } from '../ui/BattleAnimator';
 import { CardSprite } from '../ui/CardSprite';
 import { spawnDamageText, spawnSkillBanner } from '../ui/DamageText';
+import { buildEnemyTeam } from '../systems/StageManager';
 
 export class BattleScene extends Phaser.Scene {
   private cardSprites = new Map<string, CardSprite>();
@@ -28,12 +29,19 @@ export class BattleScene extends Phaser.Scene {
       .filter((c): c is Card => !!c)
       .map(card => ({ card, skill: getSkillById(card.skillIds[0] || '') }));
 
-    // 构建敌方队伍
-    const enemyPool = cards.filter(c => !deckIds.includes(c.id));
-    const enemyCards = enemyPool.slice(0, 3).map(card => ({
-      card,
-      skill: getSkillById(card.skillIds[0] || ''),
-    }));
+    // 构建敌方队伍（使用关卡配置，无关卡时 fallback 随机）
+    const currentStage = this.registry.get('currentStage') as Stage | undefined;
+    let enemyCards: { card: Card; skill: ReturnType<typeof getSkillById> }[];
+
+    if (currentStage) {
+      enemyCards = buildEnemyTeam(currentStage, cards);
+    } else {
+      const enemyPool = cards.filter(c => !deckIds.includes(c.id));
+      enemyCards = enemyPool.slice(0, 3).map(card => ({
+        card,
+        skill: getSkillById(card.skillIds[0] || ''),
+      }));
+    }
 
     // 运行完整战斗获取日志
     const state = initBattle(playerCards, enemyCards);
