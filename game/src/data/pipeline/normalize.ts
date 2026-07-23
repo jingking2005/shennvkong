@@ -12,7 +12,6 @@ import type { Card, Element, Rarity, RawCard } from '../schema/types';
 
 const ELEMENT_MAP: Record<string, Element> = {
   passion: 'Passion', cool: 'Cool', light: 'Light', dark: 'Dark', special: 'Special',
-  'passion': 'Passion', 'cool': 'Cool', 'light': 'Light', 'dark': 'Dark',
 };
 
 const RARITY_MAP: Record<string, Rarity> = {
