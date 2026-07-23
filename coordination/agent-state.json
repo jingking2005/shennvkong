@@ -1,30 +1,29 @@
 {
   "project": "Valkyrie Crusade Reconstruction",
-  "updatedAt": "2026-07-23T17:30:00+08:00",
+  "updatedAt": "2026-07-23T17:50:00+08:00",
   "agents": {
     "hermes": {
       "role": "crawler-and-archive",
       "status": "in_progress",
       "pids": [3606, 9122],
       "ownedPaths": ["src/valkyrie/", "output/", "images/", "output-test/"],
-      "notes": "主爬虫 650/3500，extra 爬虫运行中。预计 ~10h 完成。"
+      "notes": "主爬虫 800/3500，extra 爬虫运行中。预计 ~10h 完成。"
     },
     "qwen38": {
       "role": "schema-game-and-tooling",
-      "status": "in_progress",
+      "status": "completed_this_round",
       "pids": [],
       "ownedPaths": ["game/", "coordination/", "spec/"],
-      "notes": "初始化 Phaser 3 工程，建立 Schema + Mock + 垂直切片。"
+      "notes": "本轮完成: Schema + Mock + Phaser + 战斗引擎 + 数据管道 + 24测试。"
     }
   },
-  "completedTasks": ["spec-trio", "task-A-spec-review", "coordination-setup"],
-  "inProgressTasks": ["T3-schema", "T3-mock", "T4-phaser-init"],
+  "completedTasks": ["spec-trio", "task-A-spec-review", "coordination-setup", "T3-schema", "T3-mock", "T3-cleaner", "T4-phaser-init", "T5-data-adapter", "T6-team-scene", "T7-battle-engine", "T8-battle-ui", "T10-result-scene", "tests-24"],
+  "inProgressTasks": ["T1-hermes-crawl"],
   "blockedTasks": ["T3-full (waiting hermes)", "T2 (waiting T1)"],
   "nextActions": [
-    "完成 game/ 初始化",
-    "建立 Schema types",
-    "建立 Mock 数据",
-    "实现战斗引擎",
-    "完成垂直切片"
+    "Hermes 抓取完成后运行 npm run data:normalize",
+    "接入真实卡图到游戏",
+    "完善战斗动画表现",
+    "增加关卡选择界面"
   ]
 }
