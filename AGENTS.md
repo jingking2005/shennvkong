@@ -956,3 +956,60 @@ UI 提取
 最终用于 AI 重构整个游戏。
 
 整个过程中，请持续自主分析、自主修复、自主执行，直到第一阶段全部完成后，再向我汇报最终结果。
+
+---
+
+# V2 方向调整（2026-07-23 强制生效）
+
+## 当前状态
+
+当前 game/ 下的原型为 **legacy prototype**，保留不删除，但禁止继续在其上堆砌低质量 Demo。
+
+## V2 策划文件
+
+所有玩法规则以 `spec/v2/` 目录为准：
+
+```
+spec/v2/game-vision.md          — 产品定位
+spec/v2/core-loop.md            — 核心循环
+spec/v2/combat-system.md        — 战斗系统
+spec/v2/card-and-skill-system.md — 卡牌与技能
+spec/v2/progression-system.md   — 成长系统
+spec/v2/enhancement-system.md   — FIFA式合卡
+spec/v2/economy-and-gacha.md    — 经济与抽卡
+spec/v2/kingdom-system.md       — 王国系统
+spec/v2/content-and-modes.md    — 内容与模式
+spec/v2/ui-art-direction.md     — UI与美术
+spec/v2/data-model.md           — 数据模型
+spec/v2/balance-framework.md    — 平衡框架
+spec/v2/vertical-slice.md       — 垂直切片标准
+spec/v2/tasks.md                — 任务分解
+spec/v2/acceptance-matrix.md    — 验收矩阵
+```
+
+## 强制规则
+
+1. **先策划后代码**：V2 策划未冻结前，禁止大规模重写游戏代码
+2. **数据驱动**：所有数值/技能/卡池/关卡来自 JSON，不硬编码
+3. **seeded RNG**：所有随机逻辑必须支持种子，可测试可回放
+4. **不迁就错误架构**：当前 BattleEngine/SkillSystem/DamageCalc 方向错误，需完全重写
+5. **不删减核心玩法**：不因实现困难而砍功能
+6. **审计报告**：`docs/audits/current-prototype-audit.md`
+
+## 可保留模块
+
+- `game/src/ui/BackgroundFX.ts` — 氛围背景
+- `game/src/ui/HealthBar.ts` — HP条
+- `game/src/ui/DamageText.ts` — 伤害飘字
+- `game/src/data/pipeline/` — 数据清洗管道
+- `game/vite.config.ts` — 构建配置
+- `game/src/data/card-image-map.ts` — 卡图映射
+
+## 必须重写模块
+
+- `game/src/systems/BattleEngine.ts` → 回合制+手动/自动+位置+状态机
+- `game/src/systems/SkillSystem.ts` → SkillResolver + EffectResolver
+- `game/src/systems/DamageCalc.ts` → 多乘区公式
+- `game/src/data/schema/types.ts` → V2 完整数据模型
+- `game/src/scenes/BattleScene.ts` → 手动选目标+技能释放
+- `game/src/scenes/TeamScene.ts` → 5位置+Cost+羁绊
