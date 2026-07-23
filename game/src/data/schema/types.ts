@@ -142,6 +142,29 @@ export interface Stage {
   rewardExp?: number;
 }
 
+// === 卡牌养成 ===
+
+/** 卡牌实例（区别于卡牌定义，代表玩家持有的一张具体卡） */
+export interface CardInstance {
+  instanceId: string;      // 唯一实例 ID
+  cardId: string;          // 对应 Card.id
+  level: number;           // 当前等级 1-max
+  exp: number;             // 当前经验
+  rarity: Rarity;          // 当前稀有度（进化后提升）
+  stats: Stats;            // 当前属性（随等级成长）
+  skillLevel: number;      // 技能等级
+  affection: number;       // 好感度 0-100
+}
+
+/** 进化配方 */
+export interface EvolutionRecipe {
+  baseCardId: string;
+  fromRarity: Rarity;
+  toRarity: Rarity;
+  requiredLevel: number;   // 需要达到的等级
+  materialCount: number;   // 需要同名卡数量
+}
+
 // === 存档 ===
 
 export interface SaveData {
@@ -152,6 +175,7 @@ export interface SaveData {
   decks: Deck[];
   clearedStages: string[];
   cardCollection: string[]; // 已获得的卡牌 ID
+  inventory: CardInstance[]; // 玩家持有的所有卡牌实例
   stats: { battlesWon: number; battlesLost: number };
 }
 

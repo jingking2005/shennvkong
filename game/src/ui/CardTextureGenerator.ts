@@ -13,10 +13,14 @@ const TEX_W = 80;
 const TEX_H = 100;
 
 /**
- * 为一张卡生成占位纹理
+ * 为一张卡生成占位纹理（仅在无真实卡图时使用）
  * 纹理 key: `card-{slug}`
  */
 export function generateCardTexture(scene: Phaser.Scene, card: Card): string {
+  // 优先使用真实卡图
+  const imgKey = `card-img-${card.slug}`;
+  if (scene.textures.exists(imgKey)) return imgKey;
+
   const key = `card-${card.slug}`;
   if (scene.textures.exists(key)) return key;
 

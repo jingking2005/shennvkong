@@ -7,7 +7,7 @@
 import Phaser from 'phaser';
 import type { BattleUnit, Element } from '../data/schema/types';
 import { HealthBar } from './HealthBar';
-import { generateCardTexture, getCardTextureKey } from './CardTextureGenerator';
+import { generateCardTexture } from './CardTextureGenerator';
 
 const CARD_W = 80;
 const CARD_H = 100;
@@ -45,9 +45,8 @@ export class CardSprite {
     this.baseX = x;
     this.baseY = y;
 
-    // 确保纹理已生成
-    generateCardTexture(scene, unit.card);
-    const texKey = getCardTextureKey(unit.card.slug);
+    // 确保纹理已生成（优先真实卡图）
+    const texKey = generateCardTexture(scene, unit.card);
 
     // 容器
     this.container = scene.add.container(x, y);
@@ -102,12 +101,12 @@ export class CardSprite {
     this.hpBar.setHp(current, max, this.scene);
   }
 
-  /** 攻击前冲动画 */
+  /** 攻击前冲动画（纵向） */
   playAttack(offsetX: number, duration: number): Promise<void> {
     return new Promise(resolve => {
       this.scene.tweens.add({
         targets: this.container,
-        x: this.baseX + offsetX,
+        y: this.baseY + offsetX, // offsetX 实际是纵向偏移量
         duration: duration / 2,
         ease: 'Power2',
         yoyo: true,

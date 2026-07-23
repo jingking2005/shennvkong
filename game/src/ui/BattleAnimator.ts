@@ -102,12 +102,12 @@ export function getHpColor(ratio: number): number {
   return 0xf44336; // 红
 }
 
-// === 攻击位移方向 ===
+// === 攻击位移方向（上下结构：我方向上冲，敌方向下冲） ===
 
 export function getAttackOffset(side: 'player' | 'enemy'): { x: number; y: number } {
   const LUNGE_DISTANCE = 60;
   return {
-    x: side === 'player' ? LUNGE_DISTANCE : -LUNGE_DISTANCE,
-    y: 0,
+    x: 0,
+    y: side === 'player' ? -LUNGE_DISTANCE : LUNGE_DISTANCE,
   };
 }

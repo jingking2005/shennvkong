@@ -79,25 +79,30 @@ export class BattleScene extends Phaser.Scene {
     this.time.delayedCall(500, () => this.playNext());
   }
 
-  /** 布局：玩家在左，敌人在右 */
+  /** 布局：敌方在上，我方在下（上下结构） */
   private layoutCards(units: BattleUnit[]): void {
     const playerUnits = units.filter(u => u.side === 'player');
     const enemyUnits = units.filter(u => u.side === 'enemy');
 
-    const PLAYER_X = 180;
-    const ENEMY_X = 780;
-    const START_Y = 120;
-    const GAP_Y = 115;
+    const ENEMY_Y = 150;
+    const PLAYER_Y = 480;
+    const CENTER_X = 480;
 
-    playerUnits.forEach((unit, i) => {
-      const y = START_Y + i * GAP_Y;
-      const sprite = new CardSprite(this, unit, PLAYER_X, y);
+    // 敌方横向排列（上方）
+    const enemyGap = Math.min(140, 700 / Math.max(enemyUnits.length, 1));
+    const enemyStartX = CENTER_X - (enemyUnits.length - 1) * enemyGap / 2;
+    enemyUnits.forEach((unit, i) => {
+      const x = enemyStartX + i * enemyGap;
+      const sprite = new CardSprite(this, unit, x, ENEMY_Y);
       this.cardSprites.set(unit.uid, sprite);
     });
 
-    enemyUnits.forEach((unit, i) => {
-      const y = START_Y + i * GAP_Y;
-      const sprite = new CardSprite(this, unit, ENEMY_X, y);
+    // 我方横向排列（下方）
+    const playerGap = Math.min(140, 700 / Math.max(playerUnits.length, 1));
+    const playerStartX = CENTER_X - (playerUnits.length - 1) * playerGap / 2;
+    playerUnits.forEach((unit, i) => {
+      const x = playerStartX + i * playerGap;
+      const sprite = new CardSprite(this, unit, x, PLAYER_Y);
       this.cardSprites.set(unit.uid, sprite);
     });
   }
@@ -138,7 +143,7 @@ export class BattleScene extends Phaser.Scene {
         const sprite = step.actorUid ? this.cardSprites.get(step.actorUid) : null;
         if (sprite && sprite.alive) {
           const offset = getAttackOffset(sprite.side);
-          await sprite.playAttack(offset.x, step.duration);
+          await sprite.playAttack(offset.y, step.duration);
         } else {
           await this.wait(step.duration);
         }

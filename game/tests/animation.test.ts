@@ -138,15 +138,15 @@ describe('getHpColor', () => {
 // === 攻击位移方向 ===
 
 describe('getAttackOffset', () => {
-  it('player 方向向右（正 x）', () => {
+  it('player 方向向上（负 y）', () => {
     const offset = getAttackOffset('player');
-    expect(offset.x).toBeGreaterThan(0);
-    expect(offset.y).toBe(0);
+    expect(offset.y).toBeLessThan(0);
+    expect(offset.x).toBe(0);
   });
 
-  it('enemy 方向向左（负 x）', () => {
+  it('enemy 方向向下（正 y）', () => {
     const offset = getAttackOffset('enemy');
-    expect(offset.x).toBeLessThan(0);
-    expect(offset.y).toBe(0);
+    expect(offset.y).toBeGreaterThan(0);
+    expect(offset.x).toBe(0);
   });
 });

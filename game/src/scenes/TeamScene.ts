@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { Card, Element } from '../data/schema/types';
-import { generateCardTexture, getCardTextureKey } from '../ui/CardTextureGenerator';
+import { generateCardTexture } from '../ui/CardTextureGenerator';
 import { getRarityBorderColor } from '../ui/CardImageResolver';
 import { BackgroundFX } from '../ui/BackgroundFX';
 
@@ -69,9 +69,8 @@ export class TeamScene extends Phaser.Scene {
   }
 
   private createCardSlot(card: Card, x: number, y: number): void {
-    // 确保纹理存在
-    generateCardTexture(this, card);
-    const texKey = getCardTextureKey(card.slug);
+    // 确保纹理存在（优先真实卡图）
+    const texKey = generateCardTexture(this, card);
 
     const container = this.add.container(x, y);
 
