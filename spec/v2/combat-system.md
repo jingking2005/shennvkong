@@ -108,3 +108,53 @@ healAmount = floor(
 每个 action 记录：turn, actorUid, actionType, skillId, targets, damage/heal, isCrit, elementBonus, statusApplied, statusRemoved
 
 用于：战斗回放、调试、UI 日志面板
+
+## 引擎架构（基于开源研究）
+
+参考 OpenDuelyst + SabberStone + Fireplace 的成熟架构：
+
+```
+BattleEngine（纯逻辑，无 Phaser 依赖）
+  ├── EventBus        — 事件总线，解耦逻辑与渲染
+  ├── ActionQueue     — 行动队列，validate→execute→cleanup→emit
+  ├── SnapshotManager — 快照/回滚，支持回放和 AI 模拟
+  ├── StepExecutor    — 原子步骤执行器
+  ├── SkillResolver   — 技能触发判定
+  ├── EffectResolver  — 效果链执行
+  ├── StatusEngine    — 状态效果生命周期（洋葱层叠加）
+  ├── DamageCalc      — 伤害计算（多乘区）
+  ├── HealCalc        — 治疗计算
+  └── TargetSelector  — 声明式目标筛选
+```
+
+### 关键设计原则
+
+1. BattleEngine 不知道 Phaser 存在，只通过 EventBus 发事件
+2. 每个行动经过完整流水线：validate → execute → cleanup → emit
+3. Buff/Debuff 用洋葱层管理，支持优先级和互斥
+4. 所有伤害先结算，再统一处理死亡/复活/亡语（独立死亡结算阶段）
+5. 每回合开始存快照，支持回滚
+6. 所有随机通过注入的 SeededRNG 实例
+7. BattleEngine 可在 Node.js 无 UI 运行，用于平衡测试
+
+### 事件类型（参考 OpenDuelyst 270+ 事件精简）
+
+```
+BATTLE_START, BATTLE_END, TURN_START, TURN_END
+BEFORE_ACTION, ACTION_EXECUTE, AFTER_ACTION, CLEANUP
+BEFORE_DAMAGE, DAMAGE_DEALT, AFTER_DAMAGE
+BEFORE_HEAL, HEAL_APPLIED, AFTER_HEAL
+UNIT_DIED, UNIT_REVIVED
+STATUS_APPLIED, STATUS_EXPIRED, STATUS_REMOVED
+SKILL_TRIGGERED, SKILL_BLOCKED
+BUFF_ADDED, BUFF_REMOVED, AURA_UPDATED
+```
+
+### 渲染层订阅模式
+
+BattleScene 订阅 EventBus，收到事件后播放对应动画：
+- `DAMAGE_DEALT` → 伤害飘字 + 受击抖动
+- `SKILL_TRIGGERED` → 技能横幅 + 特效
+- `UNIT_DIED` → 死亡灰化
+- `STATUS_APPLIED` → Buff/Debuff 图标
+- `TURN_START` → 回合提示
