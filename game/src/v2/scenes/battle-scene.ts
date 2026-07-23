@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import { BattleEngine } from '../systems/battle-engine';
 import { BattleEvents } from '../systems/event-bus';
 import type { CardDefinition, CardInstance, SkillDefinition, BattleUnit, Position } from '../data/types';
+import { getV2CardTextureKey } from '../data/card-images';
 import cardsData from '../../../data/v2/fixtures/cards.json';
 import skillsData from '../../../data/v2/fixtures/skills.json';
 import { BackgroundFX } from '../../ui/BackgroundFX';
@@ -107,29 +108,31 @@ export class V2BattleScene extends Phaser.Scene {
 
       const container = this.add.container(x, y);
 
-      // 卡牌色块（后续替换为真实卡图）
-      const color = this.getElementColor(unit.cardDef.element);
-      const card = this.add.graphics();
-      card.fillStyle(color, 0.85);
-      card.fillRoundedRect(-35, -45, 70, 90, 6);
-      card.lineStyle(2, this.getRarityColor(unit.cardDef.rarity), 1);
-      card.strokeRoundedRect(-35, -45, 70, 90, 6);
-      container.add(card);
+      // 真实卡图或占位色块
+      const texKey = getV2CardTextureKey(unit.cardDef.id);
+      const hasImg = this.textures.exists(texKey);
+      if (hasImg) {
+        const img = this.add.image(0, 0, texKey).setDisplaySize(65, 85);
+        container.add(img);
+      } else {
+        const color = this.getElementColor(unit.cardDef.element);
+        const card = this.add.graphics();
+        card.fillStyle(color, 0.85);
+        card.fillRoundedRect(-32, -42, 65, 85, 6);
+        container.add(card);
+      }
+
+      // 稀有度边框
+      const border = this.add.graphics();
+      border.lineStyle(2, this.getRarityColor(unit.cardDef.rarity), 1);
+      border.strokeRoundedRect(-33, -43, 66, 86, 6);
+      container.add(border);
 
       // 名称
       const name = unit.cardDef.name.cn || unit.cardDef.name.en;
       const shortName = name.length > 4 ? name.slice(0, 4) : name;
-      const nameText = this.add.text(0, -30, shortName, { fontSize: '9px', color: '#fff' }).setOrigin(0.5);
+      const nameText = this.add.text(0, -50, shortName, { fontSize: '9px', color: '#fff', stroke: '#000', strokeThickness: 1 }).setOrigin(0.5);
       container.add(nameText);
-
-      // 属性符号
-      const elemSymbol = unit.cardDef.element[0];
-      const elemText = this.add.text(0, -5, elemSymbol, { fontSize: '18px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
-      container.add(elemText);
-
-      // 职业标签
-      const roleText = this.add.text(0, 20, unit.cardDef.primaryRole.slice(0, 3), { fontSize: '8px', color: '#ccc' }).setOrigin(0.5);
-      container.add(roleText);
 
       // HP 条
       const hpBar = this.add.graphics();
