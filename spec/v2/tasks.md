@@ -12,14 +12,18 @@
 
 ## Phase 2：数据模型和技能引擎
 
+> 架构参考：OpenDuelyst EventBus + SabberStone Onion层 + Fireplace 事件队列
+
 | # | 任务 | 依赖 | 修改文件 | 验收 | 预估 |
 |:---|:---|:---|:---|:---|:---|
-| 2.1 | V2 TypeScript 类型定义 | P1 | src/data/schema/v2-types.ts | typecheck 通过 | 2h |
-| 2.2 | 配置化 JSON 加载器 | 2.1 | src/data/config-loader.ts | 单元测试 | 1h |
-| 2.3 | Seeded RNG | - | src/systems/rng.ts | 确定性测试 | 0.5h |
-| 2.4 | SkillResolver | 2.1,2.3 | src/systems/skill-resolver.ts | 24技能全覆盖测试 | 3h |
-| 2.5 | EffectResolver | 2.4 | src/systems/effect-resolver.ts | 30+效果类型测试 | 3h |
-| 2.6 | StatusEngine | 2.5 | src/systems/status-engine.ts | 状态叠加/过期测试 | 2h |
+| 2.1 | Seeded RNG | - | game/src/v2/systems/rng.ts | 确定性测试 | 0.5h |
+| 2.2 | EventBus | - | game/src/v2/systems/event-bus.ts | 订阅/发布/优先级测试 | 1h |
+| 2.3 | ActionQueue | 2.2 | game/src/v2/systems/action-queue.ts | validate→execute→cleanup 流水线测试 | 1.5h |
+| 2.4 | V2 TypeScript 类型定义 | P1 | game/src/v2/data/types.ts | typecheck 通过 | 2h |
+| 2.5 | 配置化 JSON 加载器 | 2.4 | game/src/v2/data/config-loader.ts | 单元测试 | 1h |
+| 2.6 | SkillResolver | 2.4,2.1 | game/src/v2/systems/skill-resolver.ts | 24技能全覆盖测试 | 3h |
+| 2.7 | EffectResolver | 2.6 | game/src/v2/systems/effect-resolver.ts | 30+效果类型测试 | 3h |
+| 2.8 | StatusEngine | 2.7 | game/src/v2/systems/status-engine.ts | 状态叠加/过期/洋葱层测试 | 2h |
 
 ## Phase 3：战斗系统重构
 
