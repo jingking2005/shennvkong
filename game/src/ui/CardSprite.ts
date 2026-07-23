@@ -51,8 +51,8 @@ export class CardSprite {
     // 容器
     this.container = scene.add.container(x, y);
 
-    // 卡牌图像
-    this.cardImage = scene.add.image(0, 0, texKey);
+    // 卡牌图像（缩放到卡牌框尺寸）
+    this.cardImage = scene.add.image(0, 0, texKey).setDisplaySize(CARD_W, CARD_H);
     this.container.add(this.cardImage);
 
     // 属性符号（中央）

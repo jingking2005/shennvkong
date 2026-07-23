@@ -67,9 +67,17 @@ export class BattleScene extends Phaser.Scene {
     // 布局卡牌精灵
     this.layoutCards(state.units);
 
+    // 战场分隔线 + 阵营标签
+    const divider = this.add.graphics();
+    divider.lineStyle(1, 0x4444aa, 0.4);
+    divider.lineBetween(60, 310, 900, 310);
+    divider.setDepth(1);
+
+    this.add.text(480, 40, '— 敌方 —', { fontSize: '14px', color: '#ff6666' }).setOrigin(0.5).setDepth(2);
+    this.add.text(480, 590, '— 我方 —', { fontSize: '14px', color: '#66ccff' }).setOrigin(0.5).setDepth(2);
+
     // UI 标题
-    this.add.text(480, 16, '— 战斗中 —', { fontSize: '18px', color: '#ffd700' }).setOrigin(0.5);
-    this.turnText = this.add.text(480, 600, '', { fontSize: '13px', color: '#aaaaaa' }).setOrigin(0.5);
+    this.turnText = this.add.text(480, 310, '', { fontSize: '13px', color: '#aaaaaa' }).setOrigin(0.5).setDepth(2);
 
     // 构建动画队列
     this.animQueue = buildAnimationQueue(this.battleResult.log);
