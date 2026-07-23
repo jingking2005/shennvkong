@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] - 2026-07-24 — 第一阶段完成
+
+### Crawl Results
+- 🃏 卡牌：3,397/3,500 有效（97.1%），103 页跳过
+- 🖼️ 图片：8,118 张（1.72 GB），82 张失败（99.0%）
+- ⚔️ Skills：10,397 条
+- 📅 Events：338 场
+- 📂 Categories：556 个
+- 📋 Release Log：24 期
+- 总耗时：~9 小时（16:00 - 00:15）
+
+### Added
+- `REPORT.md`: 第一阶段质量报告
+
 ## [0.3.0] - 2026-07-23
 ### Added
 - `crawler_extra.py`: Skills/Events/Categories/Release Log 抓取器
