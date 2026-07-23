@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+src/valkyrie/__init__.py
+src/valkyrie/client.py
+src/valkyrie/config.py
+src/valkyrie/crawler.py
+src/valkyrie/exporter.py
+src/valkyrie/images.py
+src/valkyrie/parser.py
+src/valkyrie_crusade_archive.egg-info/PKG-INFO
+src/valkyrie_crusade_archive.egg-info/SOURCES.txt
+src/valkyrie_crusade_archive.egg-info/dependency_links.txt
+src/valkyrie_crusade_archive.egg-info/requires.txt
+src/valkyrie_crusade_archive.egg-info/top_level.txt
+tests/test_exporter.py
+tests/test_images.py
+tests/test_parser.py
