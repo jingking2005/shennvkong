@@ -82,7 +82,7 @@ def crawl_cards(
         card["url"] = f"https://valkyriecrusade.fandom.com/wiki/{title.replace(' ', '_')}"
         card["categories"] = extract_categories(parse_data)
         all_images = extract_images(parse_data)
-        card["images"] = [img for img in all_images if is_card_image(img)]
+        card["images"] = [img for img in all_images if is_card_image(img, card_name=title)]
 
         # Download card images
         if card["images"]:

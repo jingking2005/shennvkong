@@ -20,16 +20,30 @@ from .config import (
 logger = logging.getLogger(__name__)
 
 
-def is_card_image(filename: str) -> bool:
-    """Determine if a filename is a card image (not icon/UI/element badge)."""
-    # Exclude patterns
+def is_card_image(filename: str, card_name: str = "") -> bool:
+    """Determine if a filename is a card image (not icon/UI/element badge).
+
+    Uses a two-stage filter:
+    1. Blacklist: reject known non-card patterns (icons, badges, orbs, etc.)
+    2. Whitelist: if card_name is given, only accept images containing the card name
+    """
+    # Must be an image file
+    if not any(filename.lower().endswith(ext) for ext in [".png", ".jpg", ".webp"]):
+        return False
+
+    # Stage 1: Blacklist
     for pattern in IMAGE_EXCLUDE_PATTERNS:
         if pattern in filename:
             return False
 
-    # Must be an image file
-    if not any(filename.lower().endswith(ext) for ext in [".png", ".jpg", ".webp"]):
-        return False
+    # Stage 2: Whitelist by card name (if provided)
+    if card_name:
+        # Normalize card name for matching: "2nd Hammer" -> "2nd_hammer"
+        normalized_card = card_name.replace(" ", "_").lower()
+        normalized_file = filename.rsplit(".", 1)[0].lower()
+        # Accept if filename contains the card name
+        if normalized_card not in normalized_file:
+            return False
 
     return True
 
@@ -126,7 +140,7 @@ class ImageDownloader:
         result = {"downloaded": 0, "skipped": 0, "failed": 0}
 
         for fname in image_filenames:
-            if not is_card_image(fname):
+            if not is_card_image(fname, card_name=card_name):
                 self.skipped.append(fname)
                 result["skipped"] += 1
                 continue
