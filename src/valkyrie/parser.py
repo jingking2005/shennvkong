@@ -33,7 +33,9 @@ def parse_card_template(wikitext: str) -> Optional[dict]:
         # Clean up HTML tags
         value = re.sub(r"<br\s*/?>", " ", value)
         value = re.sub(r"<[^>]+>", "", value)
-        value = re.sub(r"\[\[([^\]|]*)\|?([^\]]*)\]\]", lambda m: m.group(2) or m.group(1), value)
+        # Handle wiki links: [[Target|Display]] -> Display, [[Target]] -> Target
+        # Display text may contain single brackets like [Limited SR]
+        value = re.sub(r"\[\[([^|\]]*)(?:\|(.*?))?\]\]", lambda m: (m.group(2) or m.group(1)), value)
         card[key] = value
 
     if not card:
