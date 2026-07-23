@@ -1,10 +1,26 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
 *.egg-info/
-.DS_Store
 *.egg
+
+# Hermes 抓取数据（持续增长，不入库）
 output/
 output-test/
 images/
 checkpoint.json
+*.part
+cards.partial.json
+
+# Node / Game
+game/node_modules/
+game/dist/
+game/coverage/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/

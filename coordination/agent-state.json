@@ -1,0 +1,30 @@
+{
+  "project": "Valkyrie Crusade Reconstruction",
+  "updatedAt": "2026-07-23T17:30:00+08:00",
+  "agents": {
+    "hermes": {
+      "role": "crawler-and-archive",
+      "status": "in_progress",
+      "pids": [3606, 9122],
+      "ownedPaths": ["src/valkyrie/", "output/", "images/", "output-test/"],
+      "notes": "主爬虫 650/3500，extra 爬虫运行中。预计 ~10h 完成。"
+    },
+    "qwen38": {
+      "role": "schema-game-and-tooling",
+      "status": "in_progress",
+      "pids": [],
+      "ownedPaths": ["game/", "coordination/", "spec/"],
+      "notes": "初始化 Phaser 3 工程，建立 Schema + Mock + 垂直切片。"
+    }
+  },
+  "completedTasks": ["spec-trio", "task-A-spec-review", "coordination-setup"],
+  "inProgressTasks": ["T3-schema", "T3-mock", "T4-phaser-init"],
+  "blockedTasks": ["T3-full (waiting hermes)", "T2 (waiting T1)"],
+  "nextActions": [
+    "完成 game/ 初始化",
+    "建立 Schema types",
+    "建立 Mock 数据",
+    "实现战斗引擎",
+    "完成垂直切片"
+  ]
+}
