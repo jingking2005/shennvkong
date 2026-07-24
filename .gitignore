@@ -24,3 +24,5 @@ game/coverage/
 # IDE
 .idea/
 .vscode/
+archive/final-archive/extracted/
+archive/final-archive/*.zip

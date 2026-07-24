@@ -97,6 +97,34 @@
 
 ---
 
+## 第二阶段进度（2026-07-24）
+
+### ✅ H1: Final Archive — 完成
+- 来源：Google Drive（Kushieda 整理）
+- 大小：2.56 GB（28,463 个文件）
+- 内容：
+  - Cards/：按 稀有度/属性/卡名 组织（3,564 目录，21,714 文件）
+  - Audio/：11 首原声集（M4A）+ 123 个 SE（WAV）
+  - Battle/：战斗背景、地图、特效
+  - Event Stories/：活动剧情
+  - Items/、Weapons/、Kingdom/ 等
+  - apk_images/：APK 提取的 UI 资源
+- 存放位置：`archive/final-archive/extracted/`
+
+### ✅ H6: Card ID 映射 — 完成
+- 从 `Cards/Unused Images/hd/` 提取 89 个 `cd_数字ID` → 卡名 映射
+- 格式：`稀有度 - 卡名 - cd_ID.png`
+- 映射文件：`archive/card_id_mapping.json`
+
+### ⏳ H3: APK 下载 — 待人工完成
+- uptodown/APKPure/APKCombo 均需 JS 交互，自动下载受阻
+- 待先生手动下载 APK 放入 `archive/apk/`
+- 优先版本：8.1.1、8.1.0
+
+### ⏳ H2/H4: master_data.dat + JADX — 待 APK 就位后执行
+
+---
+
 **给接手 Agent 的话：**
 
 - 先读 `AGENTS.md`（含通用协议+项目专属指令），了解完整规约
