@@ -12,7 +12,7 @@ import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchR
 import {
   ExploreStage, EvolveCard, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
   claimRaidReward, claimAllRaidRewards, tickBattlePt,
-  ownedToCombatant, leaderAtkBonus, type Combatant, type ExploreResult,
+  ownedToCombatant, leaderAtkBonus, type Combatant, type ExploreResult, type SkillFx,
 } from './logic';
 import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION } from './assets';
 import { audio } from './audio';
@@ -39,7 +39,28 @@ interface Button { x: number; y: number; w: number; h: number; id: string; prima
 
 interface BurstParticle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; r: number; }
 
+/** 技能特效实例（从施法卡位置飞向目标） */
+interface BattleFx {
+  kind: SkillFx;         // 特效类型
+  sx: number; sy: number; // 施法者位置（卡片中心）
+  tx: number; ty: number; // 目标位置
+  t: number;              // 0..1 播放进度
+  dur: number;            // 持续秒数
+  delay: number;          // 延迟开始（多卡齐发错开）
+  color: string;
+  hitT: number;           // 命中时刻（t 值）
+  boom: BurstParticle[];  // 命中爆炸粒子（命中瞬间生成）
+  player: boolean;        // 玩家方（飞向 boss）还是敌方（飞向玩家）
+}
+
 const RANK: Record<string, number> = { N: 1, R: 2, SR: 3, UR: 4, LR: 5, X: 6, VR: 7 };
+
+/** 10 种技能特效的主题色 */
+const FX_COLOR: Record<SkillFx, string> = {
+  fire: '#ff7a3c', ice: '#6fd8ff', thunder: '#ffe14d', holy: '#fff3b0',
+  shadow: '#c05ce8', meteor: '#ff5c3c', wind: '#7cf0c0', star: '#ff9ce8',
+  heal: '#7cf08c', arcane: '#9cb8ff',
+};
 
 /** 顶层页面 */
 type Page = 'summon' | 'event' | 'map' | 'sortie' | 'battle' | 'team' | 'records';
@@ -63,6 +84,7 @@ interface BattleState {
   banner: string;                  // '魔女出现！' / 'VICTORY' 横幅
   bannerT: number;
   lastActions: { actor: string; dmg: number; skill: boolean; crit: boolean; em: number }[];
+  fx: BattleFx[];                  // 技能特效队列
 }
 
 class SummonHall {
@@ -663,6 +685,7 @@ class SummonHall {
       b.bannerT += dt;
       for (const d of b.dmgFloat) d.t += dt;
       b.dmgFloat = b.dmgFloat.filter(d => d.t < 1);
+      this.updateFx(dt);   // 技能特效推进
       if (b.victory) b.victoryT += dt;
       // AP 随时间恢复（讨伐体力）
       tickBattlePt(this.db);
@@ -763,7 +786,7 @@ class SummonHall {
         instId: raid.raidId, card: bossCard, lv: raid.level,
         atk: raid.attack, hp: raid.hp, hpMax: raid.hpMax, def: 500,
         speed: 120, element: 'dark', skillName: '魔女之咆哮',
-        procChance: 0.5, skillMult: 3, isLeader: false,
+        procChance: 0.5, skillMult: 3, skillFx: 'shadow', isLeader: false,
       }];
     } else {
       const boss = cardsByRarity('LR')[1] ?? cardsByRarity('UR')[0];
@@ -771,7 +794,7 @@ class SummonHall {
       enemies = [{
         instId: 'boss', card: boss, lv: 50, atk: 4000, hp: 80000, hpMax: 80000,
         def: 800, speed: 100, element: 'dark', skillName: '暗之冲击',
-        procChance: 0.4, skillMult: 2.5, isLeader: false,
+        procChance: 0.4, skillMult: 2.5, skillFx: 'arcane', isLeader: false,
       }];
     }
     this.battle = {
@@ -779,7 +802,7 @@ class SummonHall {
       seed: (Math.random() * 1e9) | 0, skillPrompt: null,
       dmgFloat: [], victory: false, victoryT: 0, defeated: false,
       banner: raid ? (raid.archWitch ? '超·幻想魔女降临！' : '魔女出现！') : '战斗开始',
-      bannerT: 0, lastActions: [],
+      bannerT: 0, lastActions: [], fx: [],
     };
     this.syncBgm();
   }
@@ -806,6 +829,17 @@ class SummonHall {
         b.dmgFloat.push({ x: W / 2, y: 200, v: String(r.dmg), t: 0, color: '#ffe14d' });
         this.burst('#c05ce8', 25); this.shake = 0.35;
       }
+      // 技能特效：每张触发技能的卡向 BOSS 施放
+      for (let i = 0; i < r.skills.length; i++) {
+        const s = r.skills[i];
+        const ci = b.team.findIndex(c => c.instId === s.actorInstId);
+        const sx = ci >= 0 ? this.teamSlotX(ci) : W / 2;
+        this.spawnFx({
+          kind: s.skillFx, sx, sy: H - 160, tx: W / 2, ty: 130,
+          t: 0, dur: 0.7 + Math.random() * 0.25, delay: i * 0.09,
+          color: FX_COLOR[s.skillFx], hitT: 0.72, boom: [], player: true,
+        });
+      }
       if (r.defeated) {
         b.victory = true; b.victoryT = 0;
         b.banner = `讨伐成功！积分 +${r.ptGain}`;
@@ -821,15 +855,33 @@ class SummonHall {
       actor: a.actorName, dmg: a.damage, skill: a.skillUsed, crit: a.crit, em: a.elementMult,
     }));
     // 伤害飘字：玩家对敌 → 顶部；敌对我 → 底部
+    let fxDelay = 0;
     for (const a of res.actions) {
       const isPlayerAtk = b.team.some(c => c.instId === a.actorInstId);
       if (isPlayerAtk) {
         b.dmgFloat.push({ x: W / 2 + (Math.random() - 0.5) * 60, y: 200, v: String(a.damage), t: 0, color: a.crit ? '#ff5c5c' : '#ffe14d' });
+        // 玩家技能特效：从施法卡 → BOSS
+        if (a.skillFx) {
+          const ci = b.team.findIndex(c => c.instId === a.actorInstId);
+          const sx = ci >= 0 ? this.teamSlotX(ci) : W / 2;
+          this.spawnFx({
+            kind: a.skillFx, sx, sy: H - 160, tx: W / 2, ty: 130,
+            t: 0, dur: 0.75, delay: fxDelay, color: FX_COLOR[a.skillFx], hitT: 0.7, boom: [], player: true,
+          });
+        }
       } else {
         const slotIdx = a.targetIndex;
         const x = this.teamSlotX(slotIdx);
         b.dmgFloat.push({ x, y: H - 320, v: String(a.damage), t: 0, color: '#ff8c8c' });
+        // 敌方技能特效：从 BOSS → 玩家卡
+        if (a.skillFx) {
+          this.spawnFx({
+            kind: a.skillFx, sx: W / 2, sy: 130, tx: x, ty: H - 160,
+            t: 0, dur: 0.75, delay: fxDelay, color: FX_COLOR[a.skillFx], hitT: 0.7, boom: [], player: false,
+          });
+        }
       }
+      fxDelay += 0.12;
     }
     this.shake = 0.3;
     if (res.finished) {
@@ -848,6 +900,47 @@ class SummonHall {
     const cw = 150, gx = 16;
     const total = 5 * cw + 4 * gx;
     return (W - total) / 2 + i * (cw + gx) + cw / 2;
+  }
+
+  /** 生成一个技能特效 */
+  private spawnFx(fx: BattleFx): void {
+    if (!this.battle) return;
+    this.battle.fx.push(fx);
+  }
+
+  /** 推进技能特效：播放进度 + 命中瞬间生成爆炸粒子 */
+  private updateFx(dt: number): void {
+    const b = this.battle;
+    if (!b) return;
+    for (const fx of b.fx) {
+      fx.t += dt / fx.dur;
+      // 命中时刻：生成爆炸粒子
+      if (fx.t >= fx.hitT && fx.boom.length === 0) {
+        const hx = fx.tx, hy = fx.ty;
+        const n = fx.kind === 'meteor' || fx.kind === 'star' ? 26 : 16;
+        for (let i = 0; i < n; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = 90 + Math.random() * 240;
+          fx.boom.push({
+            x: hx, y: hy,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
+            life: 0.45 + Math.random() * 0.35, max: 0.8,
+            color: Math.random() < 0.3 ? '#ffffff' : fx.color,
+            r: 2.5 + Math.random() * 4,
+          });
+        }
+        this.shake = Math.max(this.shake, fx.kind === 'meteor' ? 0.6 : 0.35);
+      }
+      // 粒子推进
+      for (const p of fx.boom) {
+        p.life -= dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 300 * dt;
+      }
+      fx.boom = fx.boom.filter(p => p.life > 0);
+    }
+    b.fx = b.fx.filter(fx => fx.t < 1 + fx.delay);
   }
 
   private giveVictoryExp(): void {
@@ -1986,10 +2079,215 @@ class SummonHall {
     glassButton(ctx, W - 150, H - 70, 130, 50, b.auto ? '自动中' : '自动', { kind: b.auto ? 'green' : 'gray', hover: this.hover === 'bAuto', fontSize: 18 });
     this.buttons.push({ x: W - 150, y: H - 70, w: 130, h: 50, id: 'bAuto' });
 
+    // 技能特效（最上层，覆盖卡片）
+    this.renderFx();
+
     // 技能确认弹窗
     if (b.skillPrompt !== null) this.renderSkillPrompt(b.skillPrompt);
     // 胜利结算
     if (b.victory) this.renderVictory();
+  }
+
+  /**
+   * 绘制技能特效：10 种魔法弹道 + 命中爆炸
+   * - 弹道阶段：魔法弹/光束/陨石从施法卡飞向目标
+   * - 命中阶段：爆炸粒子 + 冲击波光环
+   */
+  private renderFx(): void {
+    const ctx = this.ctx;
+    const b = this.battle;
+    if (!b) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter'; // 叠加发光
+
+    for (const fx of b.fx) {
+      const p = Math.max(0, Math.min(1, fx.t - fx.delay)); // 已播放进度（扣除延迟）
+      if (p <= 0) continue;
+      const k = fx.kind;
+      const x = fx.sx + (fx.tx - fx.sx) * Math.min(1, p / fx.hitT);
+      const y = fx.sy + (fx.ty - fx.sy) * Math.min(1, p / fx.hitT);
+
+      // ── 弹道表现 ──
+      if (k === 'fire') {
+        // 火球：橙红核心 + 黄色拖尾
+        const trail = Math.max(0, p / fx.hitT);
+        for (let i = 1; i <= 5; i++) {
+          const tt = trail - i * 0.045;
+          if (tt <= 0) break;
+          const tx = fx.sx + (fx.tx - fx.sx) * tt;
+          const ty = fx.sy + (fx.ty - fx.sy) * tt;
+          ctx.globalAlpha = 0.5 * (1 - i / 6);
+          ctx.fillStyle = i % 2 ? '#ffb84d' : '#ff5c3c';
+          ctx.beginPath(); ctx.arc(tx, ty, 14 - i * 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#fff3b0';
+        ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
+      } else if (k === 'ice') {
+        // 冰晶：旋转菱形冰棱 + 蓝白拖尾
+        for (let i = 1; i <= 4; i++) {
+          const tt = Math.max(0, p / fx.hitT) - i * 0.05;
+          if (tt <= 0) break;
+          const tx = fx.sx + (fx.tx - fx.sx) * tt;
+          const ty = fx.sy + (fx.ty - fx.sy) * tt;
+          ctx.globalAlpha = 0.6 * (1 - i / 5);
+          ctx.fillStyle = '#bff0ff';
+          ctx.beginPath(); ctx.arc(tx, ty, 8 - i, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.save();
+        ctx.translate(x, y); ctx.rotate(b.t * 8);
+        ctx.fillStyle = '#e8fbff'; ctx.strokeStyle = '#6fd8ff'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -11); ctx.lineTo(8, 0); ctx.lineTo(0, 11); ctx.lineTo(-8, 0);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      } else if (k === 'thunder') {
+        // 雷霆：瞬间闪电劈落（弹道阶段直接画折线到目标）
+        ctx.strokeStyle = '#fff7c0'; ctx.lineWidth = 3; ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 14;
+        ctx.globalAlpha = Math.max(0, 1 - (p / fx.hitT) * 1.6);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        let cx = fx.sx, cy = fx.sy;
+        const segs = 7;
+        for (let s = 1; s <= segs; s++) {
+          const tt = s / segs;
+          const bx = fx.sx + (fx.tx - fx.sx) * tt + (Math.random() - 0.5) * 34;
+          const by = fx.sy + (fx.ty - fx.sy) * tt + (Math.random() - 0.5) * 26;
+          ctx.lineTo(cx + (bx - cx) * 0.7, cy + (by - cy) * 0.7);
+          cx = bx; cy = by;
+        }
+        ctx.lineTo(fx.tx, fx.ty);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      } else if (k === 'holy') {
+        // 圣光：金色光柱（无弹道，目标处垂直光柱）
+        const s = Math.min(1, p / fx.hitT);
+        const grad = ctx.createLinearGradient(fx.tx, fx.ty - 160, fx.tx, fx.ty + 10);
+        grad.addColorStop(0, 'rgba(255,243,176,0)');
+        grad.addColorStop(0.5, 'rgba(255,243,176,0.55)');
+        grad.addColorStop(1, 'rgba(255,255,255,0.95)');
+        ctx.globalAlpha = s;
+        ctx.fillStyle = grad;
+        ctx.fillRect(fx.tx - 26, fx.ty - 160, 52, 175);
+        ctx.fillStyle = '#fff8d0';
+        ctx.beginPath(); ctx.arc(fx.tx, fx.ty - 4, 30 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (k === 'shadow') {
+        // 暗影：紫黑球体 + 深色尾迹
+        const trail = Math.max(0, p / fx.hitT);
+        for (let i = 1; i <= 5; i++) {
+          const tt = trail - i * 0.045;
+          if (tt <= 0) break;
+          const tx = fx.sx + (fx.tx - fx.sx) * tt;
+          const ty = fx.sy + (fx.ty - fx.sy) * tt;
+          ctx.globalAlpha = 0.5 * (1 - i / 6);
+          ctx.fillStyle = '#6a2a8a';
+          ctx.beginPath(); ctx.arc(tx, ty, 13 - i * 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#c05ce8'; ctx.shadowColor = '#8a2ab0'; ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      } else if (k === 'meteor') {
+        // 陨石：弧线下坠大陨石 + 火焰拖尾
+        const tt = Math.min(1, p / fx.hitT);
+        const mx = fx.sx + (fx.tx - fx.sx) * tt;
+        const my = fx.sy + (fx.ty - fx.sy) * tt + Math.sin(tt * Math.PI) * -120;
+        ctx.save();
+        ctx.translate(mx, my); ctx.rotate(tt * 5);
+        const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 18);
+        g.addColorStop(0, '#fff3b0'); g.addColorStop(0.5, '#ff7a3c'); g.addColorStop(1, '#7a2a14');
+        ctx.fillStyle = g; ctx.shadowColor = '#ff5c3c'; ctx.shadowBlur = 24;
+        ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        // 拖尾
+        for (let i = 1; i <= 6; i++) {
+          const dt = tt - i * 0.05;
+          if (dt <= 0) break;
+          const dx = fx.sx + (fx.tx - fx.sx) * dt;
+          const dy = fx.sy + (fx.ty - fx.sy) * dt + Math.sin(dt * Math.PI) * -120;
+          ctx.globalAlpha = 0.5 * (1 - i / 7);
+          ctx.fillStyle = i % 2 ? '#ff9c3c' : '#ff5c3c';
+          ctx.beginPath(); ctx.arc(dx, dy, 12 - i * 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      } else if (k === 'wind') {
+        // 疾风：旋转青色旋风
+        ctx.save();
+        ctx.translate(x, y); ctx.rotate(b.t * 12);
+        ctx.strokeStyle = '#7cf0c0'; ctx.lineWidth = 3; ctx.shadowColor = '#3cf0a0'; ctx.shadowBlur = 12;
+        for (let i = 0; i < 3; i++) {
+          ctx.globalAlpha = 0.85 - i * 0.25;
+          ctx.beginPath();
+          ctx.arc(0, 0, 9 + i * 8, i * 2, i * 2 + Math.PI * 1.6);
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      } else if (k === 'star') {
+        // 星辰：闪烁星形 + 彩色光晕
+        ctx.save();
+        ctx.translate(x, y);
+        const s = 10 + Math.sin(b.t * 14) * 3;
+        ctx.fillStyle = '#ff9ce8'; ctx.shadowColor = '#ff9ce8'; ctx.shadowBlur = 16;
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const r = i % 2 ? s * 0.45 : s;
+          const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+          ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      } else if (k === 'heal') {
+        // 生命：绿色上升光点（向目标汇聚）
+        const s = Math.min(1, p / fx.hitT);
+        ctx.globalAlpha = s;
+        ctx.fillStyle = '#a5f8c0'; ctx.shadowColor = '#7cf08c'; ctx.shadowBlur = 12;
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2 + b.t * 2;
+          const rr = 20 + Math.sin(b.t * 5 + i) * 6;
+          ctx.beginPath();
+          ctx.arc(fx.tx + Math.cos(a) * rr, fx.ty + Math.sin(a) * rr * 0.5, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      } else {
+        // arcane 奥术：蓝紫魔法弹 + 螺旋环
+        ctx.fillStyle = '#9cb8ff'; ctx.shadowColor = '#6a8aff'; ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#c8dcff'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, 15 + Math.sin(b.t * 10) * 3, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      // ── 命中爆炸：粒子 + 冲击波 ──
+      if (p >= fx.hitT) {
+        const hp = (p - fx.hitT) / (1 - fx.hitT); // 命中后进度 0..1
+        // 冲击波光环
+        ctx.globalAlpha = Math.max(0, 1 - hp) * 0.9;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(fx.tx, fx.ty, 18 + hp * 90, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        // 爆炸粒子
+        for (const pt of fx.boom) {
+          const lp = Math.max(0, pt.life / pt.max);
+          ctx.globalAlpha = lp;
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.r * lp, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.restore();
   }
 
   private renderSkillPrompt(slot: number): void {

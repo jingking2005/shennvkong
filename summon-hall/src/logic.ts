@@ -20,6 +20,45 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
+// ─────────────────────────── 技能特效类型 ───────────────────────────
+
+/** 10 种技能特效：按元素 + 稀有度分配给每张卡 */
+export type SkillFx =
+  | 'fire'      // 火焰爆裂：火球拖尾 → 命中爆炸
+  | 'ice'       // 冰霜新星：冰晶弹道 → 命中冰爆
+  | 'thunder'   // 雷霆万钧：闪电劈下
+  | 'holy'      // 圣光审判：金色光柱
+  | 'shadow'    // 暗影侵蚀：紫黑暗球 → 紫色爆发
+  | 'meteor'    // 陨石天降：弧形陨石 → 大爆炸
+  | 'wind'      // 疾风龙卷：青色旋风
+  | 'star'      // 星辰爆发：彩色星芒四射
+  | 'heal'      // 生命之光：绿色治疗光柱
+  | 'arcane';   // 奥术飞弹：蓝紫魔法弹
+
+/** 10 种特效对应的技能名（skillName 缺失/物品名时使用） */
+export const FX_NAMES: Record<SkillFx, string> = {
+  fire: '烈焰爆炎', ice: '极冰霜华', thunder: '雷霆万钧', holy: '圣光审判',
+  shadow: '暗影侵蚀', meteor: '陨石天坠', wind: '疾风龙卷', star: '星辰崩落',
+  heal: '生命之泉', arcane: '奥术飞弹',
+};
+
+/**
+ * 为一张卡分配技能特效：
+ * - 元素决定基础流派（火→火球/陨石，水树→冰/龙卷，光→圣光/星辰，暗→暗影/奥术）
+ * - 稀有度越高特效越强（LR/UR+ 倾向陨石/圣光/星辰等重特效）
+ */
+export function assignSkillFx(element: string, rarity: string): SkillFx {
+  const e = (element || '').toLowerCase();
+  const rank = RARITY_RANK[rarity as keyof typeof RARITY_RANK] || 1;
+  const heavy = rank >= 5; // LR/UR/VR/X 用重特效
+  if (e.includes('light') || e.includes('光')) return heavy ? 'star' : 'holy';
+  if (e.includes('dark') || e.includes('暗')) return heavy ? 'shadow' : 'arcane';
+  if (e.includes('cool') || e.includes('水') || e.includes('tree') || e.includes('树')) {
+    return heavy ? 'ice' : 'wind';
+  }
+  return heavy ? 'meteor' : 'fire';
+}
+
 // ─────────────────────────── 有效属性（含进化加成）───────────────────────────
 export interface Combatant {
   instId: string;
@@ -34,6 +73,7 @@ export interface Combatant {
   skillName: string;
   procChance: number;   // 技能触发率 0..1
   skillMult: number;    // 技能倍率
+  skillFx: SkillFx;     // 技能特效
   isLeader: boolean;
 }
 
@@ -44,14 +84,17 @@ export function ownedToCombatant(o: OwnedCard, isLeader = false): Combatant | nu
   const atk = Math.floor(card.stats.attack * lvScale) + o.atkBonus;
   const hpMax = Math.floor((card.stats.soldiers * 100 + card.stats.defense * 10 + 5000) * lvScale) + o.hpBonus;
   const tier = RARITY_RANK[card.rarity];
+  const fx = assignSkillFx(card.element, card.rarity);
   return {
     instId: o.instId, card, lv: o.lv,
     atk, hp: hpMax, hpMax, def: card.stats.defense,
     speed: card.stats.speed || 100,
     element: card.element,
-    skillName: card.skillName || '攻击',
+    // 物品名/空技能名 → 用特效名（wiki 技能多为物品名，观赏性差）
+    skillName: card.skillName && card.skillName.length <= 16 ? card.skillName : FX_NAMES[fx],
     procChance: Math.min(0.85, 0.25 + tier * 0.08), // 稀有度越高触发率越高
     skillMult: 2.2 + tier * 0.4,
+    skillFx: fx,
     isLeader,
   };
 }
@@ -353,6 +396,7 @@ export interface BattleAction {
   crit: boolean;
   skillUsed: boolean;
   skillName?: string;
+  skillFx?: SkillFx;
   elementMult: number;
   heal?: number;
 }
@@ -411,6 +455,7 @@ export function runBattleTurn(
       actorInstId: c.instId, actorName: c.card.name,
       targetIndex, damage: dmg, crit, skillUsed: useSkill,
       skillName: useSkill ? c.skillName : undefined,
+      skillFx: useSkill ? c.skillFx : undefined,
       elementMult: em,
     });
   }
@@ -427,18 +472,23 @@ export function runBattleTurn(
 }
 
 /** 讨伐魔女：对 Raid Boss 造成一段伤害并记贡献 */
-export function raidAttack(db: DB, raid: WitchRaidBoss, team: Combatant[], seed: number): { dmg: number; defeated: boolean; ptGain: number; outOfAp: boolean } {
+export function raidAttack(db: DB, raid: WitchRaidBoss, team: Combatant[], seed: number): {
+  dmg: number; defeated: boolean; ptGain: number; outOfAp: boolean;
+  skills: { actorInstId: string; skillFx: SkillFx; skillName: string }[];
+} {
   const rng = mulberry32(seed);
-  if (db.user.battlePt <= 0) return { dmg: 0, defeated: false, ptGain: 0, outOfAp: true };
+  if (db.user.battlePt <= 0) return { dmg: 0, defeated: false, ptGain: 0, outOfAp: true, skills: [] };
   db.user.battlePt -= 1;
   const leaderBonus = leaderAtkBonus(team);
   let dmg = 0;
+  const skills: { actorInstId: string; skillFx: SkillFx; skillName: string }[] = [];
   for (const c of team) {
     if (c.hp <= 0) continue;
     const useSkill = rng() < c.procChance;
     const mult = useSkill ? c.skillMult : 1.0;
     const em = elementalMultiplier(c.element, 'dark');
     dmg += Math.floor(c.atk * mult * em * leaderBonus * (0.9 + rng() * 0.2));
+    if (useSkill) skills.push({ actorInstId: c.instId, skillFx: c.skillFx, skillName: c.skillName || '技能' });
   }
   raid.hp = Math.max(0, raid.hp - dmg);
   raid.damageLog[db.user.uid] = (raid.damageLog[db.user.uid] || 0) + dmg;
@@ -449,7 +499,7 @@ export function raidAttack(db: DB, raid: WitchRaidBoss, team: Combatant[], seed:
     ptGain += raid.archWitch ? 500 : 100; // 击杀奖
   }
   db.eventPoint.points += ptGain;
-  return { dmg, defeated: raid.defeated, ptGain, outOfAp: false };
+  return { dmg, defeated: raid.defeated, ptGain, outOfAp: false, skills };
 }
 
 /** 战绩：领取已讨伐魔女的奖励 */

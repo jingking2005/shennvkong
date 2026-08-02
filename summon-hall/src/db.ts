@@ -161,7 +161,12 @@ export function loadDB(): DB | null {
     const db = JSON.parse(raw) as DB;
     if (!db?.user || !db?.inventory?.cards) return null;
     if (db.user.battlePtRecoverAt === undefined) db.user.battlePtRecoverAt = Date.now();
-    if (!db.user.battlePtMax) db.user.battlePtMax = 30;
+    // 战斗体力上限迁移：旧存档 5/30 → 2000
+    if (!db.user.battlePtMax || db.user.battlePtMax < 2000) {
+      db.user.battlePtMax = 2000;
+      db.user.battlePt = Math.max(db.user.battlePt || 0, 2000);
+      db.user.battlePtRecoverAt = Date.now();
+    }
     if (!db.inventory.materials) db.inventory.materials = {};
     if (db.inventory.materials.upgradePotion === undefined) db.inventory.materials.upgradePotion = 0;
     const inst = parseInt(localStorage.getItem(LS_INST) || '0', 10);
@@ -210,7 +215,7 @@ export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
     user: {
       uid: 'u1', name: '星术师·阿尔德', level: 88, exp: 0.42,
       energy: 3000, energyMax: 3000,
-      battlePt: 30, battlePtMax: 30, battlePtRecoverAt: Date.now(),
+      battlePt: 2000, battlePtMax: 2000, battlePtRecoverAt: Date.now(),
       gold: 788038, gems: 854, friendPt: 99999,
       tickets: { fate: 2, legendary: 99, divine: 99, friend: 99, 'lr-guaranteed': 99, collab: 99, element: 99 },
     },
