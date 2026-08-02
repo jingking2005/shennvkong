@@ -61,6 +61,33 @@ export function leaderAtkBonus(team: Combatant[]): number {
   return team.some(c => c.isLeader) ? 1.10 : 1.0;
 }
 
+// ─────────────────────────── 战斗体力（AP）恢复 ───────────────────────────
+
+/** 每点 AP 恢复间隔（毫秒）：6 分钟一点 */
+export const AP_RECOVER_MS = 6 * 60 * 1000;
+
+/**
+ * 结算 AP 随时间恢复：每 AP_RECOVER_MS 恢复 1 点，最多 battlePtMax。
+ * 返回当前 AP 与下次恢复倒计时（秒）。
+ */
+export function tickBattlePt(db: DB, now = Date.now()): { battlePt: number; nextInSec: number } {
+  const u = db.user;
+  if (u.battlePt >= u.battlePtMax) {
+    u.battlePtRecoverAt = now;
+    return { battlePt: u.battlePt, nextInSec: 0 };
+  }
+  let elapsed = now - u.battlePtRecoverAt;
+  if (elapsed <= 0) return { battlePt: u.battlePt, nextInSec: Math.ceil(AP_RECOVER_MS / 1000) };
+  const gained = Math.min(Math.floor(elapsed / AP_RECOVER_MS), u.battlePtMax - u.battlePt);
+  if (gained > 0) {
+    u.battlePt += gained;
+    u.battlePtRecoverAt += gained * AP_RECOVER_MS;
+    if (u.battlePt >= u.battlePtMax) u.battlePtRecoverAt = now;
+  }
+  const nextInSec = Math.max(0, Math.ceil((u.battlePtRecoverAt + AP_RECOVER_MS - now) / 1000));
+  return { battlePt: u.battlePt, nextInSec };
+}
+
 // ─────────────────────────── 探索闯关 ───────────────────────────
 
 export interface ExploreResult {
@@ -73,6 +100,7 @@ export interface ExploreResult {
   lootGold: number;
   lootGems: number;
   lootCardRarity?: string;
+  lootPotion?: number;
   witchRaidId?: string;
   completed: boolean;      // 到达 100%
   firstClear: boolean;     // 本次是否首通
@@ -82,8 +110,8 @@ export interface ExploreResult {
 /**
  * ExploreStage：点「进军」走一步
  * - 固定扣 10 点行动力
- * - 每步推进约 4%（约 25 步通关）
- * - 遇敌节奏：走几步遇魔女，接近终点遇大魔女
+ * - 每步推进 10%~20%（约 6~8 步通关）
+ * - 遇敌节奏：每 5~6 步必遇魔女；通关那一步必是大魔女
  */
 export function ExploreStage(db: DB, stage: Stage, seed: number): ExploreResult {
   const rng = mulberry32(seed);
@@ -102,59 +130,58 @@ export function ExploreStage(db: DB, stage: Stage, seed: number): ExploreResult 
   stage.stepsTaken = (stage.stepsTaken || 0) + 1;
   const step = stage.stepsTaken;
 
-  // 每步约 3.5%~4.5%，百分比真实推进并反映到进度条
-  const gain = 0.035 + rng() * 0.01;
+  // 每步 10%~20%，百分比真实推进并反映到进度条
+  const gain = 0.10 + rng() * 0.10;
   res.progressGain = gain;
   const wasBelow = stage.progress < 1;
   stage.progress = Math.min(1, stage.progress + gain);
   res.newProgress = stage.progress;
 
-  // 到达 100%
-  if (stage.progress >= 1 && wasBelow) {
+  // 到达 100%（通关那一步必是大魔女）
+  const atEnd = stage.progress >= 1 && wasBelow;
+  if (atEnd) {
     res.completed = true;
-    if (!stage.firstClear) {
-      stage.firstClear = true;
-      res.firstClear = true;
-      db.user.gems += 100;
-      db.user.tickets['fate'] = (db.user.tickets['fate'] || 0) + 3;
-      res.firstClearReward = '首通奖励：宝石×100 + 召唤券×3';
-    } else if (!stage.rewardClaimed100) {
-      stage.rewardClaimed100 = true;
-      res.firstClearReward = '100% 探索奖励：限定 R 卡';
-    }
   }
 
-  // ── 遇敌节奏（可预期，不是糊弄人的假百分比）──
-  // 第 3 / 7 / 11 步：普通魔女
-  // 第 5 / 9 步：小怪
-  // 第 2 / 6 / 10 步：拾取
-  // 进度 ≥70% 或第 15 步起：优先大魔女（每关一次）
-  const forceArch = !stage.archEncountered && (stage.progress >= 0.70 || step >= 15);
-  const witchSteps = new Set([3, 7, 11, 16, 20]);
-  const mobSteps = new Set([5, 9, 13, 18]);
-  const lootSteps = new Set([2, 6, 10, 14]);
-
-  if (forceArch && stage.progress < 1) {
+  // ── 遇敌节奏（有保底，不是糊弄人的假百分比）──
+  // 每 5~6 步必遇魔女：第 5、11、17、23…步
+  const witchStep = step % 6 === 5;
+  // 通关步：强制大魔女
+  if (atEnd && !stage.archEncountered) {
     res.event = 'witch';
     res.witchRaidId = spawnWitch(db, stage, rng, '', true);
     stage.archEncountered = true;
     stage.witchEncounters += 1;
-  } else if (witchSteps.has(step) && stage.progress < 1) {
+  } else if (atEnd && stage.archEncountered) {
+    // 大魔女已遇过：结尾再来一只普通魔女守住
     res.event = 'witch';
     res.witchRaidId = spawnWitch(db, stage, rng, '', false);
     stage.witchEncounters += 1;
-  } else if (mobSteps.has(step)) {
+  } else if (witchStep) {
+    // 保底：第 5 / 11 / 17 步必遇魔女
+    res.event = 'witch';
+    res.witchRaidId = spawnWitch(db, stage, rng, '', false);
+    stage.witchEncounters += 1;
+  } else if (rng() < 0.4) {
+    // 其余步：40% 拾取 / 60% 小怪
     res.event = 'mob';
-    res.lootGold = Math.floor(100 + rng() * 300);
+    res.lootGold = Math.floor(150 + rng() * 400);
     db.user.gold += res.lootGold;
     res.lootCardRarity = 'N';
-  } else if (lootSteps.has(step)) {
+  } else {
     res.event = 'loot';
     res.lootGold = Math.floor(200 + rng() * 800);
-    res.lootGems = rng() < 0.2 ? Math.floor(1 + rng() * 5) : 0;
+    res.lootGems = rng() < 0.25 ? Math.floor(1 + rng() * 5) : 0;
     db.user.gold += res.lootGold;
     db.user.gems += res.lootGems;
-    if (rng() < 0.35) res.lootCardRarity = rng() < 0.85 ? 'N' : 'R';
+    if (rng() < 0.35) {
+      res.lootCardRarity = rng() < 0.85 ? 'N' : 'R';
+    } else if (rng() < 0.5) {
+      // 35% 概率掉 1~2 瓶强化药水
+      const n = 1 + (rng() < 0.3 ? 1 : 0);
+      db.inventory.materials.upgradePotion = (db.inventory.materials.upgradePotion || 0) + n;
+      res.lootPotion = n;
+    }
   }
   return res;
 }
@@ -165,13 +192,15 @@ export function spawnWitch(
 ): string {
   const level = 80 + Math.floor(db.eventPoint.raidKills * 0.8 + rng() * 120);
   const arch = forceArch || rng() < 0.08;
-  const hpMax = Math.floor((arch ? 50 : 8) * 10000 * (1 + level * 0.35));
+  // HP 平衡：我方全队一回合约 1.5万~3万输出
+  // 普通魔女 12万~27万 → 约 6~15 回合；大魔女 32万~68万 → 约 15~35 回合
+  const hpMax = Math.floor((arch ? 8 : 3) * 10000 + level * (arch ? 3000 : 1200));
   const raid: WitchRaidBoss = {
     raidId: newInstId(),
     bossCardId,
     name: arch ? '超·幻想魔女' : '幻想魔女',
     level, hp: hpMax, hpMax,
-    attack: Math.floor(3000 * (1 + level * 0.2) * (arch ? 2.5 : 1)),
+    attack: Math.floor(2500 + level * 40 * (arch ? 1.8 : 1)),
     archWitch: arch,
     discoveredBy: db.user.name,
     expiresAt: Date.now() + (arch ? 30 : 120) * 60 * 1000,
@@ -277,6 +306,43 @@ export function EnhanceCard(db: DB, targetInst: string, fodderInsts: string[]): 
   return res;
 }
 
+/** 药水提供的经验（等价 1 张 R 卡狗粮） */
+export const POTION_EXP = 300;
+/** 使用一瓶药水的金币成本 */
+export const POTION_GOLD = 200;
+
+/**
+ * UseEnhancePotion：消耗一瓶强化药水给目标卡加经验
+ * - 需要 1 瓶药水 + 200 金币
+ * - 经验 = POTION_EXP（约等于 1 张 R 卡狗粮）
+ */
+export function UseEnhancePotion(db: DB, targetInst: string): EnhanceResult {
+  const inv = db.inventory;
+  const target = inv.cards.find(c => c.instId === targetInst);
+  const res: EnhanceResult = { ok: false, expGain: 0, lvBefore: 0, lvAfter: 0, goldSpent: 0 };
+  if (!target) { res.reason = '目标卡不存在'; return res; }
+  const potions = inv.materials.upgradePotion || 0;
+  if (potions < 1) { res.reason = '强化药水不足'; return res; }
+  if (db.user.gold < POTION_GOLD) { res.reason = '金币不足'; return res; }
+  const card = getCard(target.cardId)!;
+  if (target.lv >= maxLv(card.rarity, target.evoStage)) { res.reason = '已达等级上限'; return res; }
+
+  inv.materials.upgradePotion = potions - 1;
+  db.user.gold -= POTION_GOLD;
+  res.lvBefore = target.lv;
+  target.exp += POTION_EXP;
+  const need = (lv: number) => lv * 40;
+  while (target.lv < maxLv(card.rarity, target.evoStage) && target.exp >= need(target.lv)) {
+    target.exp -= need(target.lv);
+    target.lv += 1;
+  }
+  res.lvAfter = target.lv;
+  res.expGain = POTION_EXP;
+  res.goldSpent = POTION_GOLD;
+  res.ok = true;
+  return res;
+}
+
 // ─────────────────────────── 战斗引擎 ───────────────────────────
 
 export interface BattleAction {
@@ -361,9 +427,9 @@ export function runBattleTurn(
 }
 
 /** 讨伐魔女：对 Raid Boss 造成一段伤害并记贡献 */
-export function raidAttack(db: DB, raid: WitchRaidBoss, team: Combatant[], seed: number): { dmg: number; defeated: boolean; ptGain: number } {
+export function raidAttack(db: DB, raid: WitchRaidBoss, team: Combatant[], seed: number): { dmg: number; defeated: boolean; ptGain: number; outOfAp: boolean } {
   const rng = mulberry32(seed);
-  if (db.user.battlePt <= 0) return { dmg: 0, defeated: false, ptGain: 0 };
+  if (db.user.battlePt <= 0) return { dmg: 0, defeated: false, ptGain: 0, outOfAp: true };
   db.user.battlePt -= 1;
   const leaderBonus = leaderAtkBonus(team);
   let dmg = 0;
@@ -383,7 +449,7 @@ export function raidAttack(db: DB, raid: WitchRaidBoss, team: Combatant[], seed:
     ptGain += raid.archWitch ? 500 : 100; // 击杀奖
   }
   db.eventPoint.points += ptGain;
-  return { dmg, defeated: raid.defeated, ptGain };
+  return { dmg, defeated: raid.defeated, ptGain, outOfAp: false };
 }
 
 /** 战绩：领取已讨伐魔女的奖励 */

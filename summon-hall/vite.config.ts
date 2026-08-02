@@ -51,6 +51,8 @@ export default defineConfig({
     serveStaticMount('/archive/battle-bg', path.join(ARCHIVE_ROOT, 'Battle/Background')),
     // Battle/Audio 为空；使用归档 Audio/stream
     serveStaticMount('/archive/bgm', path.join(ARCHIVE_ROOT, 'Audio/stream')),
+    // 强化道具 / 药水（探索奖励）
+    serveStaticMount('/archive/items', path.join(ARCHIVE_ROOT, 'Items/Enhancement')),
   ],
   server: {
     port: 3100,

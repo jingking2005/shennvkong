@@ -5,16 +5,16 @@
 import { Background } from './background';
 import { drawCard, preloadImage, getImage, RARITY_COLOR } from './card';
 import { BANNERS, Gacha, rateTable, bannerShowcase, type Banner, type Pull } from './gacha';
-import { cardsByRarity, getCard, type Card } from './data';
+import { cardsByRarity, getCard, type Card, type Rarity } from './data';
 import { Ease, Tweener } from './ease';
 import { glassButton, metalDialog, engravedText, roundRectPath } from './ui';
-import { seedDB, saveDB, loadDB, type DB, type Stage, type WitchRaidBoss } from './db';
+import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchRaidBoss } from './db';
 import {
-  ExploreStage, EvolveCard, EnhanceCard, runBattleTurn, raidAttack,
-  claimRaidReward, claimAllRaidRewards,
+  ExploreStage, EvolveCard, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
+  claimRaidReward, claimAllRaidRewards, tickBattlePt,
   ownedToCombatant, leaderAtkBonus, type Combatant, type ExploreResult,
 } from './logic';
-import { eventMapBg, battleBg, loadAssetImage, drawCover } from './assets';
+import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION } from './assets';
 import { audio } from './audio';
 
 const W = 1280;
@@ -425,6 +425,25 @@ class SummonHall {
       if (id === 'bAuto') { b.auto = !b.auto; b.autoTimer = 0; return; }
       if (id === 'victoryOk') {
         const wasRaid = !!b.raid?.defeated;
+        if (wasRaid && b.raid) {
+          // 讨伐成功奖励（击杀当场发放，战绩页还能再领一次？不——改为只在此发放并标记已领）
+          if (!b.raid.claimed) {
+            const gold = b.raid.archWitch ? 50000 : 12000;
+            const gems = b.raid.archWitch ? 500 : 300;
+            const tix = b.raid.archWitch ? 3 : 1;
+            this.db.user.gold += gold;
+            this.db.user.gems += gems;
+            this.db.user.tickets.fate = (this.db.user.tickets.fate || 0) + tix;
+            b.raid.claimed = true;
+            this.flashTeamMsg(`讨伐奖励：金币+${gold.toLocaleString()} 宝石+${gems} 券+${tix}`);
+          }
+        } else if (!b.raid && b.victory) {
+          // 普通遭遇战胜利：金币奖励
+          const gold = Math.floor(500 + Math.random() * 1500);
+          this.db.user.gold += gold;
+          this.flashTeamMsg(`战斗胜利！金币+${gold.toLocaleString()}`);
+        }
+        saveDB(this.db);
         this.page = wasRaid ? 'records' : 'sortie';
         this.battle = null;
         this.activeStage.progress = Math.min(1, this.activeStage.progress + 0.05);
@@ -645,6 +664,8 @@ class SummonHall {
       for (const d of b.dmgFloat) d.t += dt;
       b.dmgFloat = b.dmgFloat.filter(d => d.t < 1);
       if (b.victory) b.victoryT += dt;
+      // AP 随时间恢复（讨伐体力）
+      tickBattlePt(this.db);
       // Auto 自动回合
       if (b.auto && !b.victory && !b.defeated && b.skillPrompt === null) {
         b.autoTimer += dt;
@@ -748,7 +769,7 @@ class SummonHall {
       const boss = cardsByRarity('LR')[1] ?? cardsByRarity('UR')[0];
       preloadImage(boss).catch(() => {});
       enemies = [{
-        instId: 'boss', card: boss, lv: 50, atk: 4000, hp: 500000, hpMax: 500000,
+        instId: 'boss', card: boss, lv: 50, atk: 4000, hp: 80000, hpMax: 80000,
         def: 800, speed: 100, element: 'dark', skillName: '暗之冲击',
         procChance: 0.4, skillMult: 2.5, isLeader: false,
       }];
@@ -774,6 +795,13 @@ class SummonHall {
       const r = raidAttack(this.db, b.raid, b.team, b.seed++);
       b.enemies[0].hp = b.raid.hp;
       saveDB(this.db);
+      if (r.outOfAp) {
+        // 战斗体力耗尽：停止自动，提示等待恢复
+        b.auto = false;
+        b.banner = '战斗体力耗尽！等待恢复或使用补给';
+        b.bannerT = 0;
+        return;
+      }
       if (r.dmg > 0) {
         b.dmgFloat.push({ x: W / 2, y: 200, v: String(r.dmg), t: 0, color: '#ffe14d' });
         this.burst('#c05ce8', 25); this.shake = 0.35;
@@ -853,8 +881,31 @@ class SummonHall {
     };
   }
 
+  /** 发一张卡进库存（探索奖励等用） */
+  private addCardToInventory(rarity: Rarity): void {
+    const c = cardsByRarity(rarity)[0];
+    if (!c) return;
+    this.db.inventory.cards.push(makeOwnedCard(c.id, 1));
+    this.cardCount = Math.min(this.cardCap, this.cardCount + 1);
+  }
+
   private doExploreOnce(): ExploreResult {
     const r = ExploreStage(this.db, this.activeStage, (Math.random() * 1e9) | 0);
+    // 通关奖励（首通 / 满 100%）
+    if (r.completed) {
+      const s = this.activeStage;
+      if (!s.firstClear) {
+        s.firstClear = true;
+        r.firstClear = true;
+        this.db.user.gems += 100;
+        this.db.user.tickets['fate'] = (this.db.user.tickets['fate'] || 0) + 3;
+        r.firstClearReward = '首通奖励：宝石×100 + 召唤券×3';
+      } else if (!s.rewardClaimed100) {
+        s.rewardClaimed100 = true;
+        r.firstClearReward = '100% 探索奖励：限定 R 卡';
+        this.addCardToInventory('R' as Rarity);
+      }
+    }
     this.exploreMsg = r;
     this.exploreMsgT = 0;
     this.jewels = this.db.user.gems;
@@ -1474,7 +1525,7 @@ class SummonHall {
     let msg = '', color = '#cfc4a8';
     if (!r.ok) { msg = r.reason || '无法前进'; color = '#ff8c8c'; }
     else if (r.firstClear && r.firstClearReward) { msg = r.firstClearReward; color = '#ffe14d'; }
-    else if (r.event === 'loot') { msg = `拾取：金币+${r.lootGold}${r.lootGems ? ` 宝石+${r.lootGems}` : ''}${r.lootCardRarity ? ` ${r.lootCardRarity}卡` : ''}`; color = '#8fe8a8'; }
+    else if (r.event === 'loot') { msg = `拾取：金币+${r.lootGold}${r.lootGems ? ` 宝石+${r.lootGems}` : ''}${r.lootCardRarity ? ` ${r.lootCardRarity}卡` : ''}${r.lootPotion ? ` 强化药水×${r.lootPotion}` : ''}`; color = '#8fe8a8'; }
     else if (r.event === 'mob') { msg = `遭遇小怪！快速胜利 金币+${r.lootGold} 狗粮+1`; color = '#ffd24d'; }
     else if (r.event === 'witch') {
       const raid = r.witchRaidId ? this.db.raids.find(x => x.raidId === r.witchRaidId) : null;
@@ -1596,6 +1647,15 @@ class SummonHall {
       saveDB(this.db);
       this.enhancePicks.clear(); this.enhanceMode = false;
       this.detailInst = target; this.detailInstKeep = null; // 回到主卡详情
+      return;
+    }
+    if (id === 'enhancePotion') {
+      const target = this.detailInstKeep;
+      if (!target) { this.flashTeamMsg('请先选择目标卡'); return; }
+      const r = UseEnhancePotion(this.db, target);
+      if (r.ok) { this.flashTeamMsg(`药水强化成功！Lv.${r.lvBefore} → Lv.${r.lvAfter}（金币-${r.goldSpent}）`); }
+      else this.flashTeamMsg(r.reason || '使用失败');
+      saveDB(this.db);
       return;
     }
     if (id === 'evolveStart') { this.evolveMode = true; this.enhanceMode = false; this.evolvePick = null; this.detailInstKeep = this.detailInst; this.detailInst = null; return; }
@@ -1741,9 +1801,17 @@ class SummonHall {
 
     // 操作模式提示 + 确认按钮
     if (this.enhanceMode) {
+      const potions = this.db.inventory.materials.upgradePotion || 0;
       this.text(`强化模式：点选狗粮卡（绿框）· 已选 ${this.enhancePicks.size} 张`, 250, 348, 13, '#6fce9a', 'left', 'bold');
       glassButton(ctx, W / 2 - 90, 340, 180, 36, `确认强化(${this.enhancePicks.size})`, { kind: 'green', hover: this.hover === 'enhanceGo', fontSize: 14 });
       this.buttons.push({ x: W / 2 - 90, y: 340, w: 180, h: 36, id: 'enhanceGo' });
+      // 药水快捷强化（强化药水图标 + 数量）
+      const picon = loadAssetImage(ENHANCE_POTION.icon);
+      if (picon.complete && picon.naturalWidth) ctx.drawImage(picon, W / 2 - 250, 346, 24, 24);
+      else this.text('🧪', W / 2 - 242, 358, 14, '#b8f0d0', 'center');
+      this.text(`×${potions}`, W / 2 - 222, 358, 13, '#6fce9a', 'left', 'bold');
+      glassButton(ctx, W / 2 + 250, 340, 120, 36, potions > 0 ? '用药水+1' : '药水不足', { kind: potions > 0 ? 'green' : 'gray', hover: this.hover === 'enhancePotion' && potions > 0, fontSize: 14 });
+      this.buttons.push({ x: W / 2 + 250, y: 340, w: 120, h: 36, id: 'enhancePotion' });
     }
     if (this.evolveMode) {
       this.text(`进化模式：点选一张同名卡作为素材${this.evolvePick ? '（已选）' : ''}`, 250, 348, 13, '#ff5ce8', 'left', 'bold');
@@ -1788,6 +1856,12 @@ class SummonHall {
     if (o.atkBonus > 0 || o.hpBonus > 0) {
       this.text(`进化继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30;
     }
+    // 强化药水持有量
+    const potions = this.db.inventory.materials.upgradePotion || 0;
+    const picon = loadAssetImage(ENHANCE_POTION.icon);
+    if (picon.complete && picon.naturalWidth) ctx.drawImage(picon, ix, ry + 2, 20, 20);
+    else this.text('🧪', ix + 10, ry + 12, 12, '#b8f0d0', 'center');
+    this.text(`强化药水 ×${potions}（探索掉落，可一键强化）`, ix + 26, ry + 15, 12, '#9fdcb8', 'left', 'bold'); ry += 26;
     if (card.skillDesc) this.wrapText(card.skillDesc, ix, ry, 360, 20, 12, '#b8c8d8');
 
     // 操作按钮
@@ -1828,7 +1902,8 @@ class SummonHall {
     if (b.raid) {
       this.pill(W / 2 + 130, 120, 130, 30, '#0d0a16', '#ff5ce8');
       this.text(`Lv.${b.raid.level} ${b.raid.archWitch ? '超魔女' : '魔女'}`, W / 2 + 195, 135, 12, '#ffb3f0', 'center', 'bold');
-      this.text(`战斗体力 ${this.db.user.battlePt}/${this.db.user.battlePtMax}`, 70, 30, 13, '#8fe8ff', 'center', 'bold');
+      const { nextInSec } = tickBattlePt(this.db);
+      this.text(`战斗体力 ${this.db.user.battlePt}/${this.db.user.battlePtMax}${nextInSec > 0 ? `（${Math.ceil(nextInSec / 60)}分后+1）` : ''}`, 70, 30, 13, '#8fe8ff', 'center', 'bold');
     }
     this.text('确认状态', W - 60, 30, 13, '#cfc4a8', 'right');
 
