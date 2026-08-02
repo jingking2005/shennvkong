@@ -11,10 +11,11 @@ import { glassButton, metalDialog, engravedText, roundRectPath } from './ui';
 import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchRaidBoss } from './db';
 import {
   ExploreStage, EvolveCard, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
-  claimRaidReward, claimAllRaidRewards, tickBattlePt,
+  claimRaidReward, claimAllRaidRewards, tickBattlePt, openChest,
   ownedToCombatant, leaderAtkBonus, type Combatant, type ExploreResult, type SkillFx,
+  type ChestReward,
 } from './logic';
-import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION } from './assets';
+import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST } from './assets';
 import { audio } from './audio';
 
 const W = 1280;
@@ -68,6 +69,15 @@ type Page = 'summon' | 'event' | 'map' | 'sortie' | 'battle' | 'team' | 'records
 /** 队伍槽位 */
 interface TeamSlot { card: Card; hp: number; maxHp: number; lv: number; exp: number; }
 
+/** 宝箱阶段（战斗胜利奖励） */
+interface ChestState {
+  quality: 'bronze' | 'silver' | 'gold';
+  phase: 'closed' | 'opening' | 'revealed';
+  reward: ChestReward | null;
+  t: number;          // 阶段计时
+  revealIdx: number;  // 已揭示卡片数
+}
+
 /** 战斗状态（基于 BattleEngine） */
 interface BattleState {
   team: Combatant[];
@@ -85,6 +95,7 @@ interface BattleState {
   bannerT: number;
   lastActions: { actor: string; dmg: number; skill: boolean; crit: boolean; em: number }[];
   fx: BattleFx[];                  // 技能特效队列
+  chest: ChestState | null;        // 胜利宝箱
 }
 
 class SummonHall {
@@ -445,7 +456,29 @@ class SummonHall {
       const b = this.battle;
       if (id === 'retreat') { this.page = 'sortie'; this.battle = null; this.syncBgm(); return; }
       if (id === 'bAuto') { b.auto = !b.auto; b.autoTimer = 0; return; }
+      if (id === 'chestOpen') {
+        // 点击宝箱：开箱（卡片入库），播放 opening 动画
+        if (b.chest && b.chest.phase === 'closed') {
+          const pickCard = (r: string) => {
+            const pool = cardsByRarity(r as Rarity);
+            return pool[(Math.random() * pool.length) | 0];
+          };
+          b.chest.reward = openChest(this.db, b.chest.quality, pickCard, b.seed++);
+          b.chest.phase = 'opening'; b.chest.t = 0;
+          this.cardCount = Math.min(this.cardCap, this.cardCount + (b.chest.reward.cards.length || 0));
+          saveDB(this.db);
+          this.flashV = 0.6; this.flashColor = '#fff3b0';
+          this.shake = 0.5;
+        }
+        return;
+      }
       if (id === 'victoryOk') {
+        // 有宝箱必须先开完（揭示完成）才能离开
+        if (b.chest && b.chest.phase !== 'revealed') return;
+        if (b.chest && b.chest.revealIdx < (b.chest.reward?.cards.length ?? 0)) {
+          // 未揭示完：点击直接快进
+          b.chest.t = 99; return;
+        }
         const wasRaid = !!b.raid?.defeated;
         if (wasRaid && b.raid) {
           // 讨伐成功奖励（击杀当场发放，战绩页还能再领一次？不——改为只在此发放并标记已领）
@@ -686,6 +719,18 @@ class SummonHall {
       for (const d of b.dmgFloat) d.t += dt;
       b.dmgFloat = b.dmgFloat.filter(d => d.t < 1);
       this.updateFx(dt);   // 技能特效推进
+      // 宝箱阶段推进：opening 0.8s → revealed（逐张揭示）
+      if (b.chest) {
+        const c = b.chest;
+        if (c.phase === 'opening') {
+          c.t += dt;
+          if (c.t >= 0.8) { c.phase = 'revealed'; c.t = 0; c.revealIdx = 0; }
+        } else if (c.phase === 'revealed') {
+          c.t += dt;
+          const total = c.reward?.cards.length ?? 0;
+          c.revealIdx = Math.min(total, Math.floor(c.t / 0.3) + 1);
+        }
+      }
       if (b.victory) b.victoryT += dt;
       // AP 随时间恢复（讨伐体力）
       tickBattlePt(this.db);
@@ -802,7 +847,7 @@ class SummonHall {
       seed: (Math.random() * 1e9) | 0, skillPrompt: null,
       dmgFloat: [], victory: false, victoryT: 0, defeated: false,
       banner: raid ? (raid.archWitch ? '超·幻想魔女降临！' : '魔女出现！') : '战斗开始',
-      bannerT: 0, lastActions: [], fx: [],
+      bannerT: 0, lastActions: [], fx: [], chest: null,
     };
     this.syncBgm();
   }
@@ -844,6 +889,11 @@ class SummonHall {
         b.victory = true; b.victoryT = 0;
         b.banner = `讨伐成功！积分 +${r.ptGain}`;
         b.bannerT = 0;
+        // 宝箱：大魔女→金，普通魔女→银
+        b.chest = {
+          quality: b.raid.archWitch ? 'gold' : 'silver',
+          phase: 'closed', reward: null, t: 0, revealIdx: 0,
+        };
         this.giveVictoryExp();
       }
       return;
@@ -888,6 +938,8 @@ class SummonHall {
       if (res.playerWon) {
         b.victory = true; b.victoryT = 0;
         b.banner = 'VICTORY'; b.bannerT = 0;
+        // 普通遭遇战：铜宝箱
+        b.chest = { quality: 'bronze', phase: 'closed', reward: null, t: 0, revealIdx: 0 };
         this.giveVictoryExp();
       } else {
         b.defeated = true;
@@ -2339,8 +2391,110 @@ class SummonHall {
     if (b.raid) {
       this.text(`活动积分：${this.db.eventPoint.points}   击杀数：${this.db.eventPoint.raidKills}`, W / 2, baseY + 285, 15, '#ffb3f0', 'center', 'bold');
     }
+
+    // ── 宝箱奖励 ──
+    if (b.chest) { this.renderChest(b.chest); return; }
+
     glassButton(ctx, W / 2 - 110, H - 120, 220, 56, 'OK', { kind: 'green', hover: this.hover === 'victoryOk', fontSize: 22 });
     this.buttons.push({ x: W / 2 - 110, y: H - 120, w: 220, h: 56, id: 'victoryOk' });
+  }
+
+  /** 宝箱开箱：closed 卡包图 → opening 抖动爆发 → revealed 卡片逐张揭示 */
+  private renderChest(c: ChestState): void {
+    const ctx = this.ctx;
+    const t = this.last / 1000;
+    const qName = { bronze: '青铜宝箱', silver: '白银宝箱', gold: '黄金宝箱' }[c.quality];
+    const qColor = { bronze: '#c88a50', silver: '#c8d4e8', gold: '#ffd24d' }[c.quality];
+
+    if (c.phase === 'closed') {
+      // 卡包图：呼吸光效 + 点击提示
+      const breathe = 1 + Math.sin(t * 3) * 0.04;
+      const size = 180 * breathe;
+      const img = loadAssetImage(CHEST[c.quality]);
+      ctx.save();
+      ctx.shadowColor = qColor; ctx.shadowBlur = 40 + Math.sin(t * 3) * 15;
+      if (img.complete && img.naturalWidth) {
+        ctx.drawImage(img, W / 2 - size / 2, 300 - size / 2, size, size);
+      } else {
+        this.rr(W / 2 - size / 2, 300 - size / 2, size, size, 16);
+        ctx.fillStyle = '#2a1a30'; ctx.fill();
+        this.text('🎁', W / 2, 300, 64, qColor, 'center');
+      }
+      ctx.restore();
+      // 标题 + 点击按钮
+      engravedText(ctx, qName, W / 2, 430, 26);
+      glassButton(ctx, W / 2 - 130, 470, 260, 60, '点击开启！', { kind: 'green', hover: this.hover === 'chestOpen', fontSize: 22 });
+      this.buttons.push({ x: W / 2 - 130, y: 470, w: 260, h: 60, id: 'chestOpen' });
+      return;
+    }
+
+    if (c.phase === 'opening') {
+      // 抖动 + 光芒爆发
+      const p = Math.min(1, c.t / 0.8);
+      const shakeX = (Math.random() - 0.5) * 14 * (1 - p);
+      const size = 180 * (1 + p * 0.3);
+      const img = loadAssetImage(CHEST[c.quality]);
+      ctx.save();
+      ctx.translate(W / 2 + shakeX, 300);
+      ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 60 * p + 20;
+      if (img.complete && img.naturalWidth) ctx.drawImage(img, -size / 2, -size / 2, size, size);
+      ctx.restore();
+      // 光柱
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createLinearGradient(W / 2, 80, W / 2, 520);
+      g.addColorStop(0, 'rgba(255,243,176,0)');
+      g.addColorStop(0.5, `rgba(255,243,176,${0.5 * p})`);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(W / 2 - 60 * p, 80, 120 * p, 440);
+      ctx.restore();
+      return;
+    }
+
+    // revealed：卡片逐张弹出揭示
+    const reward = c.reward;
+    engravedText(ctx, `${qName} 开启！`, W / 2, 300, 24);
+    if (reward) {
+      const cards = reward.cards;
+      const cw = 150, ch = 212, gap = 30;
+      const totalW = cards.length * cw + (cards.length - 1) * gap;
+      let x = W / 2 - totalW / 2;
+      for (let i = 0; i < cards.length; i++) {
+        const revealed = i < c.revealIdx;
+        const card = getCard(cards[i].cardId);
+        if (!card) { x += cw + gap; continue; }
+        const popT = Math.max(0, Math.min(1, (c.t - i * 0.3) / 0.35));
+        const pop = Ease.outBack(popT);
+        ctx.save();
+        ctx.translate(x + cw / 2, 430);
+        ctx.scale(Math.max(0.02, pop), Math.max(0.02, pop));
+        if (revealed) {
+          ctx.shadowColor = RARITY_COLOR[card.rarity] || '#ffd24d';
+          ctx.shadowBlur = 24;
+          drawCard(ctx, card, 0, 0, cw, ch, { showName: true, rainbowT: (t * 0.3) % 1 });
+        }
+        ctx.restore();
+        if (!revealed) {
+          // 未揭示：卡背
+          this.rr(x, 430 - ch / 2, cw, ch, 10);
+          ctx.fillStyle = 'rgba(20,14,34,0.9)'; ctx.fill();
+          ctx.strokeStyle = qColor; ctx.lineWidth = 2; ctx.stroke();
+        }
+        x += cw + gap;
+      }
+      // 附加奖励
+      const extras: string[] = [`金币+${reward.gold.toLocaleString()}`];
+      if (reward.gems > 0) extras.push(`宝石+${reward.gems}`);
+      if (reward.potions > 0) extras.push(`强化药水×${reward.potions}`);
+      this.text(extras.join('   '), W / 2, 590, 16, '#ffe9a8', 'center', 'bold');
+    }
+    // 全部揭示后显示 OK
+    const allRevealed = c.revealIdx >= (reward?.cards.length ?? 0);
+    glassButton(ctx, W / 2 - 110, H - 110, 220, 56, allRevealed ? '收下奖励' : '快进', {
+      kind: 'green', hover: this.hover === 'victoryOk', fontSize: 20,
+    });
+    this.buttons.push({ x: W / 2 - 110, y: H - 110, w: 220, h: 56, id: 'victoryOk' });
   }
 
   private renderHall(): void {

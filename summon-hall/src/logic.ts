@@ -7,7 +7,7 @@
 import type { Card } from './data';
 import { getCard, RARITY_RANK } from './data';
 import type { DB, OwnedCard, Stage, WitchRaidBoss } from './db';
-import { elementalMultiplier, newInstId } from './db';
+import { elementalMultiplier, newInstId, makeOwnedCard, RARITY_TIER } from './db';
 
 // ─────────────────────────── Seeded RNG ───────────────────────────
 export function mulberry32(seed: number): () => number {
@@ -386,7 +386,59 @@ export function UseEnhancePotion(db: DB, targetInst: string): EnhanceResult {
   return res;
 }
 
-// ─────────────────────────── 战斗引擎 ───────────────────────────
+// ─────────────────────────── 宝箱（战斗胜利奖励） ───────────────────────────
+
+export interface ChestReward {
+  quality: 'bronze' | 'silver' | 'gold';
+  cards: { cardId: string; rarity: string }[];
+  gold: number;
+  gems: number;
+  potions: number;
+}
+
+/**
+ * openChest：开启宝箱，抽出 3 张卡入库
+ * - bronze（普通遭遇战）：N 55% / R 35% / SR 10%
+ * - silver（普通魔女讨伐）：R 45% / SR 42% / UR 13%
+ * - gold（大魔女讨伐）：SR 45% / UR 40% / LR 15%（保底 SR+）
+ * 另附金币/宝石/药水；金宝箱必掉药水
+ */
+export function openChest(
+  db: DB, quality: 'bronze' | 'silver' | 'gold',
+  pickCard: (r: string) => Card | undefined, seed: number,
+): ChestReward {
+  const rng = mulberry32(seed);
+  const pools: Record<string, [string, number][]> = {
+    bronze: [['N', 55], ['R', 35], ['SR', 10]],
+    silver: [['R', 45], ['SR', 42], ['UR', 13]],
+    gold: [['SR', 45], ['UR', 40], ['LR', 15]],
+  };
+  const pool = pools[quality];
+  const roll = (): string => {
+    let v = rng() * 100;
+    for (const [r, w] of pool) { v -= w; if (v <= 0) return r; }
+    return pool[0][0];
+  };
+  const cards: { cardId: string; rarity: string }[] = [];
+  for (let i = 0; i < 3; i++) {
+    const r = roll();
+    const c = pickCard(r);
+    if (!c) continue;
+    db.inventory.cards.push(makeOwnedCard(c.id, 1 + (RARITY_TIER[r as keyof typeof RARITY_TIER] || 1) * 2));
+    cards.push({ cardId: c.id, rarity: r });
+  }
+  const gold = quality === 'gold' ? 8000 + Math.floor(rng() * 12000)
+    : quality === 'silver' ? 3000 + Math.floor(rng() * 5000)
+    : 800 + Math.floor(rng() * 2000);
+  const gems = quality === 'gold' ? 80 + Math.floor(rng() * 120)
+    : quality === 'silver' ? 20 + Math.floor(rng() * 40)
+    : Math.floor(rng() * 15);
+  const potions = quality === 'gold' ? 2 : quality === 'silver' && rng() < 0.5 ? 1 : 0;
+  db.user.gold += gold;
+  db.user.gems += gems;
+  if (potions > 0) db.inventory.materials.upgradePotion = (db.inventory.materials.upgradePotion || 0) + potions;
+  return { quality, cards, gold, gems, potions };
+}
 
 export interface BattleAction {
   actorInstId: string;

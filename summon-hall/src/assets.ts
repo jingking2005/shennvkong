@@ -173,6 +173,14 @@ export const ENHANCE_POTION = {
   desc: '使用后为目标卡提供大量经验',
 } as const;
 
+/** 宝箱（卡包）：战斗胜利奖励，开启出卡片 */
+export const CHEST = {
+  bronze: '/archive/items/Card Bag (R).png',
+  silver: '/archive/items/Card Bag (SR).png',
+  gold: '/archive/items/Card Bag (UR).png',
+} as const;
+export type ChestQuality = keyof typeof CHEST;
+
 /** 强化道具图标（Items/Enhancement 目录全量，未用之预备） */
 export const ENHANCE_ITEM_ICONS: string[] = [
   '/archive/items/Miracle Drop (Login Bonus).png',
