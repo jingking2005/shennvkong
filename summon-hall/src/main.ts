@@ -1206,6 +1206,24 @@ class SummonHall {
   private renderGlobalHud(): void {
     const ctx = this.ctx;
     const muted = audio.isMuted();
+    const u = this.db.user;
+
+    // ── 统一顶部资源条（所有页面共享，避免各页重复绘制造成叠加）──
+    ctx.fillStyle = 'rgba(8,6,18,0.55)';
+    ctx.fillRect(0, 0, W, 56);
+    ctx.fillStyle = 'rgba(220,190,120,0.3)';
+    ctx.fillRect(0, 55, W, 1);
+    // 体力（行动力）
+    this.pill(16, 12, 158, 32, '#0d0a16', '#6fce9a');
+    this.text(`⚔ ${u.energy}/${u.energyMax}`, 95, 29, 13, '#8fe8a8', 'center', 'bold');
+    // 金币 / 宝石 / 召唤券
+    this.pill(186, 12, 168, 32, '#0d0a16', '#c8a040');
+    this.text(`🪙 ${u.gold.toLocaleString()}`, 270, 29, 13, '#ffd24d', 'center', 'bold');
+    this.pill(366, 12, 138, 32, '#0d0a16', '#b45cff');
+    this.text(`💎 ${u.gems.toLocaleString()}`, 435, 29, 13, '#e0b0ff', 'center', 'bold');
+    this.pill(516, 12, 108, 32, '#0d0a16', '#ff8c8c');
+    this.text(`🎟 ${u.tickets.fate || 0}`, 570, 29, 13, '#ffb0b0', 'center', 'bold');
+
     // 右上角：音乐 | 充值
     const bw = 56, bh = 40, gap = 10;
     const x1 = W - 20 - bw * 2 - gap;
@@ -1308,14 +1326,6 @@ class SummonHall {
       kind: 'gray', hover: this.hover === 'recordsBack', fontSize: 16,
     });
     this.buttons.push({ x: 24, y: 70, w: 110, h: 40, id: 'recordsBack' });
-
-    // 顶部资源条（行动力/金/宝石/券）
-    const u = this.db.user;
-    this.pill(24, 16, 168, 36, '#0d1a22', '#6fce9a');
-    this.text(`⚔ ${u.energy}/${u.energyMax}`, 108, 35, 13, '#8fe8a8', 'center', 'bold');
-    this.resBar(W - 620, 14, '🪙', u.gold, '#ffd24d');
-    this.resBar(W - 440, 14, '💎', u.gems, '#b45cff');
-    this.resBar(W - 260, 14, '🎟', u.tickets.fate || 0, '#ff8c8c');
 
     // 一次性领取
     const claimable = this.db.raids.filter(r => r.defeated && !r.claimed).length;
@@ -1524,13 +1534,11 @@ class SummonHall {
   private renderMap(): void {
     const ctx = this.ctx;
     this.buttons = [];
-    // 顶部标题
-    this.pill(W / 2 - 200, 16, 400, 44, '#0d0a16', '#c8b285');
-    this.text('神界地图 2 · 战斗少女的修练场', W / 2, 39, 18, '#ffe9a8', 'center', 'bold');
-    this.pill(20, 16, 168, 40, '#0d0a16', '#6fce9a');
-    this.text(`行动力 ${this.db.user.energy}/${this.db.user.energyMax}`, 104, 37, 13, '#8fe8a8', 'center', 'bold');
-    this.pill(20, 62, 130, 36, '#0d0a16', '#c8b285');
-    this.text('挑战次数 21/21', 85, 81, 12, '#e8d5a8', 'center', 'bold');
+    // 顶部标题（行动力由全局 HUD 统一显示）
+    this.pill(W / 2 - 200, 64, 400, 44, '#0d0a16', '#c8b285');
+    this.text('神界地图 2 · 战斗少女的修练场', W / 2, 87, 18, '#ffe9a8', 'center', 'bold');
+    this.pill(20, 64, 130, 36, '#0d0a16', '#c8b285');
+    this.text('挑战次数 21/21', 85, 83, 12, '#e8d5a8', 'center', 'bold');
 
     // 节点（浮岛关卡）
     const nodes = this.mapNodes();
@@ -1594,9 +1602,7 @@ class SummonHall {
       ctx.fillRect(0, 0, W, H);
     }
 
-    // 顶部：行动力 + 进度条（显示值平滑）
-    this.pill(20, 14, 168, 40, '#0d0a16', '#6fce9a');
-    this.text(`行动力 ${this.db.user.energy}/${this.db.user.energyMax}`, 104, 35, 13, '#8fe8a8', 'center', 'bold');
+    // 顶部：进度条（行动力由全局 HUD 统一显示）
     const prog = this.displayProg;
     const px = W / 2 - 220, pw = 440, py = 18, ph = 26;
     this.rr(px, py, pw, ph, 13); ctx.fillStyle = '#0d0a16'; ctx.fill();
@@ -1606,10 +1612,6 @@ class SummonHall {
     this.text(this.activeStage.name, px + pw / 2, py + 14, 13, '#fff', 'center', 'bold');
     this.text(`${Math.floor(prog * 100)}%`, px + pw - 36, py + 14, 14, '#fff', 'center', 'bold');
     this.text(`第 ${this.activeStage.stepsTaken || 0} 步`, px + pw / 2, py + 42, 12, '#cfc4a8', 'center');
-
-    // 资源
-    this.resBar(W - 320, 14, '🪙', this.db.user.gold, '#ffd24d');
-    this.resBar(W - 320, 52, '💎', this.db.user.gems, '#b45cff');
 
     // 探索事件提示
     if (this.exploreMsg && this.exploreMsgT < 3) this.renderExploreToast();
@@ -1688,11 +1690,6 @@ class SummonHall {
     this.pill(W / 2 - 260, 70, 520, 44, 'rgba(13,10,22,0.92)', color);
     this.text(msg, W / 2, 92, 16, color, 'center', 'bold');
     ctx.restore();
-  }
-
-  private resBar(x: number, y: number, icon: string, val: number, color: string): void {
-    this.pill(x, y, 300, 34, '#0d0a16', color);
-    this.text(`${icon} ${val.toLocaleString()}`, x + 150, y + 18, 14, color, 'center', 'bold');
   }
 
   private renderTeamStrip(baseY: number, clickable: boolean): void {
@@ -1844,14 +1841,14 @@ class SummonHall {
     this.buttons = [];
     ctx.fillStyle = 'rgba(8,6,18,0.55)';
     ctx.fillRect(0, 0, W, H);
-    this.text('队 伍 编 成', 60, 52, 30, '#f5e0a0', 'left', 'bold', true);
+    this.text('队 伍 编 成', 60, 84, 28, '#f5e0a0', 'left', 'bold', true);
 
     // ── 左：出击队伍 5 槽 ──
-    this.text('出击队伍', 60, 92, 16, '#cfc4a8', 'left', 'bold');
+    this.text('出击队伍', 60, 116, 16, '#cfc4a8', 'left', 'bold');
     const team = this.teamCombatants();
     const cw = 118, ch = 168, gap = 14;
     let sx = 50;
-    const sy = 108;
+    const sy = 132;
     for (let i = 0; i < 5; i++) {
       const slot = team[i];
       const sel = this.teamSelSlot === i;
@@ -2048,9 +2045,9 @@ class SummonHall {
       this.pill(W / 2 + 130, 120, 130, 30, '#0d0a16', '#ff5ce8');
       this.text(`Lv.${b.raid.level} ${b.raid.archWitch ? '超魔女' : '魔女'}`, W / 2 + 195, 135, 12, '#ffb3f0', 'center', 'bold');
       const { nextInSec } = tickBattlePt(this.db);
-      this.text(`战斗体力 ${this.db.user.battlePt}/${this.db.user.battlePtMax}${nextInSec > 0 ? `（${Math.ceil(nextInSec / 60)}分后+1）` : ''}`, 70, 30, 13, '#8fe8ff', 'center', 'bold');
+      this.text(`战斗体力 ${this.db.user.battlePt}/${this.db.user.battlePtMax}${nextInSec > 0 ? `（${Math.ceil(nextInSec / 60)}分后+1）` : ''}`, 90, 66, 13, '#8fe8ff', 'center', 'bold');
     }
-    this.text('确认状态', W - 60, 30, 13, '#cfc4a8', 'right');
+    this.text('确认状态', W - 60, 66, 13, '#cfc4a8', 'right');
 
     // 战斗横幅（魔女出现 / 战斗开始）
     if (b.bannerT < 1.6) {
@@ -2125,11 +2122,11 @@ class SummonHall {
       x += cw + gx;
     }
 
-    // 撤退 / 自动（Auto 高亮）
-    glassButton(ctx, 20, H - 70, 130, 50, '撤退', { kind: 'red', hover: this.hover === 'retreat', fontSize: 18 });
-    this.buttons.push({ x: 20, y: H - 70, w: 130, h: 50, id: 'retreat' });
-    glassButton(ctx, W - 150, H - 70, 130, 50, b.auto ? '自动中' : '自动', { kind: b.auto ? 'green' : 'gray', hover: this.hover === 'bAuto', fontSize: 18 });
-    this.buttons.push({ x: W - 150, y: H - 70, w: 130, h: 50, id: 'bAuto' });
+    // 撤退 / 自动：原版风格圆形大按钮（左红 / 右金）
+    this.roundButton(86, H - 84, 58, '撤退', '#c03030', '#ff7a6a', this.hover === 'retreat');
+    this.buttons.push({ x: 86 - 58, y: H - 84 - 58, w: 116, h: 116, id: 'retreat' });
+    this.roundButton(W - 86, H - 84, 58, b.auto ? '自动中' : '自动', b.auto ? '#2a8a4a' : '#8a6a20', b.auto ? '#5fce8a' : '#ffd24d', this.hover === 'bAuto');
+    this.buttons.push({ x: W - 86 - 58, y: H - 84 - 58, w: 116, h: 116, id: 'bAuto' });
 
     // 技能特效（最上层，覆盖卡片）
     this.renderFx();
@@ -2503,21 +2500,15 @@ class SummonHall {
     const meta = this.meta.get(this.banner.id);
     const t = this.last / 1000;
 
-    // ── 顶栏：所持卡片数 / 券交换 ──
-    ctx.fillStyle = 'rgba(8,6,18,0.6)';
-    ctx.fillRect(0, 0, W, 56);
-    ctx.fillStyle = 'rgba(220,190,120,0.35)';
-    ctx.fillRect(0, 55, W, 1);
-    this.pill(20, 12, 240, 32, '#0d0a16', '#c8b285');
-    this.text(`所持卡片数：${this.cardCount}/${this.cardCap}`, 140, 29, 14, '#e8d5a8', 'center', 'bold');
-    this.pill(W - 180, 10, 160, 36, this.banner.accent, '#ffe9a8');
-    this.text('少女券交换', W - 100, 29, 15, '#1a1206', 'center', 'bold');
-    this.buttons.push({ x: W - 180, y: 10, w: 160, h: 36, id: 'exchange' });
-    this.text(`💎 ${this.jewels.toLocaleString()}`, 300, 29, 14, '#ff9ff0', 'left', 'bold');
-    this.text(`◆ ${this.fp.toLocaleString()}`, 470, 29, 13, '#8fe8a8', 'left', 'bold');
+    // ── 顶栏下方：所持卡片数 / 少女券交换（避开全局资源条与右上角按钮）──
+    this.pill(20, 64, 240, 32, '#0d0a16', '#c8b285');
+    this.text(`所持卡片数：${this.cardCount}/${this.cardCap}`, 140, 81, 14, '#e8d5a8', 'center', 'bold');
+    this.pill(W - 180, 64, 160, 34, this.banner.accent, '#ffe9a8');
+    this.text('少女券交换', W - 100, 82, 15, '#1a1206', 'center', 'bold');
+    this.buttons.push({ x: W - 180, y: 64, w: 160, h: 34, id: 'exchange' });
 
     // ── 左侧：当前卡池大立绘 banner ──
-    const bx = 20, by = 70, bw = 760, bh = 560;
+    const bx = 20, by = 108, bw = 760, bh = 520;
     ctx.save();
     this.rr(bx, by, bw, bh, 12); ctx.clip();
     // 立绘背景
@@ -2582,7 +2573,7 @@ class SummonHall {
     // ── 右侧：卡池列表（自适应高度） ──
     const rx = bx + bw + 14, rw = W - rx - 16;
     const itemH = Math.min(92, Math.floor((H - 90) / BANNERS.length) - 8);
-    let ry = 70;
+    let ry = 108;
     for (const b of BANNERS) {
       this.renderBannerListItem(b, rx, ry, rw, itemH);
       ry += itemH + 8;
@@ -2610,6 +2601,39 @@ class SummonHall {
     this.rr(x, y, w, h, h / 2); ctx.fill();
     ctx.strokeStyle = stroke; ctx.lineWidth = 1.5;
     this.rr(x, y, w, h, h / 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  /** 原版风格圆形大按钮：外圈深色描边 + 内圈竖向渐变 + 顶部高光 */
+  private roundButton(cx: number, cy: number, r: number, label: string, base: string, hi: string, hover: boolean): void {
+    const ctx = this.ctx;
+    ctx.save();
+    // 外圈
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(10,8,18,0.85)'; ctx.fill();
+    // 内圈渐变
+    const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
+    g.addColorStop(0, hi); g.addColorStop(0.55, base); g.addColorStop(1, '#1a0f08');
+    ctx.beginPath(); ctx.arc(cx, cy, r - 6, 0, Math.PI * 2);
+    ctx.fillStyle = g; ctx.fill();
+    // 顶部高光
+    ctx.beginPath(); ctx.ellipse(cx, cy - r * 0.42, r * 0.62, r * 0.3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.fill();
+    // 描边 + hover 发光
+    ctx.beginPath(); ctx.arc(cx, cy, r - 3, 0, Math.PI * 2);
+    ctx.strokeStyle = hover ? '#fff3b0' : 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = hover ? 3 : 1.5;
+    if (hover) { ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 18; }
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // 文字
+    ctx.font = `bold ${r * 0.34}px system-ui, "PingFang SC", sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+    ctx.strokeText(label, cx, cy + 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, cx, cy + 2);
+    ctx.textBaseline = 'alphabetic';
     ctx.restore();
   }
 
