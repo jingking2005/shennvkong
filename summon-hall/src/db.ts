@@ -44,6 +44,7 @@ export interface User {
   exp: number;
   energy: number;      // 体力（闯关）
   energyMax: number;
+  energyRecoverAt: number; // 上一点行动力恢复完成的时刻（epoch ms）
   battlePt: number;    // 战斗体力（讨伐魔女 AP）
   battlePtMax: number;
   battlePtRecoverAt: number; // 上一点 AP 恢复完成的时刻（epoch ms）
@@ -161,6 +162,7 @@ export function loadDB(): DB | null {
     const db = JSON.parse(raw) as DB;
     if (!db?.user || !db?.inventory?.cards) return null;
     if (db.user.battlePtRecoverAt === undefined) db.user.battlePtRecoverAt = Date.now();
+    if (db.user.energyRecoverAt === undefined) db.user.energyRecoverAt = Date.now();
     // 战斗体力上限迁移：旧存档 5/30 → 2000
     if (!db.user.battlePtMax || db.user.battlePtMax < 2000) {
       db.user.battlePtMax = 2000;
@@ -214,7 +216,7 @@ export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
   return {
     user: {
       uid: 'u1', name: '星术师·阿尔德', level: 88, exp: 0.42,
-      energy: 3000, energyMax: 3000,
+      energy: 3000, energyMax: 3000, energyRecoverAt: Date.now(),
       battlePt: 2000, battlePtMax: 2000, battlePtRecoverAt: Date.now(),
       gold: 788038, gems: 854, friendPt: 99999,
       tickets: { fate: 2, legendary: 99, divine: 99, friend: 99, 'lr-guaranteed': 99, collab: 99, element: 99 },

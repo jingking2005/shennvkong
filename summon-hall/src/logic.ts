@@ -108,6 +108,8 @@ export function leaderAtkBonus(team: Combatant[]): number {
 
 /** 每点 AP 恢复间隔（毫秒）：6 分钟一点 */
 export const AP_RECOVER_MS = 6 * 60 * 1000;
+/** 每点行动力恢复间隔（毫秒）：3 分钟一点 */
+export const ENERGY_RECOVER_MS = 3 * 60 * 1000;
 
 /**
  * 结算 AP 随时间恢复：每 AP_RECOVER_MS 恢复 1 点，最多 battlePtMax。
@@ -129,6 +131,20 @@ export function tickBattlePt(db: DB, now = Date.now()): { battlePt: number; next
   }
   const nextInSec = Math.max(0, Math.ceil((u.battlePtRecoverAt + AP_RECOVER_MS - now) / 1000));
   return { battlePt: u.battlePt, nextInSec };
+}
+
+/** 结算行动力随时间恢复：每 ENERGY_RECOVER_MS 恢复 1 点，最多 energyMax */
+export function tickEnergy(db: DB, now = Date.now()): void {
+  const u = db.user;
+  if (u.energy >= u.energyMax) { u.energyRecoverAt = now; return; }
+  const elapsed = now - u.energyRecoverAt;
+  if (elapsed <= 0) return;
+  const gained = Math.min(Math.floor(elapsed / ENERGY_RECOVER_MS), u.energyMax - u.energy);
+  if (gained > 0) {
+    u.energy += gained;
+    u.energyRecoverAt += gained * ENERGY_RECOVER_MS;
+    if (u.energy >= u.energyMax) u.energyRecoverAt = now;
+  }
 }
 
 // ─────────────────────────── 探索闯关 ───────────────────────────

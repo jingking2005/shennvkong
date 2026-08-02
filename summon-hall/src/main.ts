@@ -11,7 +11,7 @@ import { glassButton, metalDialog, engravedText, roundRectPath } from './ui';
 import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchRaidBoss } from './db';
 import {
   ExploreStage, EvolveCard, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
-  claimRaidReward, claimAllRaidRewards, tickBattlePt, openChest,
+  claimRaidReward, claimAllRaidRewards, tickBattlePt, tickEnergy, openChest,
   ownedToCombatant, leaderAtkBonus, type Combatant, type ExploreResult, type SkillFx,
   type ChestReward,
 } from './logic';
@@ -699,6 +699,7 @@ class SummonHall {
   private update(dt: number): void {
     this.bg.update(dt);
     this.tweener.update(dt);
+    tickEnergy(this.db); // 行动力随时间恢复（全页面生效）
     this.shake = Math.max(0, this.shake - dt * 2.2);
     this.flashV = Math.max(0, this.flashV - dt * 1.8);
     this.pillarV = Math.max(0, this.pillarV - dt * 2.4);
