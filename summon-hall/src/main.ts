@@ -137,6 +137,7 @@ class SummonHall {
   private invScroll = 0;              // 库存滚动
   private invFilter: string = 'ALL';  // 稀有度筛选
   private teamSelSlot = -1;           // 选中出击槽（-1 无）
+  private drag: { instId: string; fromSlot: number; sx: number; sy: number; x: number; y: number; started: boolean } | null = null;
   private detailInst: string | null = null; // 详情弹层的库存实例
   private detailInstKeep: string | null = null; // 强化/进化的主卡（详情关闭后保留）
   private enhanceMode = false;        // 强化选狗粮模式
@@ -174,6 +175,7 @@ class SummonHall {
     window.addEventListener('resize', () => this.fit());
     this.canvas.addEventListener('pointermove', e => this.onMove(e));
     this.canvas.addEventListener('pointerdown', e => this.onDown(e));
+    this.canvas.addEventListener('pointerup', e => this.onUp(e));
     this.canvas.addEventListener('wheel', e => {
       if (this.page !== 'records') return;
       e.preventDefault();
@@ -325,6 +327,10 @@ class SummonHall {
 
   private onMove(e: PointerEvent): void {
     const p = this.toGame(e);
+    if (this.drag) {
+      this.drag.x = p.x; this.drag.y = p.y;
+      if (!this.drag.started && Math.hypot(p.x - this.drag.sx, p.y - this.drag.sy) > 10) this.drag.started = true;
+    }
     this.hover = null;
     for (let i = this.buttons.length - 1; i >= 0; i--) {
       const b = this.buttons[i];
@@ -336,6 +342,28 @@ class SummonHall {
   private onDown(e: PointerEvent): void {
     audio.unlock();
     const p = this.toGame(e);
+    // 编队页：库存卡/队伍槽按下 → 进入拖动候选，点击判定延迟到 pointerup
+    if (this.page === 'team' && !this.enhanceMode && !this.evolveMode) {
+      for (let i = this.buttons.length - 1; i >= 0; i--) {
+        const b = this.buttons[i];
+        if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
+          if (b.id.startsWith('inv:')) {
+            this.drag = { instId: b.id.slice(4), fromSlot: -1, sx: p.x, sy: p.y, x: p.x, y: p.y, started: false };
+            return;
+          }
+          if (b.id.startsWith('slot:')) {
+            const si = parseInt(b.id.slice(5), 10);
+            const inst = this.teamInstIds[si];
+            if (inst) {
+              this.drag = { instId: inst, fromSlot: si, sx: p.x, sy: p.y, x: p.x, y: p.y, started: false };
+              return;
+            }
+          }
+          this.activate(b.id); return;
+        }
+      }
+      return;
+    }
     for (let i = this.buttons.length - 1; i >= 0; i--) {
       const b = this.buttons[i];
       if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) { this.activate(b.id); return; }
@@ -354,6 +382,64 @@ class SummonHall {
         this.onRevealCard(pulls[next]);
       }
     }
+  }
+
+  private onUp(e: PointerEvent): void {
+    const d = this.drag;
+    if (!d) return;
+    this.drag = null;
+    const p = this.toGame(e);
+    if (!d.started) {
+      // 普通点击：走原有点击逻辑
+      this.activate(d.fromSlot >= 0 ? `slot:${d.fromSlot}` : `inv:${d.instId}`);
+      return;
+    }
+    // 拖动落下：判定落点队伍槽
+    const slotIdx = this.teamSlotAt(p.x, p.y);
+    if (slotIdx < 0) return;
+    this.dropOnSlot(d.instId, d.fromSlot, slotIdx);
+  }
+
+  /** 队伍槽命中检测（与 renderTeam 布局一致） */
+  private teamSlotAt(x: number, y: number): number {
+    const cw = 118, ch = 168, gap = 14, sy = 132;
+    let sx = 50;
+    for (let i = 0; i < 5; i++) {
+      if (x >= sx && x <= sx + cw && y >= sy && y <= sy + ch) return i;
+      sx += cw + gap;
+    }
+    return -1;
+  }
+
+  /** 拖卡落到队伍槽：上阵 / 移动 / 交换（teamInstIds 保持密集数组） */
+  private dropOnSlot(instId: string, fromSlot: number, slotIdx: number): void {
+    if (fromSlot === slotIdx) return;
+    const team = this.teamInstIds;
+    if (fromSlot >= 0) {
+      if (slotIdx < team.length) {
+        [team[fromSlot], team[slotIdx]] = [team[slotIdx], team[fromSlot]];
+        this.flashTeamMsg(`位置 ${fromSlot + 1} ⇄ 位置 ${slotIdx + 1} 已交换`);
+      } else {
+        team.splice(fromSlot, 1);
+        team.push(instId);
+        this.flashTeamMsg(`已移动到位置 ${team.length}`);
+      }
+    } else {
+      // 库存 → 队伍：先去重（该卡若已在其他槽则移除）
+      const existIdx = team.indexOf(instId);
+      if (existIdx >= 0) team.splice(existIdx, 1);
+      if (slotIdx < team.length) {
+        team[slotIdx] = instId;
+        this.flashTeamMsg(`已上阵到位置 ${slotIdx + 1}`);
+      } else {
+        team.push(instId);
+        this.flashTeamMsg(`已上阵到位置 ${team.length}`);
+      }
+      const c = this.db.inventory.cards.find(x => x.instId === instId);
+      if (c) { const card = getCard(c.cardId); if (card) preloadImage(card).catch(() => {}); }
+    }
+    this.teamSelSlot = -1;
+    this.saveTeam();
   }
 
   private activate(id: string): void {
@@ -1871,6 +1957,7 @@ class SummonHall {
 
     // ── 左：出击队伍 5 槽 ──
     this.text('出击队伍', 60, 116, 16, '#cfc4a8', 'left', 'bold');
+    this.text('拖动下方卡片到槽位即可上阵 / 换位', 170, 116, 12, '#8892a8', 'left');
     const team = this.teamCombatants();
     const cw = 118, ch = 168, gap = 14;
     let sx = 50;
@@ -1881,6 +1968,7 @@ class SummonHall {
       ctx.save();
       if (sel) { ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 20; }
       if (slot) {
+        if (this.drag?.started && this.drag.fromSlot === i) ctx.globalAlpha = 0.3;
         drawCard(ctx, slot.card, sx + cw / 2, sy + ch / 2, cw, ch, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1 });
       } else {
         this.rr(sx, sy, cw, ch, 8); ctx.fillStyle = 'rgba(20,16,32,0.8)'; ctx.fill();
@@ -1937,6 +2025,7 @@ class SummonHall {
       const isDetail = this.detailInst === o.instId;
       ctx.save();
       if (picked) { ctx.shadowColor = '#6fce9a'; ctx.shadowBlur = 16; }
+      if (this.drag?.started && this.drag.instId === o.instId) ctx.globalAlpha = 0.3;
       drawCard(ctx, c, x, y, icw, ich, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1 });
       ctx.restore();
       if (inTeam) {
@@ -1989,6 +2078,29 @@ class SummonHall {
 
     // 详情弹层
     if (this.detailInst) this.renderTeamDetail();
+
+    // 拖动跟随层（最上层）：落点槽高亮 + 卡片跟随鼠标
+    if (this.drag?.started) {
+      const d = this.drag;
+      const si = this.teamSlotAt(d.x, d.y);
+      if (si >= 0) {
+        const cw = 118, ch = 168, gap = 14, sy2 = 132;
+        const sx2 = 50 + si * (cw + gap);
+        ctx.save();
+        ctx.strokeStyle = '#6fce9a'; ctx.lineWidth = 4; ctx.shadowColor = '#6fce9a'; ctx.shadowBlur = 18;
+        this.rr(sx2, sy2, cw, ch, 8); ctx.stroke();
+        ctx.restore();
+      }
+      const o = this.db.inventory.cards.find(c => c.instId === d.instId);
+      const card = o && getCard(o.cardId);
+      if (card) {
+        ctx.save();
+        ctx.globalAlpha = 0.92;
+        ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 20;
+        drawCard(ctx, card, d.x, d.y, 108, 148, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1 });
+        ctx.restore();
+      }
+    }
   }
 
   private renderTeamDetail(): void {
