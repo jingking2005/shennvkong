@@ -718,9 +718,9 @@ class SummonHall {
   /** 单卡揭示时长（极品卡明显更长，模仿 ducdat 的 revealTime 分层） */
   private revealDur(rarity: string): number {
     const r = RANK[rarity] ?? 1;
-    if (r >= 6) return 1.45; // X / VR
-    if (r >= 5) return 1.2;  // LR
-    if (r >= 4) return 0.9;  // UR
+    if (r >= 6) return 2.4;  // X / VR
+    if (r >= 5) return 2.2;  // LR 仙神下凡 ≥2s
+    if (r >= 4) return 1.3;  // UR 紫电召唤阵 ≥1s
     if (r >= 3) return 0.55; // SR
     return 0.32;             // N / R
   }
@@ -3162,12 +3162,39 @@ class SummonHall {
       ctx.restore();
     }
 
+    // UR 专属：紫色召唤阵（六芒星 + 旋转外环，卡片下层）
+    if (rank === 4 && revealLocal > 0.02) {
+      const ringP = Math.min(1, revealLocal / 0.3);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.translate(W / 2, H / 2);
+      ctx.globalAlpha = ringP * 0.75;
+      ctx.rotate(this.last / 1200);
+      ctx.strokeStyle = '#b06ce8'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, 235 * ringP, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#d8a8ff'; ctx.lineWidth = 2;
+      for (const off of [0, Math.PI / 3]) {
+        ctx.beginPath();
+        for (let k = 0; k <= 3; k++) {
+          const a = off + (k * Math.PI * 2) / 3;
+          const px2 = Math.cos(a) * 205 * ringP, py2 = Math.sin(a) * 205 * ringP;
+          if (k === 0) ctx.moveTo(px2, py2); else ctx.lineTo(px2, py2);
+        }
+        ctx.stroke();
+      }
+      // 逆向内环
+      ctx.rotate(-this.last / 600);
+      ctx.strokeStyle = '#8a4cd8'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(0, 0, 150 * ringP, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+
     // 前兆文字
     if (highCard && local < omenEnd + 0.05) {
       const op = Math.sin((local / Math.max(0.01, omenEnd)) * Math.PI);
       ctx.save();
       ctx.globalAlpha = Math.max(0, op);
-      this.text(isLR ? '✦✦✦ 极品降临 ✦✦✦' : '★ 稀有反应 ★', W / 2, H / 2 - 40, isLR ? 36 : 28, col, 'center', 'bold', true);
+      this.text(isLR ? '✦ 仙 神 下 凡 ✦' : '★ 稀有反应 ★', W / 2, H / 2 - 40, isLR ? 40 : 28, col, 'center', 'bold', true);
       ctx.restore();
     }
 
@@ -3240,6 +3267,68 @@ class SummonHall {
           ctx.beginPath();
           ctx.arc(W / 2, H / 2, 200 + k * 18 + Math.sin(this.last / 200 + k) * 6, 0, Math.PI * 2);
           ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // LR 仙神下凡：金白羽毛飘落（前景）+ 地面光环波纹
+      if (isLR) {
+        if (revealLocal > 0.15) {
+          const featherA = Math.min(1, (revealLocal - 0.15) / 0.15);
+          const fallT = revealLocal * dur;
+          ctx.save();
+          for (let i = 0; i < 26; i++) {
+            const seed = i * 137.51;
+            const fx = (Math.sin(seed) * 0.5 + 0.5) * W;
+            const fallSpeed = 110 + (i % 5) * 42;
+            const fy = ((fallT * fallSpeed + i * 97) % (H + 80)) - 40;
+            const sway = Math.sin(this.last / 300 + i) * 24;
+            ctx.save();
+            ctx.globalAlpha = (0.45 + 0.4 * Math.sin(seed * 3.7) ** 2) * featherA;
+            ctx.translate(fx + sway, fy);
+            ctx.rotate(Math.sin(this.last / 400 + i * 2) * 0.6);
+            ctx.fillStyle = '#fff8e8';
+            ctx.beginPath(); ctx.ellipse(0, 0, 4, 10, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(200,170,90,0.7)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 10); ctx.stroke();
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+        // 地面光环波纹（卡片落定后扩散）
+        if (revealLocal > 0.55) {
+          const gp = (revealLocal - 0.55) / 0.45;
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          for (let k = 0; k < 3; k++) {
+            const rp = (gp * 1.6 + k * 0.33) % 1;
+            ctx.globalAlpha = (1 - rp) * 0.5;
+            ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(W / 2, H / 2 + 190, 60 + rp * 260, 18 + rp * 60, 0, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+      }
+
+      // UR 紫电弧（前景，冷色调与 LR 区分）
+      if (rank === 4 && revealLocal > 0.1 && revealLocal < 0.75) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        if (Math.sin(this.last / 60) > -0.2) {
+          ctx.strokeStyle = '#e8c8ff'; ctx.lineWidth = 2.5;
+          for (let b = 0; b < 3; b++) {
+            ctx.beginPath();
+            let ex = W / 2 + Math.sin(b * 91.7) * 0.5 * W * 0.4, ey = 0;
+            ctx.moveTo(ex, ey);
+            for (let s = 1; s <= 6; s++) {
+              ex += Math.sin(this.last / 50 + b * 7 + s * 13.3) * 46;
+              ey = (H * 0.55 * s) / 6;
+              ctx.lineTo(ex, ey);
+            }
+            ctx.stroke();
+          }
         }
         ctx.restore();
       }
