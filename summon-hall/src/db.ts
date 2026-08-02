@@ -64,6 +64,8 @@ export interface OwnedCard {
   atkBonus: number;    // 进化继承累加
   hpBonus: number;
   locked: boolean;
+  /** 获得时间戳（用于 NEW 标记）；种子/旧存档缺省 */
+  gainedAt?: number;
 }
 
 /** 库存（卡牌仓库） */
@@ -145,6 +147,11 @@ const STAGE_DEFS: { regionId: string; stageId: string; name: string; energyCost:
   { regionId: 'r1', stageId: 'r1-s4', name: '苍雷王座', energyCost: 20, enemyPower: 60000 },
 ];
 
+/** 体力数值平衡：上限 120（3min/点 → 约 6 小时回满），出战一趟扣 10 */
+export const ENERGY_MAX = 120;
+/** 仓库默认容量 */
+export const INV_CAPACITY = 200;
+
 function newStage(def: (typeof STAGE_DEFS)[number]): Stage {
   return {
     ...def, bossCardId: '',
@@ -185,6 +192,24 @@ export function loadDB(): DB | null {
       db.user.battlePt = Math.max(db.user.battlePt || 0, 2000);
       db.user.battlePtRecoverAt = Date.now();
     }
+    // 体力上限迁移：旧原型 3000 → 120（3min/点满需 150h，等于死锁）
+    if (!db.user.energyMax || db.user.energyMax > ENERGY_MAX) {
+      db.user.energyMax = ENERGY_MAX;
+      db.user.energy = Math.min(db.user.energy ?? 0, ENERGY_MAX);
+      db.user.energyRecoverAt = Date.now();
+    }
+    // 仓库容量迁移：旧 300 → 200
+    if (!db.inventory.capacity || db.inventory.capacity > INV_CAPACITY) {
+      db.inventory.capacity = INV_CAPACITY;
+    }
+    // 召唤券键名迁移：旧 named legendary/divine → 卡池 id legend/oracle
+    const tix = db.user.tickets;
+    if (tix && (tix['legendary'] !== undefined || tix['divine'] !== undefined)) {
+      if (tix['legend'] === undefined) tix['legend'] = tix['legendary'] ?? 0;
+      if (tix['oracle'] === undefined) tix['oracle'] = tix['divine'] ?? 0;
+      delete tix['legendary'];
+      delete tix['divine'];
+    }
     if (!db.inventory.materials) db.inventory.materials = {};
     if (db.inventory.materials.upgradePotion === undefined) db.inventory.materials.upgradePotion = 0;
     // 关卡迁移：补齐新增关卡
@@ -207,13 +232,13 @@ export function clearDB(): void {
 }
 
 export function makeOwnedCard(cardId: string, lv = 1): OwnedCard {
-  return { instId: newInstId(), cardId, lv, exp: 0, evoStage: 0, atkBonus: 0, hpBonus: 0, locked: false };
+  return { instId: newInstId(), cardId, lv, exp: 0, evoStage: 0, atkBonus: 0, hpBonus: 0, locked: false, gainedAt: Date.now() };
 }
 
 /** 种子：初始化数据库 */
 export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
-  const inv: UserInventory = { uid: 'u1', cards: [], capacity: 300, materials: { upgradePotion: 3, enhanceStone: 50, evolveGem: 10 } };
-  // 初始给几张卡
+  const inv: UserInventory = { uid: 'u1', cards: [], capacity: INV_CAPACITY, materials: { upgradePotion: 3, enhanceStone: 50, evolveGem: 10 } };
+  // 初始给几张卡（用可召唤池）
   const seed: [Rarity, number][] = [['X', 1], ['VR', 1], ['LR', 2], ['UR', 3], ['SR', 5], ['R', 10], ['N', 10]];
   for (const [r, n] of seed) {
     for (const c of pickCards(r, n)) inv.cards.push(makeOwnedCard(c.id, 1 + RARITY_TIER[r] * 3));
@@ -226,10 +251,10 @@ export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
   return {
     user: {
       uid: 'u1', name: '星术师·阿尔德', level: 88, exp: 0.42,
-      energy: 3000, energyMax: 3000, energyRecoverAt: Date.now(),
+      energy: ENERGY_MAX, energyMax: ENERGY_MAX, energyRecoverAt: Date.now(),
       battlePt: 2000, battlePtMax: 2000, battlePtRecoverAt: Date.now(),
-      gold: 788038, gems: 854, friendPt: 99999,
-      tickets: { fate: 2, legendary: 99, divine: 99, friend: 99, 'lr-guaranteed': 99, collab: 99, element: 99 },
+      gold: 78000, gems: 3000, friendPt: 9999,
+      tickets: { fate: 3, legend: 3, oracle: 3, friend: 30, 'lr-guaranteed': 1, collab: 0, element: 1 },
     },
     inventory: inv,
     stages,

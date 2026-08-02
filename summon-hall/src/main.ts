@@ -62,6 +62,11 @@ interface BattleFx {
 
 const RANK: Record<string, number> = { N: 1, R: 2, SR: 3, UR: 4, LR: 5, X: 6, VR: 7 };
 
+/** 是否"本日新增"（2 小时内获得的卡显示 NEW） */
+function isFresh(o: { gainedAt?: number }): boolean {
+  return !!o.gainedAt && Date.now() - o.gainedAt < 2 * 3600000;
+}
+
 /** 10 种技能特效的主题色 */
 const FX_COLOR: Record<SkillFx, string> = {
   fire: '#ff7a3c', ice: '#6fd8ff', thunder: '#ffe14d', holy: '#fff3b0',
@@ -70,7 +75,7 @@ const FX_COLOR: Record<SkillFx, string> = {
 };
 
 /** 顶层页面 */
-type Page = 'summon' | 'event' | 'map' | 'sortie' | 'battle' | 'team' | 'records';
+type Page = 'summon' | 'event' | 'map' | 'sortie' | 'battle' | 'team' | 'records' | 'inventory';
 
 /** 队伍槽位 */
 interface TeamSlot { card: Card; hp: number; maxHp: number; lv: number; exp: number; }
@@ -167,6 +172,10 @@ class SummonHall {
   private recordsScroll = 0;
   private recordsToast = '';
   private recordsToastT = 0;
+  /** 仓库页状态 */
+  private invSort: string = 'rarity';
+  private invSelling = false;         // 批量出售模式
+  private invSel = new Set<string>(); // 批量所选 instId
   /** 进军走路弹跳：0=无；进行中驱动队伍前跳 */
   private marchAnim: null | {
     t: number; dur: number; applied: boolean; fromProg: number; auto: boolean;
@@ -191,9 +200,9 @@ class SummonHall {
     }, { passive: false });
 
     this.bg.resize(W, H);
-    this.buildMeta();
     const saved = loadDB();
     if (saved) this.db = saved;
+    this.buildMeta();
     this.activeStage = this.db.stages[0];
     this.displayProg = this.activeStage.progress;
     this.jewels = this.db.user.gems;
@@ -484,6 +493,8 @@ class SummonHall {
     }
     // 队伍页交互
     if (this.page === 'team') { this.activateTeam(id); return; }
+    // 仓库页交互
+    if (this.page === 'inventory') { this.activateInv(id); return; }
     // 战绩领取
     if (this.page === 'records') {
       if (id === 'recordsBack') { this.page = 'event'; this.syncBgm(); return; }
@@ -684,43 +695,53 @@ class SummonHall {
       this.phase = { kind: 'confirm', ten: true, ticket: true, t: 0 };
       return;
     }
+    if (id === 'pull1' && this.phase.kind === 'hall') {
+      this.phase = { kind: 'confirm', ten: false, ticket: false, t: 0 };
+      return;
+    }
+    if (id === 'pull1ticket' && this.phase.kind === 'hall') {
+      this.phase = { kind: 'confirm', ten: false, ticket: true, t: 0 };
+      return;
+    }
     if (id === 'exchange') { this.jewels += 3000; } // 占位：券交换
   }
 
   // ============ 抽卡流程 ============
 
   private execPull(ten: boolean, useTicket: boolean): void {
+    const cost = ten ? this.banner.costTen : this.banner.costSingle;
+    const isFriend = this.banner.id === 'friend';
+    const ticketKey = this.banner.id;
+
+    // ── 资源校验：不足则拒绝，不再"自动借钱" ──
     if (useTicket) {
-      const m = this.meta.get(this.banner.id);
-      if (!m) { this.phase = { kind: 'hall' }; return; }
-      m.tickets = Math.max(0, m.tickets - 1);
-      this.db.user.tickets[this.banner.id] = m.tickets;
+      const need = ten ? 10 : 1;
+      const have = this.db.user.tickets[this.banner.id] || 0;
+      if (have < need) { this.flashTeamMsg(`召唤券不足（需要 ${need} 张）`); this.phase = { kind: 'hall' }; return; }
+      this.db.user.tickets[this.banner.id] = have - need;
     } else {
-      const cost = ten ? this.banner.costTen : this.banner.costSingle;
-      const isFriend = this.banner.id === 'friend';
       if (isFriend) {
-        if (this.fp < cost) this.fp += cost * 2;
-        this.fp -= cost;
-        this.db.user.friendPt = this.fp;
+        if (this.db.user.friendPt < cost) { this.flashTeamMsg('友情点不足'); this.phase = { kind: 'hall' }; return; }
+        this.db.user.friendPt -= cost;
       } else {
-        if (this.jewels < cost) this.jewels += cost * 2;
-        this.jewels -= cost;
-        this.db.user.gems = this.jewels;
+        if (this.db.user.gems < cost) { this.flashTeamMsg('宝石不足'); this.phase = { kind: 'hall' }; return; }
+        this.db.user.gems -= cost;
       }
     }
+    this.jewels = this.db.user.gems;
+    this.fp = this.db.user.friendPt;
+    const m = this.meta.get(this.banner.id);
+    if (m) m.tickets = this.db.user.tickets[this.banner.id] || 0;
 
     let pulls = ten ? this.gacha.pullTen(this.banner) : [this.gacha.pullOne(this.banner)];
     pulls.forEach(p => preloadImage(p.card).catch(() => {}));
-    if (useTicket) {
-      pulls = pulls.map(p => ({ ...p, card: this.gacha.upgradeTo(p.card, 'UR') }));
-      pulls.forEach(p => preloadImage(p.card).catch(() => {}));
-    }
     // ★ 抽到的卡入库（此前只加计数器，卡从未进库存——编队里看不到的根源）
     for (const p of pulls) {
       const tier = RANK[p.card.rarity] || 1;
       this.db.inventory.cards.push(makeOwnedCard(p.card.id, 1 + tier * 2));
     }
     this.cardCount = this.db.inventory.cards.length;
+    this.gacha.markOwned(pulls.map(p => p.card.id));
     saveDB(this.db);
 
     this.phase = { kind: 'summon', pulls, t: 0 };
@@ -1247,6 +1268,7 @@ class SummonHall {
     else if (this.page === 'sortie') this.renderSortie();
     else if (this.page === 'battle') this.renderBattle();
     else if (this.page === 'team') this.renderTeam();
+    else if (this.page === 'inventory') this.renderInventory();
     else if (this.page === 'records') this.renderRecords();
 
     // 底部导航（战斗 / 出击 / 结算时隐藏，复刻截图全屏画面）
@@ -1425,6 +1447,7 @@ class SummonHall {
     const ctx = this.ctx;
     const items: { id: Page; label: string; icon: string }[] = [
       { id: 'summon', label: '召唤', icon: '✦' },
+      { id: 'inventory', label: '仓库', icon: '▦' },
       { id: 'event', label: '活动', icon: '⚑' },
       { id: 'map', label: '出击', icon: '⚔' },
       { id: 'team', label: '队伍', icon: '❖' },
@@ -1853,6 +1876,73 @@ class SummonHall {
   }
 
   // ============ 队伍编成页 ============
+  private activateInv(id: string): void {
+    const inv = this.db.inventory;
+    // 筛选 / 排序（复用 team 的 invFilter / invScroll，避免两套状态）
+    if (id.startsWith('invf:')) { this.invFilter = id.slice(5); this.invScroll = 0; return; }
+    if (id.startsWith('invs:')) { this.invSort = id.slice(5); this.invScroll = 0; return; }
+    if (id === 'invpUp') { this.invScroll = Math.max(0, this.invScroll - 1); return; }
+    if (id === 'invpDown') { this.invScroll += 1; return; }
+    // 批量出售模式开关
+    if (id === 'invSellMode') { this.invSelling = !this.invSelling; this.invSel.clear(); return; }
+    // 卡点选
+    if (id.startsWith('invpc:')) {
+      const instId = id.slice(6);
+      if (this.invSelling) {
+        if (this.invSel.has(instId)) this.invSel.delete(instId); else this.invSel.add(instId);
+        return;
+      }
+      this.detailInst = instId;
+      return;
+    }
+    // 批量出售确认
+    if (id === 'invSell') {
+      if (this.invSel.size === 0) { this.flashTeamMsg('请先勾选要出售的卡'); return; }
+      let gain = 0, n = 0;
+      this.db.inventory.cards = this.db.inventory.cards.filter(o => {
+        if (!this.invSel.has(o.instId) || o.locked) return true;
+        const c = getCard(o.cardId);
+        gain += c ? RANK[c.rarity] * 500 : 100;
+        n++;
+        return false;
+      });
+      this.teamInstIds = this.teamInstIds.filter(t => this.db.inventory.cards.some(c => c.instId === t));
+      this.db.user.gold += gain;
+      this.flashTeamMsg(`批量出售 ${n} 张，金币 +${gain.toLocaleString()}`);
+      this.invSel.clear(); this.invSelling = false;
+      this.saveTeam(); saveDB(this.db);
+      return;
+    }
+    // 详情内按钮
+    if (id === 'closeInvDetail') { this.detailInst = null; return; }
+    if (id === 'closeDetail') { this.detailInst = null; return; }
+    if (id === 'lockCard') {
+      const o = this.db.inventory.cards.find(c => c.instId === this.detailInst);
+      if (o) { o.locked = !o.locked; this.flashTeamMsg(o.locked ? '已锁定' : '已解锁'); saveDB(this.db); }
+      return;
+    }
+    if (id === 'sellCard' && this.detailInst) {
+      const o = inv.cards.find(c => c.instId === this.detailInst);
+      if (!o) return;
+      const c = getCard(o.cardId);
+      const gain = c ? RANK[c.rarity] * 500 : 100;
+      this.db.user.gold += gain;
+      inv.cards = inv.cards.filter(x => x.instId !== this.detailInst);
+      this.teamInstIds = this.teamInstIds.map(t => t === this.detailInst ? (inv.cards[0]?.instId ?? t) : t);
+      this.flashTeamMsg(`已出售，金币 +${gain}`);
+      this.detailInst = null; this.saveTeam(); saveDB(this.db);
+      return;
+    }
+    if (id === 'invToTeam') {
+      if (!this.detailInst) return;
+      if (this.teamInstIds.includes(this.detailInst)) { this.flashTeamMsg('这张卡已在队伍中'); return; }
+      this.teamInstIds.push(this.detailInst);
+      this.flashTeamMsg('已上阵');
+      this.saveTeam();
+      return;
+    }
+  }
+
   private activateTeam(id: string): void {
     const inv = this.db.inventory;
     // 关闭详情
@@ -1961,6 +2051,161 @@ class SummonHall {
   }
 
   private flashTeamMsg(msg: string): void { this.teamMsg = msg; this.teamMsgT = 0; }
+
+  private renderInventory(): void {
+    const ctx = this.ctx;
+    this.buttons = [];
+    ctx.fillStyle = 'rgba(8,6,18,0.55)';
+    ctx.fillRect(0, 0, W, H);
+    this.text('卡 牌 仓 库', 60, 84, 28, '#f5e0a0', 'left', 'bold', true);
+
+    const inv = this.db.inventory.cards;
+    // ── 顶部信息 + 批量出售 ──
+    this.pill(56, 112, 200, 30, '#0d0a16', '#c8b285');
+    this.text(`持有 ${inv.length}/${this.db.inventory.capacity}`, 156, 129, 14, '#e8d5a8', 'center', 'bold');
+    const freshCount = inv.filter(o => isFresh(o)).length;
+    this.pill(268, 112, 140, 30, '#0d0a16', '#ff8c8c');
+    this.text(`本日新增 ${freshCount}`, 338, 129, 12, '#ffb0b0', 'center', 'bold');
+    glassButton(ctx, W - 220, 108, 150, 38, this.invSelling ? '取消批量' : '批量出售', {
+      kind: this.invSelling ? 'red' : 'blue', hover: this.hover === 'invSellMode', fontSize: 15,
+    });
+    this.buttons.push({ x: W - 220, y: 108, w: 150, h: 38, id: 'invSellMode' });
+
+    // ── 筛选 ──
+    const filters = ['ALL', 'VR', 'X', 'LR', 'UR', 'SR', 'R', 'N'];
+    let fx = 56, fy = 168;
+    for (const f of filters) {
+      const act = this.invFilter === f;
+      glassButton(ctx, fx, fy, f === 'ALL' ? 60 : 44, 30, f, { kind: act ? 'blue' : 'gray', hover: this.hover === `invf:${f}`, fontSize: 12 });
+      this.buttons.push({ x: fx, y: fy, w: f === 'ALL' ? 60 : 44, h: 30, id: `invf:${f}` });
+      fx += (f === 'ALL' ? 60 : 44) + 8;
+      if (f === 'SR') fy += 38, fx = 56; // 两行筛选
+    }
+
+    // ── 排序 ──
+    const sorts: [string, string][] = [['rarity', '稀有度'], ['lv', '等级'], ['new', '最近获得']];
+    let sx = 56;
+    this.text('排序', 56, 238, 12, '#8892a8', 'left', 'bold');
+    sx = 96;
+    for (const [k, label] of sorts) {
+      const act = this.invSort === k;
+      glassButton(ctx, sx, 224, 92, 28, label, { kind: act ? 'green' : 'gray', hover: this.hover === `invs:${k}`, fontSize: 13 });
+      this.buttons.push({ x: sx, y: 224, w: 92, h: 28, id: `invs:${k}` });
+      sx += 100;
+    }
+
+    // ── 网格 ──
+    const filtered = inv
+      .filter(o => {
+        const c = getCard(o.cardId); if (!c) return false;
+        return this.invFilter === 'ALL' || c.rarity === this.invFilter;
+      })
+      .sort((a, b) => {
+        const ra = RANK[getCard(a.cardId)?.rarity ?? 'N'], rb = RANK[getCard(b.cardId)?.rarity ?? 'N'];
+        const na = a.gainedAt ?? 0, nb = b.gainedAt ?? 0;
+        if (this.invSort === 'new') return nb - na;
+        if (this.invSort === 'lv') return b.lv - a.lv;
+        return rb - ra || b.lv - a.lv || nb - na;
+      });
+
+    const cols = 10, icw = 106, ich = 146, igx = 10, igy = 12;
+    const gridX = 52, gridY = 300;
+    const rowsVisible = 3;
+    const maxScroll = Math.max(0, Math.ceil(filtered.length / cols) - rowsVisible);
+    this.invScroll = Math.min(this.invScroll, maxScroll);
+    const start = this.invScroll * cols;
+    const visible = filtered.slice(start, start + cols * rowsVisible);
+
+    visible.forEach((o, vi) => {
+      const c = getCard(o.cardId); if (!c) return;
+      const col = vi % cols, row = Math.floor(vi / cols);
+      const x = gridX + col * (icw + igx) + icw / 2;
+      const y = gridY + row * (ich + igy) + ich / 2;
+      const inTeam = this.teamInstIds.includes(o.instId);
+      const picked = this.invSel.has(o.instId);
+      const fresh = isFresh(o);
+      const isDetail = this.detailInst === o.instId;
+      ctx.save();
+      if (picked) { ctx.shadowColor = '#ff5c5c'; ctx.shadowBlur = 16; }
+      drawCard(ctx, c, x, y, icw, ich, { showName: false, isNew: fresh, rainbowT: (this.last / 1000 * 0.3) % 1 });
+      ctx.restore();
+      if (inTeam) { this.pill(x - 26, y - ich / 2 + 2, 52, 16, '#3a2a08', '#ffd24d'); this.text('出撃', x, y - ich / 2 + 10, 10, '#ffd24d', 'center', 'bold'); }
+      if (picked) { ctx.strokeStyle = '#ff8c6a'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
+      if (isDetail) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
+      if (o.locked) this.text('🔒', x + icw / 2 - 14, y - ich / 2 + 16, 14, '#fff', 'center');
+      this.text(`Lv.${o.lv}${o.evoStage > 0 ? ' +' + o.evoStage : ''}`, x, y + ich / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
+      this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `invpc:${o.instId}` });
+    });
+
+    // 滚动 / 批量出售悬浮
+    if (maxScroll > 0) {
+      glassButton(ctx, gridX + 1020, gridY + 30, 140, 40, '▲ 上', { kind: 'gray', hover: this.hover === 'invpUp', fontSize: 14 });
+      glassButton(ctx, gridX + 1020, gridY + 200, 140, 40, '▼ 下', { kind: 'gray', hover: this.hover === 'invpDown', fontSize: 14 });
+      this.buttons.push({ x: gridX + 1020, y: gridY + 30, w: 140, h: 40, id: 'invpUp' });
+      this.buttons.push({ x: gridX + 1020, y: gridY + 200, w: 140, h: 40, id: 'invpDown' });
+    }
+    if (this.invSelling) {
+      glassButton(ctx, W / 2 - 260, gridY + 3 * (ich + igy) + 8, 520, 46, `批量出售所选 ${this.invSel.size} 张`, {
+        kind: this.invSel.size ? 'green' : 'gray', hover: this.hover === 'invSell', fontSize: 16,
+      });
+      this.buttons.push({ x: W / 2 - 260, y: gridY + 3 * (ich + igy) + 8, w: 520, h: 46, id: 'invSell' });
+    }
+
+    if (this.teamMsg && this.teamMsgT < 2.5) this.renderToast();
+
+    if (this.detailInst) this.renderInvDetail();
+    this.renderDragLayer();
+  }
+
+  private renderInvDetail(): void {
+    const ctx = this.ctx;
+    const o = this.db.inventory.cards.find(c => c.instId === this.detailInst);
+    if (!o) { this.detailInst = null; return; }
+    const card = getCard(o.cardId); if (!card) { this.detailInst = null; return; }
+    const cb = ownedToCombatant(o);
+    ctx.fillStyle = 'rgba(2,3,8,0.7)';
+    ctx.fillRect(0, 0, W, H);
+    const dw = 700, dh = 460, dx = W / 2 - dw / 2, dy = H / 2 - dh / 2;
+    metalDialog(ctx, dx, dy, dw, dh);
+    drawCard(ctx, card, dx + 130, dy + 210, 200, 290, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
+    engravedText(ctx, card.name, dx + 130, dy + 385, 16);
+    this.text(`${card.rarity} · ${card.element} · COST ${card.cardCost}`, dx + 130, dy + 410, 12, '#cfc4a8', 'center', 'bold');
+    const ix = dx + 290;
+    engravedText(ctx, `Lv.${o.lv}${o.evoStage > 0 ? ` (进化+${o.evoStage})` : ''}`, ix + 160, dy + 44, 20);
+    let ry = dy + 88;
+    const rowsS: [string, string][] = [
+      ['稀有度', card.rarity], ['元素', card.element], ['攻击力', String(cb?.atk ?? card.stats.attack)],
+      ['生命力', String(cb?.hpMax ?? 0)], ['防御力', String(card.stats.defense)], ['速度', String(card.stats.speed)],
+      ['技能', card.skillName || '—'], ['获得', isFresh(o) ? '今天' : '较早'],
+    ];
+    for (const [l, v] of rowsS) { this.text(l, ix, ry, 15, '#e8a0c0', 'left', 'bold'); this.text(v, ix + 120, ry, 15, '#f0e6cc', 'left', 'bold'); ry += 32; }
+    if (o.atkBonus > 0 || o.hpBonus > 0) { this.text(`进化继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30; }
+    if (card.skillDesc) this.wrapText(card.skillDesc, ix, ry, 380, 20, 12, '#b8c8d8');
+
+    const bw = 150, bh = 46, by = dy + dh - 66;
+    glassButton(ctx, dx + 40, by, bw, bh, '划至队伍', { kind: 'green', hover: this.hover === 'invToTeam', fontSize: 16 });
+    glassButton(ctx, dx + 40 + (bw + 12), by, bw, bh, o.locked ? '解锁' : '锁定', { kind: 'gray', hover: this.hover === 'lockCard', fontSize: 16 });
+    glassButton(ctx, dx + 40 + (bw + 12) * 2, by, bw, bh, '出售', { kind: 'red', hover: this.hover === 'sellCard', fontSize: 16 });
+    this.buttons.push({ x: dx + 40, y: by, w: bw, h: bh, id: 'invToTeam' });
+    this.buttons.push({ x: dx + 40 + (bw + 12), y: by, w: bw, h: bh, id: 'lockCard' });
+    this.buttons.push({ x: dx + 40 + (bw + 12) * 2, y: by, w: bw, h: bh, id: 'sellCard' });
+    glassButton(ctx, dx + 20, dy + 14, 90, 42, '✕', { kind: 'gray', hover: this.hover === 'closeInvDetail', fontSize: 16 });
+    this.buttons.push({ x: dx + 20, y: dy + 14, w: 90, h: 42, id: 'closeInvDetail' });
+  }
+
+  private renderToast(): void {
+    const ctx = this.ctx;
+    if (!this.teamMsg || this.teamMsgT >= 2.5) return;
+    const a = Math.min(1, Math.min(this.teamMsgT / 0.2, (2.5 - this.teamMsgT) / 0.4));
+    ctx.save(); ctx.globalAlpha = Math.max(0, a);
+    this.pill(W / 2 - 280, 64, 560, 40, 'rgba(13,10,22,0.94)', '#6fce9a');
+    this.text(this.teamMsg, W / 2, 86, 15, '#a8f0c0', 'center', 'bold');
+    ctx.restore();
+  }
+
+  private renderDragLayer(): void {
+    // 仓库页无拖动（拖动仅编队页），此方法仅占位空实现
+  }
 
   private renderTeam(): void {
     const ctx = this.ctx;
@@ -2740,11 +2985,14 @@ class SummonHall {
     });
     this.text('LR 出现率 普通', bx + bw - 24, by + 92, 13, '#ffe14d', 'right', 'bold');
 
-    // 双按钮：券十连 / 钻十连
+    // 四按钮（2×2）：上排 单抽(钻) / 十连(钻)，下排 单抽(券) / 十连(券)
     const tickets = meta?.tickets ?? 0;
     const btnY = by + bh - 78;
-    this.summonButton(bx + 40, btnY, 300, 62, `用召唤券`, `进行10连召唤`, true, 'pull10ticket');
-    this.summonButton(bx + 360, btnY, 320, 62, `用 💎 ${this.banner.costTen}`, `进行10连召唤`, true, 'pull10');
+    const b1 = btnY - 72, b2 = btnY;
+    this.summonButton(bx + 40, b1, 348, 60, `用 💎 ${this.banner.costSingle}`, `召唤 1 次`, this.jewels >= this.banner.costSingle, 'pull1');
+    this.summonButton(bx + 408, b1, 332, 60, `用 💎 ${this.banner.costTen}`, `进行 10 连召唤`, this.jewels >= this.banner.costTen, 'pull10');
+    this.summonButton(bx + 40, b2, 348, 60, `用 1 张召唤券`, `召唤 1 次`, tickets > 0, 'pull1ticket');
+    this.summonButton(bx + 408, b2, 332, 60, `用 10 张召唤券`, `进行 10 连召唤`, tickets >= 10, 'pull10ticket');
     this.text(`目前持有数  🎟 ${tickets}  /  💎 ${this.jewels.toLocaleString()}`,
       bx + 40, by + bh - 8, 13, '#ffe9a8', 'left', 'bold');
 
@@ -2959,7 +3207,9 @@ class SummonHall {
 
     if (pop > 0.6) {
       // 文案
-      const msg = ticket ? '使用 1 张进行召唤！' : `使用 💎 ${ten ? this.banner.costTen : this.banner.costSingle} 进行召唤！`;
+      const msg = ticket
+        ? `使用 ${ten ? 10 : 1} 张${this.banner.id === 'friend' ? '友情券' : '召唤券'}进行召唤！`
+        : `使用 💎 ${ten ? this.banner.costTen : this.banner.costSingle} 进行召唤！`;
       ctx.save();
       ctx.globalAlpha = Math.min(1, (pop - 0.6) / 0.4);
       engravedText(ctx, msg, W / 2, dy + dhS * 0.34, 24);

@@ -2,7 +2,7 @@
  * 抽卡引擎 — 零依赖，支持种子，可测试
  */
 
-import { ALL_CARDS, RARITY_RANK, type Card, type Rarity } from './data';
+import { SUMMON_CARDS, RARITY_RANK, type Card, type Rarity } from './data';
 
 export interface PoolEntry { rarity: Rarity; weight: number; }
 
@@ -16,6 +16,10 @@ export interface Banner {
   pool: PoolEntry[];
   softPity: Rarity;      // 十连至少一张
   hardPity?: { rarity: Rarity; threshold: number };
+  /** UP 指定卡（哪几张；命中该稀有度时高概率出） */
+  up?: { cardId: string; upRate: number }[]; // upRate 0..1：命中稀有度时走 UP 池的概率
+  /** 限池：只从这些卡里抽（默认全卡池） */
+  limitedTo?: string[];  // cardId 白名单
 }
 
 export const BANNERS: Banner[] = [
@@ -49,6 +53,8 @@ export const BANNERS: Banner[] = [
       { rarity: 'X', weight: 3.2 }, { rarity: 'VR', weight: 0.8 },
     ],
     softPity: 'SR', hardPity: { rarity: 'X', threshold: 40 },
+    // X / VR 各指定 3 张 UP（前三种固定代表性卡，样例；若指定卡在 SUMMON_CARDS 中不存在则自动退化为全稀有度池）
+    up: [],
   },
   {
     id: 'friend', name: '友情召唤', sub: '友情点 · 日常', accent: '#6fce9a',
@@ -78,6 +84,7 @@ export const BANNERS: Banner[] = [
       { rarity: 'VR', weight: 1.5 },
     ],
     softPity: 'UR', hardPity: { rarity: 'X', threshold: 30 },
+    up: [],
   },
   {
     id: 'element', name: '元素精选召唤', sub: '光/暗/炎 轮换 UP', accent: '#ffb42e',
@@ -88,6 +95,7 @@ export const BANNERS: Banner[] = [
       { rarity: 'X', weight: 1.5 },
     ],
     softPity: 'SR', hardPity: { rarity: 'UR', threshold: 40 },
+    up: [],
   },
 ];
 
@@ -104,20 +112,33 @@ export function rateTable(banner: Banner): { rarity: Rarity; pct: number; count:
     .map(e => ({
       rarity: e.rarity,
       pct: (e.weight / total) * 100,
-      count: ALL_CARDS.filter(c => c.rarity === e.rarity).length,
+      count: bannerCards(banner).filter(c => c.rarity === e.rarity).length,
     }))
     .sort((a, b) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity]);
 }
 
-/** 当前卡池可抽到的代表卡（详情浮层展示用，按稀有度取前 N） */
+/** 当前卡池可抽到的代表卡（详情浮层展示用，按稀有度取前 N）；优先展示 UP 卡 */
 export function bannerShowcase(banner: Banner, perRarity = 4): Card[] {
   const rarities = [...new Set(banner.pool.map(e => e.rarity))]
     .sort((a, b) => RARITY_RANK[b] - RARITY_RANK[a]);
   const out: Card[] = [];
   for (const r of rarities) {
-    out.push(...ALL_CARDS.filter(c => c.rarity === r).slice(0, perRarity));
+    const up = (banner.up || []).map(u => u.cardId);
+    const pool = bannerCards(banner).filter(c => c.rarity === r);
+    const ups = pool.filter(c => up.includes(c.id)).slice(0, Math.max(1, Math.floor(perRarity / 2)));
+    const rest = pool.filter(c => !up.includes(c.id)).slice(0, perRarity);
+    out.push(...ups, ...rest);
   }
   return out;
+}
+
+/** 卡池可抽卡集合：限池白名单优先，未配置则全可召唤池 */
+export function bannerCards(banner: Banner): Card[] {
+  if (banner.limitedTo?.length) {
+    const set = new Set(banner.limitedTo);
+    return SUMMON_CARDS.filter(c => set.has(c.id));
+  }
+  return SUMMON_CARDS;
 }
 
 function mulberry32(seed: number) {
@@ -140,7 +161,7 @@ export class Gacha {
 
   constructor(seed = Date.now()) {
     this.rand = mulberry32(seed);
-    for (const c of ALL_CARDS) {
+    for (const c of SUMMON_CARDS) {
       const list = this.byRarity.get(c.rarity) || [];
       list.push(c);
       this.byRarity.set(c.rarity, list);
@@ -166,7 +187,7 @@ export class Gacha {
       rarity = this.rollWeighted(banner.pool);
     }
 
-    const card = this.pickCard(rarity);
+    const card = this.pickCard(rarity, banner);
     if (banner.hardPity && atLeast(card.rarity, banner.hardPity.rarity)) {
       this.hardCounter.set(hardKey, 0);
     }
@@ -180,7 +201,7 @@ export class Gacha {
     for (let i = 0; i < 10; i++) out.push(this.pullOne(banner));
     if (!out.some(p => atLeast(p.card.rarity, banner.softPity))) {
       const rarity = this.rollFrom(banner, banner.softPity);
-      const card = this.pickCard(rarity);
+      const card = this.pickCard(rarity, banner);
       const isNew = !this.owned.has(card.id);
       this.owned.add(card.id);
       out[9] = { card, isNew, isPity: true };
@@ -213,15 +234,28 @@ export class Gacha {
     return c;
   }
 
-  private pickCard(rarity: Rarity): Card {
-    const pool = this.byRarity.get(rarity);
-    if (pool?.length) return pool[Math.floor(this.rand() * pool.length)];
-    // 降级到最近有卡稀有度
+  private pickCard(rarity: Rarity, banner?: Banner): Card {
+    // 优先从卡池可抽集合（限池白名单）内找该稀有度卡
+    const pool = (banner ? bannerCards(banner) : SUMMON_CARDS).filter(c => c.rarity === rarity);
+    if (pool.length) {
+      // UP 命中：该稀有度时按 upRate 走 UP 池
+      if (banner?.up?.length) {
+        const upIds = new Set(banner.up.filter(u => pool.some(c => c.id === u.cardId)).map(u => u.cardId));
+        const upPool = pool.filter(c => upIds.has(c.id));
+        const upTotalRate = banner.up.reduce((s, u) => (upIds.has(u.cardId) ? s + u.upRate : s), 0);
+        if (upPool.length && this.rand() < Math.min(1, upTotalRate)) {
+          return upPool[Math.floor(this.rand() * upPool.length)];
+        }
+      }
+      return pool[Math.floor(this.rand() * pool.length)];
+    }
+    // 降级到最近有卡稀有度（限池内）
     for (let rank = RARITY_RANK[rarity] - 1; rank >= 1; rank--) {
       const r = (Object.keys(RARITY_RANK) as Rarity[]).find(k => RARITY_RANK[k] === rank)!;
-      const p = this.byRarity.get(r);
+      const p = (banner ? bannerCards(banner) : SUMMON_CARDS).filter(c => c.rarity === r);
       if (p?.length) return p[Math.floor(this.rand() * p.length)];
     }
-    return ALL_CARDS[Math.floor(this.rand() * ALL_CARDS.length)];
+    const all = banner ? bannerCards(banner) : SUMMON_CARDS;
+    return all[Math.floor(this.rand() * all.length)];
   }
 }

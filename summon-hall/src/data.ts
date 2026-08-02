@@ -72,6 +72,12 @@ export const ALL_CARDS: Card[] = (rawCards as RawCard[])
   .map(toCard)
   .filter((c): c is Card => c !== null);
 
+/** 可召唤卡池：剔除 SPECIAL 道具/装备/宝石（避免抽卡抽到非角色卡） */
+export const SUMMON_CARDS: Card[] = ALL_CARDS.filter(c => (c.element || '').toUpperCase() !== 'SPECIAL');
+
+/** 道具/装备类卡（不入抽卡池，仍可用于图鉴展示） */
+export const ITEM_CARDS: Card[] = ALL_CARDS.filter(c => (c.element || '').toUpperCase() === 'SPECIAL');
+
 const byId = new Map(ALL_CARDS.map(c => [c.id, c]));
 
 export function getCard(id: string): Card | undefined {
