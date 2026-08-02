@@ -138,6 +138,41 @@ export interface DB {
 let instCounter = 1;
 export function newInstId(): string { return `inst_${instCounter++}`; }
 
+// ─────────────────────────── 持久化（localStorage）───────────────────────────
+
+const LS_DB = 'summonHall_db_v1';
+const LS_INST = 'summonHall_instCounter';
+
+export function saveDB(db: DB): void {
+  try {
+    localStorage.setItem(LS_DB, JSON.stringify(db));
+    localStorage.setItem(LS_INST, String(instCounter));
+  } catch (e) {
+    console.error('saveDB failed', e);
+  }
+}
+
+/** 读取存档；无存档或损坏返回 null */
+export function loadDB(): DB | null {
+  try {
+    const raw = localStorage.getItem(LS_DB);
+    if (!raw) return null;
+    const db = JSON.parse(raw) as DB;
+    if (!db?.user || !db?.inventory?.cards) return null;
+    const inst = parseInt(localStorage.getItem(LS_INST) || '0', 10);
+    if (Number.isFinite(inst) && inst > instCounter) instCounter = inst;
+    return db;
+  } catch (e) {
+    console.error('loadDB failed', e);
+    return null;
+  }
+}
+
+export function clearDB(): void {
+  localStorage.removeItem(LS_DB);
+  localStorage.removeItem(LS_INST);
+}
+
 export function makeOwnedCard(cardId: string, lv = 1): OwnedCard {
   return { instId: newInstId(), cardId, lv, exp: 0, evoStage: 0, atkBonus: 0, hpBonus: 0, locked: false };
 }

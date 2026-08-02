@@ -8,7 +8,7 @@ import { BANNERS, Gacha, rateTable, bannerShowcase, type Banner, type Pull } fro
 import { cardsByRarity, getCard, type Card } from './data';
 import { Ease, Tweener } from './ease';
 import { glassButton, metalDialog, engravedText, roundRectPath } from './ui';
-import { seedDB, type DB, type Stage, type WitchRaidBoss } from './db';
+import { seedDB, saveDB, loadDB, type DB, type Stage, type WitchRaidBoss } from './db';
 import {
   ExploreStage, EvolveCard, EnhanceCard, runBattleTurn, raidAttack,
   claimRaidReward, claimAllRaidRewards,
@@ -114,6 +114,9 @@ class SummonHall {
   private teamMsgT = 0;
   /** 充值（调试）弹窗 */
   private showRecharge = false;
+  /** 充值按钮上次点击时间（双击才打开调试面板） */
+  private lastRechargeTap = 0;
+  private rechargeToastT = 0;
   /** 活动地图背景轮换下标 */
   private eventMapIndex = 0;
   /** 战斗背景下标（按关卡推进） */
@@ -144,10 +147,14 @@ class SummonHall {
       this.recordsScroll = Math.max(0, this.recordsScroll + e.deltaY * 0.6);
     }, { passive: false });
 
-    this.activeStage = this.db.stages[0];
-    this.displayProg = this.activeStage.progress;
     this.bg.resize(W, H);
     this.buildMeta();
+    const saved = loadDB();
+    if (saved) this.db = saved;
+    this.activeStage = this.db.stages[0];
+    this.displayProg = this.activeStage.progress;
+    this.jewels = this.db.user.gems;
+    this.fp = this.db.user.friendPt;
     this.buildTeam();
     this.syncBgm();
 
@@ -196,19 +203,38 @@ class SummonHall {
         break;
       default: break;
     }
+    saveDB(this.db);
   }
 
-  /** 队伍编成：取库存前 5 张高稀有卡作为出击队 */
+  /** 队伍编成：无存档时取库存前 5 张高稀有卡作为出击队；有存档时恢复队伍 */
   private buildTeam(): void {
     const inv = this.db.inventory.cards;
-    const rank = (id: string) => RANK[getCard(id)?.rarity ?? 'N'] ?? 0;
-    const sorted = [...inv].sort((a, b) => rank(b.cardId) - rank(a.cardId) || b.lv - a.lv);
-    this.teamInstIds = sorted.slice(0, 5).map(c => c.instId);
+    const savedTeam = this.loadTeam();
+    if (savedTeam && savedTeam.every(id => inv.some(c => c.instId === id))) {
+      this.teamInstIds = savedTeam;
+    } else {
+      const rank = (id: string) => RANK[getCard(id)?.rarity ?? 'N'] ?? 0;
+      const sorted = [...inv].sort((a, b) => rank(b.cardId) - rank(a.cardId) || b.lv - a.lv);
+      this.teamInstIds = sorted.slice(0, 5).map(c => c.instId);
+    }
     for (const id of this.teamInstIds) {
       const o = inv.find(c => c.instId === id);
       const card = o && getCard(o.cardId);
       if (card) preloadImage(card).catch(() => {});
     }
+  }
+
+  private saveTeam(): void {
+    try { localStorage.setItem('summonHall_team', JSON.stringify(this.teamInstIds)); } catch {}
+  }
+
+  private loadTeam(): string[] | null {
+    try {
+      const raw = localStorage.getItem('summonHall_team');
+      if (!raw) return null;
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : null;
+    } catch { return null; }
   }
 
   /** 队伍 → Combatant[]（接 BattleEngine） */
@@ -245,7 +271,7 @@ class SummonHall {
         portrait,
         tagline: taglines[b.id] ?? b.sub,
         endAt: Date.now() + (13 - i * 2) * 86400000 + 12 * 3600000,
-        tickets: i === 0 ? 1 : 0,
+        tickets: this.db.user.tickets[b.id] ?? 0,
       });
     });
   }
@@ -300,7 +326,17 @@ class SummonHall {
   private activate(id: string): void {
     // 全局 HUD（任意页优先）
     if (id === 'toggleMusic') { audio.toggleMute(); return; }
-    if (id === 'openRecharge') { this.showRecharge = true; return; }
+    if (id === 'openRecharge') {
+      const now = performance.now();
+      if (now - this.lastRechargeTap < 400) {
+        this.showRecharge = true;
+        this.rechargeToastT = 0;
+      } else {
+        this.lastRechargeTap = now;
+        this.rechargeToastT = 1.4;
+      }
+      return;
+    }
     if (id === 'closeRecharge') { this.showRecharge = false; return; }
     if (id.startsWith('recharge:')) {
       if (id === 'recharge:noop') return;
@@ -327,6 +363,7 @@ class SummonHall {
       if (id === 'claimAll') {
         const r = claimAllRaidRewards(this.db);
         this.jewels = this.db.user.gems;
+        saveDB(this.db);
         if (r.count > 0) {
           this.recordsToast = `一次性领取：金币+${r.gold} 宝石+${r.gems} 券+${r.tickets}`;
           // 同步 fate 券到大厅 meta
@@ -342,6 +379,7 @@ class SummonHall {
         const raidId = id.slice(6);
         const r = claimRaidReward(this.db, raidId);
         this.jewels = this.db.user.gems;
+        saveDB(this.db);
         if (r.ok) {
           this.recordsToast = `获得金币${r.gold}、宝石${r.gems}、召唤券${r.tickets}`;
           const m = this.meta.get('fate');
@@ -449,11 +487,6 @@ class SummonHall {
       return;
     }
     if (id === 'exchange') { this.jewels += 3000; } // 占位：券交换
-    if (id === 'add') {
-      this.jewels += 50000; this.fp += 5000;
-      const m = this.meta.get(this.banner.id);
-      if (m) m.tickets = 99; // 补充按钮同时把券拉满
-    }
   }
 
   // ============ 抽卡流程 ============
@@ -462,13 +495,20 @@ class SummonHall {
     if (useTicket) {
       const m = this.meta.get(this.banner.id);
       if (!m) { this.phase = { kind: 'hall' }; return; }
-      if (m.tickets <= 0) m.tickets = 99; // 券无限供应
-      m.tickets--;
+      m.tickets = Math.max(0, m.tickets - 1);
+      this.db.user.tickets[this.banner.id] = m.tickets;
     } else {
       const cost = ten ? this.banner.costTen : this.banner.costSingle;
       const isFriend = this.banner.id === 'friend';
-      if (isFriend) { if (this.fp < cost) this.fp += cost * 2; this.fp -= cost; }
-      else { if (this.jewels < cost) this.jewels += cost * 2; this.jewels -= cost; }
+      if (isFriend) {
+        if (this.fp < cost) this.fp += cost * 2;
+        this.fp -= cost;
+        this.db.user.friendPt = this.fp;
+      } else {
+        if (this.jewels < cost) this.jewels += cost * 2;
+        this.jewels -= cost;
+        this.db.user.gems = this.jewels;
+      }
     }
 
     let pulls = ten ? this.gacha.pullTen(this.banner) : [this.gacha.pullOne(this.banner)];
@@ -478,6 +518,7 @@ class SummonHall {
       pulls.forEach(p => preloadImage(p.card).catch(() => {}));
     }
     this.cardCount = Math.min(this.cardCap, this.cardCount + pulls.length);
+    saveDB(this.db);
 
     this.phase = { kind: 'summon', pulls, t: 0 };
     this.bg.setMode('rare');
@@ -614,6 +655,7 @@ class SummonHall {
     if (this.exploreMsg) this.exploreMsgT += dt;
     if (this.teamMsg) this.teamMsgT += dt;
     if (this.recordsToast) this.recordsToastT += dt;
+    if (this.rechargeToastT > 0) this.rechargeToastT -= dt;
 
     // 进军走路弹跳
     if (this.marchAnim) {
@@ -731,6 +773,7 @@ class SummonHall {
       // 讨伐战：用 raidAttack（消耗战斗体力）
       const r = raidAttack(this.db, b.raid, b.team, b.seed++);
       b.enemies[0].hp = b.raid.hp;
+      saveDB(this.db);
       if (r.dmg > 0) {
         b.dmgFloat.push({ x: W / 2, y: 200, v: String(r.dmg), t: 0, color: '#ffe14d' });
         this.burst('#c05ce8', 25); this.shake = 0.35;
@@ -784,6 +827,7 @@ class SummonHall {
       const o = this.db.inventory.cards.find(c => c.instId === instId);
       if (o) o.exp += 30;
     }
+    saveDB(this.db);
   }
 
   /** 探索前进 */
@@ -814,6 +858,7 @@ class SummonHall {
     this.exploreMsg = r;
     this.exploreMsgT = 0;
     this.jewels = this.db.user.gems;
+    saveDB(this.db);
     if (r.event === 'witch' && r.witchRaidId) {
       const raid = this.db.raids.find(x => x.raidId === r.witchRaidId)!;
       const delay = this.marchAnim ? 280 : 700;
@@ -972,11 +1017,17 @@ class SummonHall {
     glassButton(ctx, x1, y, bw, bh, muted ? '🔇' : '🔊', {
       kind: muted ? 'gray' : 'blue', hover: this.hover === 'toggleMusic', fontSize: 18,
     });
-    glassButton(ctx, x1 + bw + gap, y, bw, bh, '＋', {
-      kind: 'green', hover: this.hover === 'openRecharge', fontSize: 22,
+    glassButton(ctx, x1 + bw + gap, y, bw, bh, '＋＋', {
+      kind: 'green', hover: this.hover === 'openRecharge', fontSize: 20,
     });
     this.buttons.push({ x: x1, y, w: bw, h: bh, id: 'toggleMusic' });
     this.buttons.push({ x: x1 + bw + gap, y, w: bw, h: bh, id: 'openRecharge' });
+    if (this.rechargeToastT > 0) {
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#8ab';
+      ctx.fillText('双击「＋＋」打开调试补给', x1 + bw + gap + bw, y + bh + 18);
+    }
   }
 
   private renderRecharge(): void {
@@ -1526,6 +1577,7 @@ class SummonHall {
         if (c) { const card = getCard(c.cardId); if (card) preloadImage(card).catch(() => {}); }
         this.flashTeamMsg(`已上阵到位置 ${this.teamSelSlot + 1}`);
         this.teamSelSlot = -1;
+        this.saveTeam();
         return;
       }
       // 默认：打开详情
@@ -1541,6 +1593,7 @@ class SummonHall {
       const r = EnhanceCard(this.db, target, [...this.enhancePicks]);
       if (r.ok) { this.flashTeamMsg(`强化成功！Lv.${r.lvBefore} → Lv.${r.lvAfter}（金币-${r.goldSpent}）`); }
       else this.flashTeamMsg(r.reason || '强化失败');
+      saveDB(this.db);
       this.enhancePicks.clear(); this.enhanceMode = false;
       this.detailInst = target; this.detailInstKeep = null; // 回到主卡详情
       return;
@@ -1552,6 +1605,7 @@ class SummonHall {
       const r = EvolveCard(this.db, target, this.evolvePick);
       if (r.ok) this.flashTeamMsg(`进化成功！继承 ATK+${r.inheritedAtk} HP+${r.inheritedHp}，进阶 ${r.newEvoStage}`);
       else this.flashTeamMsg(r.reason || '进化失败');
+      saveDB(this.db);
       this.evolvePick = null; this.evolveMode = false;
       this.detailInst = target; this.detailInstKeep = null;
       return;
@@ -1567,11 +1621,13 @@ class SummonHall {
       this.teamInstIds = this.teamInstIds.map(t => t === this.detailInst ? (inv.cards[0]?.instId ?? t) : t);
       this.flashTeamMsg(`已出售，金币 +${gain}`);
       this.detailInst = null;
+      this.saveTeam();
+      saveDB(this.db);
       return;
     }
     if (id === 'lockCard') {
-      const o = inv.cards.find(c => c.instId === this.detailInst);
-      if (o) { o.locked = !o.locked; this.flashTeamMsg(o.locked ? '已锁定' : '已解锁'); }
+      const o = this.db.inventory.cards.find(c => c.instId === this.detailInst);
+      if (o) { o.locked = !o.locked; this.flashTeamMsg(o.locked ? '已锁定' : '已解锁'); saveDB(this.db); }
       return;
     }
   }
@@ -1932,7 +1988,6 @@ class SummonHall {
     this.buttons.push({ x: W - 180, y: 10, w: 160, h: 36, id: 'exchange' });
     this.text(`💎 ${this.jewels.toLocaleString()}`, 300, 29, 14, '#ff9ff0', 'left', 'bold');
     this.text(`◆ ${this.fp.toLocaleString()}`, 470, 29, 13, '#8fe8a8', 'left', 'bold');
-    this.button(640, 14, 92, 28, '＋ 补充', 'add');
 
     // ── 左侧：当前卡池大立绘 banner ──
     const bx = 20, by = 70, bw = 760, bh = 560;
