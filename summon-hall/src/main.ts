@@ -5,16 +5,16 @@
 import { Background } from './background';
 import { drawCard, preloadImage, getImage, RARITY_COLOR } from './card';
 import { BANNERS, Gacha, rateTable, bannerShowcase, type Banner, type Pull } from './gacha';
-import { cardsByRarity, getCard, type Card } from './data';
+import { cardsByRarity, getCard, type Card, type Rarity } from './data';
 import { Ease, Tweener } from './ease';
 import { glassButton, metalDialog, engravedText, roundRectPath } from './ui';
-import { seedDB, type DB, type Stage, type WitchRaidBoss } from './db';
+import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchRaidBoss } from './db';
 import {
-  ExploreStage, EvolveCard, EnhanceCard, runBattleTurn, raidAttack,
-  claimRaidReward, claimAllRaidRewards,
-  ownedToCombatant, leaderAtkBonus, type Combatant, type ExploreResult,
+  ExploreStage, EvolveCard, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
+  claimRaidReward, claimAllRaidRewards, tickBattlePt,
+  ownedToCombatant, leaderAtkBonus, type Combatant, type ExploreResult, type SkillFx,
 } from './logic';
-import { eventMapBg, battleBg, loadAssetImage, drawCover } from './assets';
+import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION } from './assets';
 import { audio } from './audio';
 
 const W = 1280;
@@ -39,7 +39,28 @@ interface Button { x: number; y: number; w: number; h: number; id: string; prima
 
 interface BurstParticle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; r: number; }
 
+/** 技能特效实例（从施法卡位置飞向目标） */
+interface BattleFx {
+  kind: SkillFx;         // 特效类型
+  sx: number; sy: number; // 施法者位置（卡片中心）
+  tx: number; ty: number; // 目标位置
+  t: number;              // 0..1 播放进度
+  dur: number;            // 持续秒数
+  delay: number;          // 延迟开始（多卡齐发错开）
+  color: string;
+  hitT: number;           // 命中时刻（t 值）
+  boom: BurstParticle[];  // 命中爆炸粒子（命中瞬间生成）
+  player: boolean;        // 玩家方（飞向 boss）还是敌方（飞向玩家）
+}
+
 const RANK: Record<string, number> = { N: 1, R: 2, SR: 3, UR: 4, LR: 5, X: 6, VR: 7 };
+
+/** 10 种技能特效的主题色 */
+const FX_COLOR: Record<SkillFx, string> = {
+  fire: '#ff7a3c', ice: '#6fd8ff', thunder: '#ffe14d', holy: '#fff3b0',
+  shadow: '#c05ce8', meteor: '#ff5c3c', wind: '#7cf0c0', star: '#ff9ce8',
+  heal: '#7cf08c', arcane: '#9cb8ff',
+};
 
 /** 顶层页面 */
 type Page = 'summon' | 'event' | 'map' | 'sortie' | 'battle' | 'team' | 'records';
@@ -63,6 +84,7 @@ interface BattleState {
   banner: string;                  // '魔女出现！' / 'VICTORY' 横幅
   bannerT: number;
   lastActions: { actor: string; dmg: number; skill: boolean; crit: boolean; em: number }[];
+  fx: BattleFx[];                  // 技能特效队列
 }
 
 class SummonHall {
@@ -114,6 +136,9 @@ class SummonHall {
   private teamMsgT = 0;
   /** 充值（调试）弹窗 */
   private showRecharge = false;
+  /** 充值按钮上次点击时间（双击才打开调试面板） */
+  private lastRechargeTap = 0;
+  private rechargeToastT = 0;
   /** 活动地图背景轮换下标 */
   private eventMapIndex = 0;
   /** 战斗背景下标（按关卡推进） */
@@ -144,10 +169,14 @@ class SummonHall {
       this.recordsScroll = Math.max(0, this.recordsScroll + e.deltaY * 0.6);
     }, { passive: false });
 
-    this.activeStage = this.db.stages[0];
-    this.displayProg = this.activeStage.progress;
     this.bg.resize(W, H);
     this.buildMeta();
+    const saved = loadDB();
+    if (saved) this.db = saved;
+    this.activeStage = this.db.stages[0];
+    this.displayProg = this.activeStage.progress;
+    this.jewels = this.db.user.gems;
+    this.fp = this.db.user.friendPt;
     this.buildTeam();
     this.syncBgm();
 
@@ -196,19 +225,38 @@ class SummonHall {
         break;
       default: break;
     }
+    saveDB(this.db);
   }
 
-  /** 队伍编成：取库存前 5 张高稀有卡作为出击队 */
+  /** 队伍编成：无存档时取库存前 5 张高稀有卡作为出击队；有存档时恢复队伍 */
   private buildTeam(): void {
     const inv = this.db.inventory.cards;
-    const rank = (id: string) => RANK[getCard(id)?.rarity ?? 'N'] ?? 0;
-    const sorted = [...inv].sort((a, b) => rank(b.cardId) - rank(a.cardId) || b.lv - a.lv);
-    this.teamInstIds = sorted.slice(0, 5).map(c => c.instId);
+    const savedTeam = this.loadTeam();
+    if (savedTeam && savedTeam.every(id => inv.some(c => c.instId === id))) {
+      this.teamInstIds = savedTeam;
+    } else {
+      const rank = (id: string) => RANK[getCard(id)?.rarity ?? 'N'] ?? 0;
+      const sorted = [...inv].sort((a, b) => rank(b.cardId) - rank(a.cardId) || b.lv - a.lv);
+      this.teamInstIds = sorted.slice(0, 5).map(c => c.instId);
+    }
     for (const id of this.teamInstIds) {
       const o = inv.find(c => c.instId === id);
       const card = o && getCard(o.cardId);
       if (card) preloadImage(card).catch(() => {});
     }
+  }
+
+  private saveTeam(): void {
+    try { localStorage.setItem('summonHall_team', JSON.stringify(this.teamInstIds)); } catch {}
+  }
+
+  private loadTeam(): string[] | null {
+    try {
+      const raw = localStorage.getItem('summonHall_team');
+      if (!raw) return null;
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === 'string') : null;
+    } catch { return null; }
   }
 
   /** 队伍 → Combatant[]（接 BattleEngine） */
@@ -245,7 +293,7 @@ class SummonHall {
         portrait,
         tagline: taglines[b.id] ?? b.sub,
         endAt: Date.now() + (13 - i * 2) * 86400000 + 12 * 3600000,
-        tickets: i === 0 ? 1 : 0,
+        tickets: this.db.user.tickets[b.id] ?? 0,
       });
     });
   }
@@ -300,7 +348,17 @@ class SummonHall {
   private activate(id: string): void {
     // 全局 HUD（任意页优先）
     if (id === 'toggleMusic') { audio.toggleMute(); return; }
-    if (id === 'openRecharge') { this.showRecharge = true; return; }
+    if (id === 'openRecharge') {
+      const now = performance.now();
+      if (now - this.lastRechargeTap < 400) {
+        this.showRecharge = true;
+        this.rechargeToastT = 0;
+      } else {
+        this.lastRechargeTap = now;
+        this.rechargeToastT = 1.4;
+      }
+      return;
+    }
     if (id === 'closeRecharge') { this.showRecharge = false; return; }
     if (id.startsWith('recharge:')) {
       if (id === 'recharge:noop') return;
@@ -327,6 +385,7 @@ class SummonHall {
       if (id === 'claimAll') {
         const r = claimAllRaidRewards(this.db);
         this.jewels = this.db.user.gems;
+        saveDB(this.db);
         if (r.count > 0) {
           this.recordsToast = `一次性领取：金币+${r.gold} 宝石+${r.gems} 券+${r.tickets}`;
           // 同步 fate 券到大厅 meta
@@ -342,6 +401,7 @@ class SummonHall {
         const raidId = id.slice(6);
         const r = claimRaidReward(this.db, raidId);
         this.jewels = this.db.user.gems;
+        saveDB(this.db);
         if (r.ok) {
           this.recordsToast = `获得金币${r.gold}、宝石${r.gems}、召唤券${r.tickets}`;
           const m = this.meta.get('fate');
@@ -387,6 +447,25 @@ class SummonHall {
       if (id === 'bAuto') { b.auto = !b.auto; b.autoTimer = 0; return; }
       if (id === 'victoryOk') {
         const wasRaid = !!b.raid?.defeated;
+        if (wasRaid && b.raid) {
+          // 讨伐成功奖励（击杀当场发放，战绩页还能再领一次？不——改为只在此发放并标记已领）
+          if (!b.raid.claimed) {
+            const gold = b.raid.archWitch ? 50000 : 12000;
+            const gems = b.raid.archWitch ? 500 : 300;
+            const tix = b.raid.archWitch ? 3 : 1;
+            this.db.user.gold += gold;
+            this.db.user.gems += gems;
+            this.db.user.tickets.fate = (this.db.user.tickets.fate || 0) + tix;
+            b.raid.claimed = true;
+            this.flashTeamMsg(`讨伐奖励：金币+${gold.toLocaleString()} 宝石+${gems} 券+${tix}`);
+          }
+        } else if (!b.raid && b.victory) {
+          // 普通遭遇战胜利：金币奖励
+          const gold = Math.floor(500 + Math.random() * 1500);
+          this.db.user.gold += gold;
+          this.flashTeamMsg(`战斗胜利！金币+${gold.toLocaleString()}`);
+        }
+        saveDB(this.db);
         this.page = wasRaid ? 'records' : 'sortie';
         this.battle = null;
         this.activeStage.progress = Math.min(1, this.activeStage.progress + 0.05);
@@ -449,11 +528,6 @@ class SummonHall {
       return;
     }
     if (id === 'exchange') { this.jewels += 3000; } // 占位：券交换
-    if (id === 'add') {
-      this.jewels += 50000; this.fp += 5000;
-      const m = this.meta.get(this.banner.id);
-      if (m) m.tickets = 99; // 补充按钮同时把券拉满
-    }
   }
 
   // ============ 抽卡流程 ============
@@ -462,13 +536,20 @@ class SummonHall {
     if (useTicket) {
       const m = this.meta.get(this.banner.id);
       if (!m) { this.phase = { kind: 'hall' }; return; }
-      if (m.tickets <= 0) m.tickets = 99; // 券无限供应
-      m.tickets--;
+      m.tickets = Math.max(0, m.tickets - 1);
+      this.db.user.tickets[this.banner.id] = m.tickets;
     } else {
       const cost = ten ? this.banner.costTen : this.banner.costSingle;
       const isFriend = this.banner.id === 'friend';
-      if (isFriend) { if (this.fp < cost) this.fp += cost * 2; this.fp -= cost; }
-      else { if (this.jewels < cost) this.jewels += cost * 2; this.jewels -= cost; }
+      if (isFriend) {
+        if (this.fp < cost) this.fp += cost * 2;
+        this.fp -= cost;
+        this.db.user.friendPt = this.fp;
+      } else {
+        if (this.jewels < cost) this.jewels += cost * 2;
+        this.jewels -= cost;
+        this.db.user.gems = this.jewels;
+      }
     }
 
     let pulls = ten ? this.gacha.pullTen(this.banner) : [this.gacha.pullOne(this.banner)];
@@ -478,6 +559,7 @@ class SummonHall {
       pulls.forEach(p => preloadImage(p.card).catch(() => {}));
     }
     this.cardCount = Math.min(this.cardCap, this.cardCount + pulls.length);
+    saveDB(this.db);
 
     this.phase = { kind: 'summon', pulls, t: 0 };
     this.bg.setMode('rare');
@@ -603,7 +685,10 @@ class SummonHall {
       b.bannerT += dt;
       for (const d of b.dmgFloat) d.t += dt;
       b.dmgFloat = b.dmgFloat.filter(d => d.t < 1);
+      this.updateFx(dt);   // 技能特效推进
       if (b.victory) b.victoryT += dt;
+      // AP 随时间恢复（讨伐体力）
+      tickBattlePt(this.db);
       // Auto 自动回合
       if (b.auto && !b.victory && !b.defeated && b.skillPrompt === null) {
         b.autoTimer += dt;
@@ -614,6 +699,7 @@ class SummonHall {
     if (this.exploreMsg) this.exploreMsgT += dt;
     if (this.teamMsg) this.teamMsgT += dt;
     if (this.recordsToast) this.recordsToastT += dt;
+    if (this.rechargeToastT > 0) this.rechargeToastT -= dt;
 
     // 进军走路弹跳
     if (this.marchAnim) {
@@ -700,15 +786,15 @@ class SummonHall {
         instId: raid.raidId, card: bossCard, lv: raid.level,
         atk: raid.attack, hp: raid.hp, hpMax: raid.hpMax, def: 500,
         speed: 120, element: 'dark', skillName: '魔女之咆哮',
-        procChance: 0.5, skillMult: 3, isLeader: false,
+        procChance: 0.5, skillMult: 3, skillFx: 'shadow', isLeader: false,
       }];
     } else {
       const boss = cardsByRarity('LR')[1] ?? cardsByRarity('UR')[0];
       preloadImage(boss).catch(() => {});
       enemies = [{
-        instId: 'boss', card: boss, lv: 50, atk: 4000, hp: 500000, hpMax: 500000,
+        instId: 'boss', card: boss, lv: 50, atk: 4000, hp: 80000, hpMax: 80000,
         def: 800, speed: 100, element: 'dark', skillName: '暗之冲击',
-        procChance: 0.4, skillMult: 2.5, isLeader: false,
+        procChance: 0.4, skillMult: 2.5, skillFx: 'arcane', isLeader: false,
       }];
     }
     this.battle = {
@@ -716,7 +802,7 @@ class SummonHall {
       seed: (Math.random() * 1e9) | 0, skillPrompt: null,
       dmgFloat: [], victory: false, victoryT: 0, defeated: false,
       banner: raid ? (raid.archWitch ? '超·幻想魔女降临！' : '魔女出现！') : '战斗开始',
-      bannerT: 0, lastActions: [],
+      bannerT: 0, lastActions: [], fx: [],
     };
     this.syncBgm();
   }
@@ -731,9 +817,28 @@ class SummonHall {
       // 讨伐战：用 raidAttack（消耗战斗体力）
       const r = raidAttack(this.db, b.raid, b.team, b.seed++);
       b.enemies[0].hp = b.raid.hp;
+      saveDB(this.db);
+      if (r.outOfAp) {
+        // 战斗体力耗尽：停止自动，提示等待恢复
+        b.auto = false;
+        b.banner = '战斗体力耗尽！等待恢复或使用补给';
+        b.bannerT = 0;
+        return;
+      }
       if (r.dmg > 0) {
         b.dmgFloat.push({ x: W / 2, y: 200, v: String(r.dmg), t: 0, color: '#ffe14d' });
         this.burst('#c05ce8', 25); this.shake = 0.35;
+      }
+      // 技能特效：每张触发技能的卡向 BOSS 施放
+      for (let i = 0; i < r.skills.length; i++) {
+        const s = r.skills[i];
+        const ci = b.team.findIndex(c => c.instId === s.actorInstId);
+        const sx = ci >= 0 ? this.teamSlotX(ci) : W / 2;
+        this.spawnFx({
+          kind: s.skillFx, sx, sy: H - 160, tx: W / 2, ty: 130,
+          t: 0, dur: 0.7 + Math.random() * 0.25, delay: i * 0.09,
+          color: FX_COLOR[s.skillFx], hitT: 0.72, boom: [], player: true,
+        });
       }
       if (r.defeated) {
         b.victory = true; b.victoryT = 0;
@@ -750,15 +855,33 @@ class SummonHall {
       actor: a.actorName, dmg: a.damage, skill: a.skillUsed, crit: a.crit, em: a.elementMult,
     }));
     // 伤害飘字：玩家对敌 → 顶部；敌对我 → 底部
+    let fxDelay = 0;
     for (const a of res.actions) {
       const isPlayerAtk = b.team.some(c => c.instId === a.actorInstId);
       if (isPlayerAtk) {
         b.dmgFloat.push({ x: W / 2 + (Math.random() - 0.5) * 60, y: 200, v: String(a.damage), t: 0, color: a.crit ? '#ff5c5c' : '#ffe14d' });
+        // 玩家技能特效：从施法卡 → BOSS
+        if (a.skillFx) {
+          const ci = b.team.findIndex(c => c.instId === a.actorInstId);
+          const sx = ci >= 0 ? this.teamSlotX(ci) : W / 2;
+          this.spawnFx({
+            kind: a.skillFx, sx, sy: H - 160, tx: W / 2, ty: 130,
+            t: 0, dur: 0.75, delay: fxDelay, color: FX_COLOR[a.skillFx], hitT: 0.7, boom: [], player: true,
+          });
+        }
       } else {
         const slotIdx = a.targetIndex;
         const x = this.teamSlotX(slotIdx);
         b.dmgFloat.push({ x, y: H - 320, v: String(a.damage), t: 0, color: '#ff8c8c' });
+        // 敌方技能特效：从 BOSS → 玩家卡
+        if (a.skillFx) {
+          this.spawnFx({
+            kind: a.skillFx, sx: W / 2, sy: 130, tx: x, ty: H - 160,
+            t: 0, dur: 0.75, delay: fxDelay, color: FX_COLOR[a.skillFx], hitT: 0.7, boom: [], player: false,
+          });
+        }
       }
+      fxDelay += 0.12;
     }
     this.shake = 0.3;
     if (res.finished) {
@@ -779,11 +902,53 @@ class SummonHall {
     return (W - total) / 2 + i * (cw + gx) + cw / 2;
   }
 
+  /** 生成一个技能特效 */
+  private spawnFx(fx: BattleFx): void {
+    if (!this.battle) return;
+    this.battle.fx.push(fx);
+  }
+
+  /** 推进技能特效：播放进度 + 命中瞬间生成爆炸粒子 */
+  private updateFx(dt: number): void {
+    const b = this.battle;
+    if (!b) return;
+    for (const fx of b.fx) {
+      fx.t += dt / fx.dur;
+      // 命中时刻：生成爆炸粒子
+      if (fx.t >= fx.hitT && fx.boom.length === 0) {
+        const hx = fx.tx, hy = fx.ty;
+        const n = fx.kind === 'meteor' || fx.kind === 'star' ? 26 : 16;
+        for (let i = 0; i < n; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const sp = 90 + Math.random() * 240;
+          fx.boom.push({
+            x: hx, y: hy,
+            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
+            life: 0.45 + Math.random() * 0.35, max: 0.8,
+            color: Math.random() < 0.3 ? '#ffffff' : fx.color,
+            r: 2.5 + Math.random() * 4,
+          });
+        }
+        this.shake = Math.max(this.shake, fx.kind === 'meteor' ? 0.6 : 0.35);
+      }
+      // 粒子推进
+      for (const p of fx.boom) {
+        p.life -= dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 300 * dt;
+      }
+      fx.boom = fx.boom.filter(p => p.life > 0);
+    }
+    b.fx = b.fx.filter(fx => fx.t < 1 + fx.delay);
+  }
+
   private giveVictoryExp(): void {
     for (const instId of this.teamInstIds) {
       const o = this.db.inventory.cards.find(c => c.instId === instId);
       if (o) o.exp += 30;
     }
+    saveDB(this.db);
   }
 
   /** 探索前进 */
@@ -809,11 +974,35 @@ class SummonHall {
     };
   }
 
+  /** 发一张卡进库存（探索奖励等用） */
+  private addCardToInventory(rarity: Rarity): void {
+    const c = cardsByRarity(rarity)[0];
+    if (!c) return;
+    this.db.inventory.cards.push(makeOwnedCard(c.id, 1));
+    this.cardCount = Math.min(this.cardCap, this.cardCount + 1);
+  }
+
   private doExploreOnce(): ExploreResult {
     const r = ExploreStage(this.db, this.activeStage, (Math.random() * 1e9) | 0);
+    // 通关奖励（首通 / 满 100%）
+    if (r.completed) {
+      const s = this.activeStage;
+      if (!s.firstClear) {
+        s.firstClear = true;
+        r.firstClear = true;
+        this.db.user.gems += 100;
+        this.db.user.tickets['fate'] = (this.db.user.tickets['fate'] || 0) + 3;
+        r.firstClearReward = '首通奖励：宝石×100 + 召唤券×3';
+      } else if (!s.rewardClaimed100) {
+        s.rewardClaimed100 = true;
+        r.firstClearReward = '100% 探索奖励：限定 R 卡';
+        this.addCardToInventory('R' as Rarity);
+      }
+    }
     this.exploreMsg = r;
     this.exploreMsgT = 0;
     this.jewels = this.db.user.gems;
+    saveDB(this.db);
     if (r.event === 'witch' && r.witchRaidId) {
       const raid = this.db.raids.find(x => x.raidId === r.witchRaidId)!;
       const delay = this.marchAnim ? 280 : 700;
@@ -972,11 +1161,17 @@ class SummonHall {
     glassButton(ctx, x1, y, bw, bh, muted ? '🔇' : '🔊', {
       kind: muted ? 'gray' : 'blue', hover: this.hover === 'toggleMusic', fontSize: 18,
     });
-    glassButton(ctx, x1 + bw + gap, y, bw, bh, '＋', {
-      kind: 'green', hover: this.hover === 'openRecharge', fontSize: 22,
+    glassButton(ctx, x1 + bw + gap, y, bw, bh, '＋＋', {
+      kind: 'green', hover: this.hover === 'openRecharge', fontSize: 20,
     });
     this.buttons.push({ x: x1, y, w: bw, h: bh, id: 'toggleMusic' });
     this.buttons.push({ x: x1 + bw + gap, y, w: bw, h: bh, id: 'openRecharge' });
+    if (this.rechargeToastT > 0) {
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#8ab';
+      ctx.fillText('双击「＋＋」打开调试补给', x1 + bw + gap + bw, y + bh + 18);
+    }
   }
 
   private renderRecharge(): void {
@@ -1423,7 +1618,7 @@ class SummonHall {
     let msg = '', color = '#cfc4a8';
     if (!r.ok) { msg = r.reason || '无法前进'; color = '#ff8c8c'; }
     else if (r.firstClear && r.firstClearReward) { msg = r.firstClearReward; color = '#ffe14d'; }
-    else if (r.event === 'loot') { msg = `拾取：金币+${r.lootGold}${r.lootGems ? ` 宝石+${r.lootGems}` : ''}${r.lootCardRarity ? ` ${r.lootCardRarity}卡` : ''}`; color = '#8fe8a8'; }
+    else if (r.event === 'loot') { msg = `拾取：金币+${r.lootGold}${r.lootGems ? ` 宝石+${r.lootGems}` : ''}${r.lootCardRarity ? ` ${r.lootCardRarity}卡` : ''}${r.lootPotion ? ` 强化药水×${r.lootPotion}` : ''}`; color = '#8fe8a8'; }
     else if (r.event === 'mob') { msg = `遭遇小怪！快速胜利 金币+${r.lootGold} 狗粮+1`; color = '#ffd24d'; }
     else if (r.event === 'witch') {
       const raid = r.witchRaidId ? this.db.raids.find(x => x.raidId === r.witchRaidId) : null;
@@ -1526,6 +1721,7 @@ class SummonHall {
         if (c) { const card = getCard(c.cardId); if (card) preloadImage(card).catch(() => {}); }
         this.flashTeamMsg(`已上阵到位置 ${this.teamSelSlot + 1}`);
         this.teamSelSlot = -1;
+        this.saveTeam();
         return;
       }
       // 默认：打开详情
@@ -1541,8 +1737,18 @@ class SummonHall {
       const r = EnhanceCard(this.db, target, [...this.enhancePicks]);
       if (r.ok) { this.flashTeamMsg(`强化成功！Lv.${r.lvBefore} → Lv.${r.lvAfter}（金币-${r.goldSpent}）`); }
       else this.flashTeamMsg(r.reason || '强化失败');
+      saveDB(this.db);
       this.enhancePicks.clear(); this.enhanceMode = false;
       this.detailInst = target; this.detailInstKeep = null; // 回到主卡详情
+      return;
+    }
+    if (id === 'enhancePotion') {
+      const target = this.detailInstKeep;
+      if (!target) { this.flashTeamMsg('请先选择目标卡'); return; }
+      const r = UseEnhancePotion(this.db, target);
+      if (r.ok) { this.flashTeamMsg(`药水强化成功！Lv.${r.lvBefore} → Lv.${r.lvAfter}（金币-${r.goldSpent}）`); }
+      else this.flashTeamMsg(r.reason || '使用失败');
+      saveDB(this.db);
       return;
     }
     if (id === 'evolveStart') { this.evolveMode = true; this.enhanceMode = false; this.evolvePick = null; this.detailInstKeep = this.detailInst; this.detailInst = null; return; }
@@ -1552,6 +1758,7 @@ class SummonHall {
       const r = EvolveCard(this.db, target, this.evolvePick);
       if (r.ok) this.flashTeamMsg(`进化成功！继承 ATK+${r.inheritedAtk} HP+${r.inheritedHp}，进阶 ${r.newEvoStage}`);
       else this.flashTeamMsg(r.reason || '进化失败');
+      saveDB(this.db);
       this.evolvePick = null; this.evolveMode = false;
       this.detailInst = target; this.detailInstKeep = null;
       return;
@@ -1567,11 +1774,13 @@ class SummonHall {
       this.teamInstIds = this.teamInstIds.map(t => t === this.detailInst ? (inv.cards[0]?.instId ?? t) : t);
       this.flashTeamMsg(`已出售，金币 +${gain}`);
       this.detailInst = null;
+      this.saveTeam();
+      saveDB(this.db);
       return;
     }
     if (id === 'lockCard') {
-      const o = inv.cards.find(c => c.instId === this.detailInst);
-      if (o) { o.locked = !o.locked; this.flashTeamMsg(o.locked ? '已锁定' : '已解锁'); }
+      const o = this.db.inventory.cards.find(c => c.instId === this.detailInst);
+      if (o) { o.locked = !o.locked; this.flashTeamMsg(o.locked ? '已锁定' : '已解锁'); saveDB(this.db); }
       return;
     }
   }
@@ -1685,9 +1894,17 @@ class SummonHall {
 
     // 操作模式提示 + 确认按钮
     if (this.enhanceMode) {
+      const potions = this.db.inventory.materials.upgradePotion || 0;
       this.text(`强化模式：点选狗粮卡（绿框）· 已选 ${this.enhancePicks.size} 张`, 250, 348, 13, '#6fce9a', 'left', 'bold');
       glassButton(ctx, W / 2 - 90, 340, 180, 36, `确认强化(${this.enhancePicks.size})`, { kind: 'green', hover: this.hover === 'enhanceGo', fontSize: 14 });
       this.buttons.push({ x: W / 2 - 90, y: 340, w: 180, h: 36, id: 'enhanceGo' });
+      // 药水快捷强化（强化药水图标 + 数量）
+      const picon = loadAssetImage(ENHANCE_POTION.icon);
+      if (picon.complete && picon.naturalWidth) ctx.drawImage(picon, W / 2 - 250, 346, 24, 24);
+      else this.text('🧪', W / 2 - 242, 358, 14, '#b8f0d0', 'center');
+      this.text(`×${potions}`, W / 2 - 222, 358, 13, '#6fce9a', 'left', 'bold');
+      glassButton(ctx, W / 2 + 250, 340, 120, 36, potions > 0 ? '用药水+1' : '药水不足', { kind: potions > 0 ? 'green' : 'gray', hover: this.hover === 'enhancePotion' && potions > 0, fontSize: 14 });
+      this.buttons.push({ x: W / 2 + 250, y: 340, w: 120, h: 36, id: 'enhancePotion' });
     }
     if (this.evolveMode) {
       this.text(`进化模式：点选一张同名卡作为素材${this.evolvePick ? '（已选）' : ''}`, 250, 348, 13, '#ff5ce8', 'left', 'bold');
@@ -1732,6 +1949,12 @@ class SummonHall {
     if (o.atkBonus > 0 || o.hpBonus > 0) {
       this.text(`进化继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30;
     }
+    // 强化药水持有量
+    const potions = this.db.inventory.materials.upgradePotion || 0;
+    const picon = loadAssetImage(ENHANCE_POTION.icon);
+    if (picon.complete && picon.naturalWidth) ctx.drawImage(picon, ix, ry + 2, 20, 20);
+    else this.text('🧪', ix + 10, ry + 12, 12, '#b8f0d0', 'center');
+    this.text(`强化药水 ×${potions}（探索掉落，可一键强化）`, ix + 26, ry + 15, 12, '#9fdcb8', 'left', 'bold'); ry += 26;
     if (card.skillDesc) this.wrapText(card.skillDesc, ix, ry, 360, 20, 12, '#b8c8d8');
 
     // 操作按钮
@@ -1772,7 +1995,8 @@ class SummonHall {
     if (b.raid) {
       this.pill(W / 2 + 130, 120, 130, 30, '#0d0a16', '#ff5ce8');
       this.text(`Lv.${b.raid.level} ${b.raid.archWitch ? '超魔女' : '魔女'}`, W / 2 + 195, 135, 12, '#ffb3f0', 'center', 'bold');
-      this.text(`战斗体力 ${this.db.user.battlePt}/${this.db.user.battlePtMax}`, 70, 30, 13, '#8fe8ff', 'center', 'bold');
+      const { nextInSec } = tickBattlePt(this.db);
+      this.text(`战斗体力 ${this.db.user.battlePt}/${this.db.user.battlePtMax}${nextInSec > 0 ? `（${Math.ceil(nextInSec / 60)}分后+1）` : ''}`, 70, 30, 13, '#8fe8ff', 'center', 'bold');
     }
     this.text('确认状态', W - 60, 30, 13, '#cfc4a8', 'right');
 
@@ -1855,10 +2079,215 @@ class SummonHall {
     glassButton(ctx, W - 150, H - 70, 130, 50, b.auto ? '自动中' : '自动', { kind: b.auto ? 'green' : 'gray', hover: this.hover === 'bAuto', fontSize: 18 });
     this.buttons.push({ x: W - 150, y: H - 70, w: 130, h: 50, id: 'bAuto' });
 
+    // 技能特效（最上层，覆盖卡片）
+    this.renderFx();
+
     // 技能确认弹窗
     if (b.skillPrompt !== null) this.renderSkillPrompt(b.skillPrompt);
     // 胜利结算
     if (b.victory) this.renderVictory();
+  }
+
+  /**
+   * 绘制技能特效：10 种魔法弹道 + 命中爆炸
+   * - 弹道阶段：魔法弹/光束/陨石从施法卡飞向目标
+   * - 命中阶段：爆炸粒子 + 冲击波光环
+   */
+  private renderFx(): void {
+    const ctx = this.ctx;
+    const b = this.battle;
+    if (!b) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter'; // 叠加发光
+
+    for (const fx of b.fx) {
+      const p = Math.max(0, Math.min(1, fx.t - fx.delay)); // 已播放进度（扣除延迟）
+      if (p <= 0) continue;
+      const k = fx.kind;
+      const x = fx.sx + (fx.tx - fx.sx) * Math.min(1, p / fx.hitT);
+      const y = fx.sy + (fx.ty - fx.sy) * Math.min(1, p / fx.hitT);
+
+      // ── 弹道表现 ──
+      if (k === 'fire') {
+        // 火球：橙红核心 + 黄色拖尾
+        const trail = Math.max(0, p / fx.hitT);
+        for (let i = 1; i <= 5; i++) {
+          const tt = trail - i * 0.045;
+          if (tt <= 0) break;
+          const tx = fx.sx + (fx.tx - fx.sx) * tt;
+          const ty = fx.sy + (fx.ty - fx.sy) * tt;
+          ctx.globalAlpha = 0.5 * (1 - i / 6);
+          ctx.fillStyle = i % 2 ? '#ffb84d' : '#ff5c3c';
+          ctx.beginPath(); ctx.arc(tx, ty, 14 - i * 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#fff3b0';
+        ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
+      } else if (k === 'ice') {
+        // 冰晶：旋转菱形冰棱 + 蓝白拖尾
+        for (let i = 1; i <= 4; i++) {
+          const tt = Math.max(0, p / fx.hitT) - i * 0.05;
+          if (tt <= 0) break;
+          const tx = fx.sx + (fx.tx - fx.sx) * tt;
+          const ty = fx.sy + (fx.ty - fx.sy) * tt;
+          ctx.globalAlpha = 0.6 * (1 - i / 5);
+          ctx.fillStyle = '#bff0ff';
+          ctx.beginPath(); ctx.arc(tx, ty, 8 - i, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.save();
+        ctx.translate(x, y); ctx.rotate(b.t * 8);
+        ctx.fillStyle = '#e8fbff'; ctx.strokeStyle = '#6fd8ff'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -11); ctx.lineTo(8, 0); ctx.lineTo(0, 11); ctx.lineTo(-8, 0);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      } else if (k === 'thunder') {
+        // 雷霆：瞬间闪电劈落（弹道阶段直接画折线到目标）
+        ctx.strokeStyle = '#fff7c0'; ctx.lineWidth = 3; ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 14;
+        ctx.globalAlpha = Math.max(0, 1 - (p / fx.hitT) * 1.6);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        let cx = fx.sx, cy = fx.sy;
+        const segs = 7;
+        for (let s = 1; s <= segs; s++) {
+          const tt = s / segs;
+          const bx = fx.sx + (fx.tx - fx.sx) * tt + (Math.random() - 0.5) * 34;
+          const by = fx.sy + (fx.ty - fx.sy) * tt + (Math.random() - 0.5) * 26;
+          ctx.lineTo(cx + (bx - cx) * 0.7, cy + (by - cy) * 0.7);
+          cx = bx; cy = by;
+        }
+        ctx.lineTo(fx.tx, fx.ty);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      } else if (k === 'holy') {
+        // 圣光：金色光柱（无弹道，目标处垂直光柱）
+        const s = Math.min(1, p / fx.hitT);
+        const grad = ctx.createLinearGradient(fx.tx, fx.ty - 160, fx.tx, fx.ty + 10);
+        grad.addColorStop(0, 'rgba(255,243,176,0)');
+        grad.addColorStop(0.5, 'rgba(255,243,176,0.55)');
+        grad.addColorStop(1, 'rgba(255,255,255,0.95)');
+        ctx.globalAlpha = s;
+        ctx.fillStyle = grad;
+        ctx.fillRect(fx.tx - 26, fx.ty - 160, 52, 175);
+        ctx.fillStyle = '#fff8d0';
+        ctx.beginPath(); ctx.arc(fx.tx, fx.ty - 4, 30 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (k === 'shadow') {
+        // 暗影：紫黑球体 + 深色尾迹
+        const trail = Math.max(0, p / fx.hitT);
+        for (let i = 1; i <= 5; i++) {
+          const tt = trail - i * 0.045;
+          if (tt <= 0) break;
+          const tx = fx.sx + (fx.tx - fx.sx) * tt;
+          const ty = fx.sy + (fx.ty - fx.sy) * tt;
+          ctx.globalAlpha = 0.5 * (1 - i / 6);
+          ctx.fillStyle = '#6a2a8a';
+          ctx.beginPath(); ctx.arc(tx, ty, 13 - i * 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#c05ce8'; ctx.shadowColor = '#8a2ab0'; ctx.shadowBlur = 18;
+        ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      } else if (k === 'meteor') {
+        // 陨石：弧线下坠大陨石 + 火焰拖尾
+        const tt = Math.min(1, p / fx.hitT);
+        const mx = fx.sx + (fx.tx - fx.sx) * tt;
+        const my = fx.sy + (fx.ty - fx.sy) * tt + Math.sin(tt * Math.PI) * -120;
+        ctx.save();
+        ctx.translate(mx, my); ctx.rotate(tt * 5);
+        const g = ctx.createRadialGradient(0, 0, 2, 0, 0, 18);
+        g.addColorStop(0, '#fff3b0'); g.addColorStop(0.5, '#ff7a3c'); g.addColorStop(1, '#7a2a14');
+        ctx.fillStyle = g; ctx.shadowColor = '#ff5c3c'; ctx.shadowBlur = 24;
+        ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+        // 拖尾
+        for (let i = 1; i <= 6; i++) {
+          const dt = tt - i * 0.05;
+          if (dt <= 0) break;
+          const dx = fx.sx + (fx.tx - fx.sx) * dt;
+          const dy = fx.sy + (fx.ty - fx.sy) * dt + Math.sin(dt * Math.PI) * -120;
+          ctx.globalAlpha = 0.5 * (1 - i / 7);
+          ctx.fillStyle = i % 2 ? '#ff9c3c' : '#ff5c3c';
+          ctx.beginPath(); ctx.arc(dx, dy, 12 - i * 1.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      } else if (k === 'wind') {
+        // 疾风：旋转青色旋风
+        ctx.save();
+        ctx.translate(x, y); ctx.rotate(b.t * 12);
+        ctx.strokeStyle = '#7cf0c0'; ctx.lineWidth = 3; ctx.shadowColor = '#3cf0a0'; ctx.shadowBlur = 12;
+        for (let i = 0; i < 3; i++) {
+          ctx.globalAlpha = 0.85 - i * 0.25;
+          ctx.beginPath();
+          ctx.arc(0, 0, 9 + i * 8, i * 2, i * 2 + Math.PI * 1.6);
+          ctx.stroke();
+        }
+        ctx.restore();
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      } else if (k === 'star') {
+        // 星辰：闪烁星形 + 彩色光晕
+        ctx.save();
+        ctx.translate(x, y);
+        const s = 10 + Math.sin(b.t * 14) * 3;
+        ctx.fillStyle = '#ff9ce8'; ctx.shadowColor = '#ff9ce8'; ctx.shadowBlur = 16;
+        ctx.beginPath();
+        for (let i = 0; i < 10; i++) {
+          const r = i % 2 ? s * 0.45 : s;
+          const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+          ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath(); ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      } else if (k === 'heal') {
+        // 生命：绿色上升光点（向目标汇聚）
+        const s = Math.min(1, p / fx.hitT);
+        ctx.globalAlpha = s;
+        ctx.fillStyle = '#a5f8c0'; ctx.shadowColor = '#7cf08c'; ctx.shadowBlur = 12;
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2 + b.t * 2;
+          const rr = 20 + Math.sin(b.t * 5 + i) * 6;
+          ctx.beginPath();
+          ctx.arc(fx.tx + Math.cos(a) * rr, fx.ty + Math.sin(a) * rr * 0.5, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+      } else {
+        // arcane 奥术：蓝紫魔法弹 + 螺旋环
+        ctx.fillStyle = '#9cb8ff'; ctx.shadowColor = '#6a8aff'; ctx.shadowBlur = 14;
+        ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#c8dcff'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, 15 + Math.sin(b.t * 10) * 3, 0, Math.PI * 2); ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      // ── 命中爆炸：粒子 + 冲击波 ──
+      if (p >= fx.hitT) {
+        const hp = (p - fx.hitT) / (1 - fx.hitT); // 命中后进度 0..1
+        // 冲击波光环
+        ctx.globalAlpha = Math.max(0, 1 - hp) * 0.9;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(fx.tx, fx.ty, 18 + hp * 90, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        // 爆炸粒子
+        for (const pt of fx.boom) {
+          const lp = Math.max(0, pt.life / pt.max);
+          ctx.globalAlpha = lp;
+          ctx.fillStyle = pt.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.r * lp, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+    ctx.restore();
   }
 
   private renderSkillPrompt(slot: number): void {
@@ -1932,7 +2361,6 @@ class SummonHall {
     this.buttons.push({ x: W - 180, y: 10, w: 160, h: 36, id: 'exchange' });
     this.text(`💎 ${this.jewels.toLocaleString()}`, 300, 29, 14, '#ff9ff0', 'left', 'bold');
     this.text(`◆ ${this.fp.toLocaleString()}`, 470, 29, 13, '#8fe8a8', 'left', 'bold');
-    this.button(640, 14, 92, 28, '＋ 补充', 'add');
 
     // ── 左侧：当前卡池大立绘 banner ──
     const bx = 20, by = 70, bw = 760, bh = 560;

@@ -46,6 +46,7 @@ export interface User {
   energyMax: number;
   battlePt: number;    // 战斗体力（讨伐魔女 AP）
   battlePtMax: number;
+  battlePtRecoverAt: number; // 上一点 AP 恢复完成的时刻（epoch ms）
   gold: number;
   gems: number;        // 氪金石
   friendPt: number;
@@ -138,13 +139,57 @@ export interface DB {
 let instCounter = 1;
 export function newInstId(): string { return `inst_${instCounter++}`; }
 
+// ─────────────────────────── 持久化（localStorage）───────────────────────────
+
+const LS_DB = 'summonHall_db_v1';
+const LS_INST = 'summonHall_instCounter';
+
+export function saveDB(db: DB): void {
+  try {
+    localStorage.setItem(LS_DB, JSON.stringify(db));
+    localStorage.setItem(LS_INST, String(instCounter));
+  } catch (e) {
+    console.error('saveDB failed', e);
+  }
+}
+
+/** 读取存档；无存档或损坏返回 null */
+export function loadDB(): DB | null {
+  try {
+    const raw = localStorage.getItem(LS_DB);
+    if (!raw) return null;
+    const db = JSON.parse(raw) as DB;
+    if (!db?.user || !db?.inventory?.cards) return null;
+    if (db.user.battlePtRecoverAt === undefined) db.user.battlePtRecoverAt = Date.now();
+    // 战斗体力上限迁移：旧存档 5/30 → 2000
+    if (!db.user.battlePtMax || db.user.battlePtMax < 2000) {
+      db.user.battlePtMax = 2000;
+      db.user.battlePt = Math.max(db.user.battlePt || 0, 2000);
+      db.user.battlePtRecoverAt = Date.now();
+    }
+    if (!db.inventory.materials) db.inventory.materials = {};
+    if (db.inventory.materials.upgradePotion === undefined) db.inventory.materials.upgradePotion = 0;
+    const inst = parseInt(localStorage.getItem(LS_INST) || '0', 10);
+    if (Number.isFinite(inst) && inst > instCounter) instCounter = inst;
+    return db;
+  } catch (e) {
+    console.error('loadDB failed', e);
+    return null;
+  }
+}
+
+export function clearDB(): void {
+  localStorage.removeItem(LS_DB);
+  localStorage.removeItem(LS_INST);
+}
+
 export function makeOwnedCard(cardId: string, lv = 1): OwnedCard {
   return { instId: newInstId(), cardId, lv, exp: 0, evoStage: 0, atkBonus: 0, hpBonus: 0, locked: false };
 }
 
 /** 种子：初始化数据库 */
 export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
-  const inv: UserInventory = { uid: 'u1', cards: [], capacity: 300, materials: { enhanceStone: 50, evolveGem: 10 } };
+  const inv: UserInventory = { uid: 'u1', cards: [], capacity: 300, materials: { upgradePotion: 3, enhanceStone: 50, evolveGem: 10 } };
   // 初始给几张卡
   const seed: [Rarity, number][] = [['X', 1], ['VR', 1], ['LR', 2], ['UR', 3], ['SR', 5], ['R', 10], ['N', 10]];
   for (const [r, n] of seed) {
@@ -170,7 +215,7 @@ export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
     user: {
       uid: 'u1', name: '星术师·阿尔德', level: 88, exp: 0.42,
       energy: 3000, energyMax: 3000,
-      battlePt: 5, battlePtMax: 5,
+      battlePt: 2000, battlePtMax: 2000, battlePtRecoverAt: Date.now(),
       gold: 788038, gems: 854, friendPt: 99999,
       tickets: { fate: 2, legendary: 99, divine: 99, friend: 99, 'lr-guaranteed': 99, collab: 99, element: 99 },
     },
