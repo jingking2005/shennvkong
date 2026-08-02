@@ -137,6 +137,22 @@ export interface DB {
   eventPoint: EventPoint;
 }
 
+/** 关卡定义模板（顺序即解锁顺序） */
+const STAGE_DEFS: { regionId: string; stageId: string; name: string; energyCost: number; enemyPower: number }[] = [
+  { regionId: 'r1', stageId: 'r1-s1', name: '战斗少女的修练场', energyCost: 10, enemyPower: 8000 },
+  { regionId: 'r1', stageId: 'r1-s2', name: '神界地图 2', energyCost: 10, enemyPower: 15000 },
+  { regionId: 'r1', stageId: 'r1-s3', name: '圣炎回廊', energyCost: 15, enemyPower: 32000 },
+  { regionId: 'r1', stageId: 'r1-s4', name: '苍雷王座', energyCost: 20, enemyPower: 60000 },
+];
+
+function newStage(def: (typeof STAGE_DEFS)[number]): Stage {
+  return {
+    ...def, bossCardId: '',
+    progress: 0, firstClear: false, rewardClaimed100: false,
+    stepsTaken: 0, witchEncounters: 0, archEncountered: false,
+  };
+}
+
 let instCounter = 1;
 export function newInstId(): string { return `inst_${instCounter++}`; }
 
@@ -171,6 +187,11 @@ export function loadDB(): DB | null {
     }
     if (!db.inventory.materials) db.inventory.materials = {};
     if (db.inventory.materials.upgradePotion === undefined) db.inventory.materials.upgradePotion = 0;
+    // 关卡迁移：补齐新增关卡
+    if (!Array.isArray(db.stages)) db.stages = [];
+    for (const def of STAGE_DEFS) {
+      if (!db.stages.some(s => s.stageId === def.stageId)) db.stages.push(newStage(def));
+    }
     const inst = parseInt(localStorage.getItem(LS_INST) || '0', 10);
     if (Number.isFinite(inst) && inst > instCounter) instCounter = inst;
     return db;
@@ -197,18 +218,7 @@ export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
   for (const [r, n] of seed) {
     for (const c of pickCards(r, n)) inv.cards.push(makeOwnedCard(c.id, 1 + RARITY_TIER[r] * 3));
   }
-  const stages: Stage[] = [
-    {
-      regionId: 'r1', stageId: 'r1-s1', name: '战斗少女的修练场', energyCost: 10,
-      progress: 0, firstClear: false, rewardClaimed100: false, enemyPower: 8000, bossCardId: '',
-      stepsTaken: 0, witchEncounters: 0, archEncountered: false,
-    },
-    {
-      regionId: 'r1', stageId: 'r1-s2', name: '神界地图 2', energyCost: 10,
-      progress: 0, firstClear: false, rewardClaimed100: false, enemyPower: 15000, bossCardId: '',
-      stepsTaken: 0, witchEncounters: 0, archEncountered: false,
-    },
-  ];
+  const stages: Stage[] = STAGE_DEFS.map(newStage);
   const buildings: Building[] = [
     { buildingId: 'b1', name: '剑之祭坛', level: 3, effect: 'atk+9%' },
     { buildingId: 'b2', name: '盾之祭坛', level: 2, effect: 'hp+6%' },

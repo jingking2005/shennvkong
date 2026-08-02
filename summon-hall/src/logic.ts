@@ -4,8 +4,8 @@
  * 所有随机走 seeded RNG，保证确定性。
  */
 
-import type { Card } from './data';
-import { getCard, RARITY_RANK } from './data';
+import type { Card, Rarity } from './data';
+import { getCard, cardsByRarity, RARITY_RANK } from './data';
 import type { DB, OwnedCard, Stage, WitchRaidBoss } from './db';
 import { elementalMultiplier, newInstId, makeOwnedCard, RARITY_TIER } from './db';
 
@@ -149,6 +149,14 @@ export function tickEnergy(db: DB, now = Date.now()): void {
 
 // ─────────────────────────── 探索闯关 ───────────────────────────
 
+/** 探索掉落卡片入库（N/R 狗粮卡） */
+function grantLootCard(db: DB, rarity: Rarity, rng: () => number): void {
+  const pool = cardsByRarity(rarity);
+  if (!pool.length) return;
+  const c = pool[Math.floor(rng() * pool.length)];
+  db.inventory.cards.push(makeOwnedCard(c.id, 1 + (RARITY_TIER[rarity] ?? 0) * 2));
+}
+
 export interface ExploreResult {
   ok: boolean;
   reason?: string;
@@ -227,6 +235,7 @@ export function ExploreStage(db: DB, stage: Stage, seed: number): ExploreResult 
     res.lootGold = Math.floor(150 + rng() * 400);
     db.user.gold += res.lootGold;
     res.lootCardRarity = 'N';
+    grantLootCard(db, 'N', rng);
   } else {
     res.event = 'loot';
     res.lootGold = Math.floor(200 + rng() * 800);
@@ -235,6 +244,7 @@ export function ExploreStage(db: DB, stage: Stage, seed: number): ExploreResult 
     db.user.gems += res.lootGems;
     if (rng() < 0.35) {
       res.lootCardRarity = rng() < 0.85 ? 'N' : 'R';
+      grantLootCard(db, res.lootCardRarity as Rarity, rng);
     } else if (rng() < 0.5) {
       // 35% 概率掉 1~2 瓶强化药水
       const n = 1 + (rng() < 0.3 ? 1 : 0);

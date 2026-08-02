@@ -435,6 +435,12 @@ class SummonHall {
     }
     // 跑图节点 → 出击（战斗背景随节点变化）
     if (id.startsWith('node:')) {
+      const idx = parseInt(id.slice(5), 10);
+      const s = this.db.stages[idx];
+      if (!s) return; // 未开放装饰点
+      const unlocked = idx === 0 || this.db.stages[idx - 1]?.firstClear === true;
+      if (!unlocked) return;
+      this.activeStage = s;
       this.battleBgIndex = (this.battleBgIndex + 1) % 64;
       this.page = 'sortie';
       this.syncBgm();
@@ -465,7 +471,7 @@ class SummonHall {
           };
           b.chest.reward = openChest(this.db, b.chest.quality, pickCard, b.seed++);
           b.chest.phase = 'opening'; b.chest.t = 0;
-          this.cardCount = Math.min(this.cardCap, this.cardCount + (b.chest.reward.cards.length || 0));
+          this.cardCount = this.db.inventory.cards.length;
           saveDB(this.db);
           this.flashV = 0.6; this.flashColor = '#fff3b0';
           this.shake = 0.5;
@@ -499,9 +505,11 @@ class SummonHall {
           this.flashTeamMsg(`战斗胜利！金币+${gold.toLocaleString()}`);
         }
         saveDB(this.db);
-        this.page = wasRaid ? 'records' : 'sortie';
+        // 闯关流程：战斗胜利→回出击继续探索；本关 100% 通关→回地图选下一关
+        if (!wasRaid) this.activeStage.progress = Math.min(1, this.activeStage.progress + 0.05);
+        const cleared = this.activeStage.progress >= 1;
+        this.page = cleared ? 'map' : 'sortie';
         this.battle = null;
-        this.activeStage.progress = Math.min(1, this.activeStage.progress + 0.05);
         this.syncBgm();
         return;
       }
@@ -591,7 +599,12 @@ class SummonHall {
       pulls = pulls.map(p => ({ ...p, card: this.gacha.upgradeTo(p.card, 'UR') }));
       pulls.forEach(p => preloadImage(p.card).catch(() => {}));
     }
-    this.cardCount = Math.min(this.cardCap, this.cardCount + pulls.length);
+    // ★ 抽到的卡入库（此前只加计数器，卡从未进库存——编队里看不到的根源）
+    for (const p of pulls) {
+      const tier = RANK[p.card.rarity] || 1;
+      this.db.inventory.cards.push(makeOwnedCard(p.card.id, 1 + tier * 2));
+    }
+    this.cardCount = this.db.inventory.cards.length;
     saveDB(this.db);
 
     this.phase = { kind: 'summon', pulls, t: 0 };
@@ -1032,7 +1045,7 @@ class SummonHall {
     const c = cardsByRarity(rarity)[0];
     if (!c) return;
     this.db.inventory.cards.push(makeOwnedCard(c.id, 1));
-    this.cardCount = Math.min(this.cardCap, this.cardCount + 1);
+    this.cardCount = this.db.inventory.cards.length;
   }
 
   private doExploreOnce(): ExploreResult {
@@ -1055,6 +1068,7 @@ class SummonHall {
     this.exploreMsg = r;
     this.exploreMsgT = 0;
     this.jewels = this.db.user.gems;
+    this.cardCount = this.db.inventory.cards.length;
     saveDB(this.db);
     if (r.event === 'witch' && r.witchRaidId) {
       const raid = this.db.raids.find(x => x.raidId === r.witchRaidId)!;
@@ -1544,7 +1558,7 @@ class SummonHall {
     // 节点（浮岛关卡）
     const nodes = this.mapNodes();
     for (const n of nodes) {
-      const hov = this.hover === `node:${n.x},${n.y}`;
+      const hov = !n.locked && this.hover === `node:${n.idx}`;
       // 翅膀/龙图标
       ctx.save();
       if (hov) { ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 16; }
@@ -1552,8 +1566,8 @@ class SummonHall {
       const scale = n.done ? 0.9 : 1;
       ctx.scale(scale, scale);
       // 翅膀形
-      ctx.fillStyle = n.done ? '#8a94a8' : '#c05ce8';
-      ctx.strokeStyle = n.done ? '#5a6478' : '#ffb3f0';
+      ctx.fillStyle = n.locked ? '#3a3f4a' : n.done ? '#8a94a8' : '#c05ce8';
+      ctx.strokeStyle = n.locked ? '#2a2e38' : n.done ? '#5a6478' : '#ffb3f0';
       ctx.lineWidth = 2;
       for (const dir of [-1, 1]) {
         ctx.beginPath();
@@ -1562,32 +1576,37 @@ class SummonHall {
         ctx.quadraticCurveTo(dir * 16, 2, dir * 6, 14);
         ctx.closePath(); ctx.fill(); ctx.stroke();
       }
-      ctx.fillStyle = n.done ? '#aab' : '#fff';
+      ctx.fillStyle = n.locked ? '#4a4f5a' : n.done ? '#aab' : '#fff';
       ctx.beginPath(); ctx.arc(0, 4, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.restore();
-      if (n.newTag) {
+      const ns = this.db.stages[n.idx];
+      if (ns) this.text(ns.name, n.x, n.y + 32, 10, n.locked ? '#4a5060' : '#e8d5a8', 'center', 'bold');
+      if (n.locked) this.text('🔒', n.x, n.y + 4, 14, '#8892a8', 'center');
+      else if (n.newTag) {
         this.pill(n.x - 18, n.y - 34, 36, 16, '#d33', '#ffb3b3');
         this.text('NEW', n.x, n.y - 25, 10, '#fff', 'center', 'bold');
       }
-      this.buttons.push({ x: n.x - 24, y: n.y - 24, w: 48, h: 48, id: `node:${n.x},${n.y}` });
+      this.buttons.push({ x: n.x - 24, y: n.y - 24, w: 48, h: 48, id: `node:${n.idx}` });
     }
     // 世界地图切换
     glassButton(ctx, 30, H - 140, 150, 44, '« 换地图', { kind: 'gray', hover: this.hover === 'worldmap', fontSize: 15 });
     this.buttons.push({ x: 30, y: H - 140, w: 150, h: 44, id: 'worldmap' });
   }
 
-  private mapNodes(): { x: number; y: number; done: boolean; newTag: boolean }[] {
-    return [
-      { x: 180, y: 200, done: true, newTag: false },
-      { x: 320, y: 300, done: true, newTag: false },
-      { x: 480, y: 220, done: false, newTag: true },
-      { x: 660, y: 320, done: false, newTag: false },
-      { x: 840, y: 200, done: false, newTag: false },
-      { x: 1000, y: 300, done: false, newTag: false },
-      { x: 300, y: 480, done: false, newTag: false },
-      { x: 620, y: 520, done: false, newTag: false },
-      { x: 940, y: 480, done: false, newTag: false },
+  private mapNodes(): { x: number; y: number; done: boolean; newTag: boolean; locked: boolean; idx: number }[] {
+    const coords: [number, number][] = [
+      [180, 200], [320, 300], [480, 220], [660, 320], [840, 200], [1000, 300], [300, 480], [620, 520], [940, 480],
     ];
+    return coords.map(([x, y], i) => {
+      const s = this.db.stages[i];
+      const unlocked = !!s && (i === 0 || this.db.stages[i - 1]?.firstClear === true);
+      return {
+        x, y, idx: i,
+        done: s?.firstClear ?? false,
+        newTag: !!s && unlocked && !s.firstClear,
+        locked: !unlocked,
+      };
+    });
   }
 
   // ============ 出击界面 ============
@@ -1616,6 +1635,12 @@ class SummonHall {
 
     // 探索事件提示
     if (this.exploreMsg && this.exploreMsgT < 3) this.renderExploreToast();
+
+    // 通关引导：回地图解锁下一关
+    if (this.activeStage.progress >= 1) {
+      this.pill(W / 2 - 210, 250, 420, 32, 'rgba(16,50,28,0.92)', '#a8f0c0');
+      this.text('✅ 本关已通关！回地图挑战下一关', W / 2, 271, 14, '#a8f0c0', 'center', 'bold');
+    }
 
     // 走路弹跳：中央小人/队伍前跳示意
     this.renderMarchHop();
