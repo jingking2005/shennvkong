@@ -1,0 +1,7 @@
+node_modules/
+dist/
+# 素材为粉丝归档（版权敏感），仅本地使用，不进 GitHub（仓库为 Public）
+public/archive/
+public/images/
+*.log
+.DS_Store
