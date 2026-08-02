@@ -17,6 +17,12 @@ import {
 } from './logic';
 import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST } from './assets';
 import { audio } from './audio';
+import {
+  drawBattleCard, drawHpBar, drawSkillStar, drawCircleButton, drawSkillConfirm,
+  drawVictory, drawExploreChrome, drawTeamStripBottom,
+  type SkillInfo, type VictoryEntry, type ExploreChromeData,
+} from './battle-ui/widgets';
+import { BAT, ENCOUNTER, EXPLORE, COLORS } from './battle-ui/layout';
 
 const W = 1280;
 const H = 760;
@@ -138,6 +144,8 @@ class SummonHall {
   private invFilter: string = 'ALL';  // 稀有度筛选
   private teamSelSlot = -1;           // 选中出击槽（-1 无）
   private drag: { instId: string; fromSlot: number; sx: number; sy: number; x: number; y: number; started: boolean } | null = null;
+  private battlePhase: 'encounter' | 'fighting' | 'skillConfirm' | 'victory' = 'encounter'; // 战斗界面子状态（静态 UI 状态机）
+  private skillStarIdx = -1;          // 点击技能星的卡位
   private detailInst: string | null = null; // 详情弹层的库存实例
   private detailInstKeep: string | null = null; // 强化/进化的主卡（详情关闭后保留）
   private enhanceMode = false;        // 强化选狗粮模式
@@ -543,9 +551,31 @@ class SummonHall {
       if (c) this.cardDetail = c.card;
       return;
     }
+    // 探索框架按钮（出击/遭遇共用）：菜单 / 全恢复 / 部队
+    if (id === 'menu') { this.page = 'summon'; this.battle = null; this.syncBgm(); return; }
+    if (id === 'sideHeal') { this.db.user.energy = this.db.user.energyMax; saveDB(this.db); return; }
+    if (id === 'sideTeam' || id === 'sideEdit') { this.page = 'team'; this.syncBgm(); return; }
     // 战斗
     if (this.page === 'battle' && this.battle) {
       const b = this.battle;
+      // ── 战斗 UI 状态机（截图复刻版：遭遇→主界面→技能确认→胜利）──
+      if (id === 'batStart') { this.battlePhase = 'fighting'; return; }
+      if (id === 'batAutoEnc') { this.battlePhase = 'victory'; return; }
+      if (id.startsWith('star:')) {
+        this.skillStarIdx = parseInt(id.slice(5), 10);
+        this.battlePhase = 'skillConfirm';
+        return;
+      }
+      if (id === 'skillCancel') { this.battlePhase = 'fighting'; this.skillStarIdx = -1; return; }
+      if (id === 'skillGo') { this.battlePhase = 'victory'; this.skillStarIdx = -1; return; }
+      if (id === 'victoryOk2') {
+        this.page = this.activeStage.progress >= 1 ? 'map' : 'sortie';
+        this.battle = null; this.syncBgm();
+        return;
+      }
+      if (id === 'batRetreat') { this.page = 'sortie'; this.battle = null; this.syncBgm(); return; }
+      if (id === 'batAuto') { this.battlePhase = 'victory'; return; }
+      if (id === 'batStatus') { return; }
       if (id === 'retreat') { this.page = 'sortie'; this.battle = null; this.syncBgm(); return; }
       if (id === 'bAuto') { b.auto = !b.auto; b.autoTimer = 0; return; }
       if (id === 'chestOpen') {
@@ -949,6 +979,8 @@ class SummonHall {
       banner: raid ? (raid.archWitch ? '超·幻想魔女降临！' : '魔女出现！') : '战斗开始',
       bannerT: 0, lastActions: [], fx: [], chest: null,
     };
+    this.battlePhase = 'encounter';
+    this.skillStarIdx = -1;
     this.syncBgm();
   }
 
@@ -1217,11 +1249,11 @@ class SummonHall {
     else if (this.page === 'team') this.renderTeam();
     else if (this.page === 'records') this.renderRecords();
 
-    // 底部导航（战斗 / 结算时隐藏，避免与页面按钮重叠）
-    if (this.page !== 'battle' && this.phase.kind !== 'settle' && !this.showRecharge) this.renderNav();
+    // 底部导航（战斗 / 出击 / 结算时隐藏，复刻截图全屏画面）
+    if (this.page !== 'battle' && this.page !== 'sortie' && this.phase.kind !== 'settle' && !this.showRecharge) this.renderNav();
 
-    // 全局：音乐 + 充值（每页右上角）
-    this.renderGlobalHud();
+    // 全局：音乐 + 充值（战斗/出击页隐藏，避免与复刻 UI 冲突）
+    if (this.page !== 'battle' && this.page !== 'sortie') this.renderGlobalHud();
     if (this.showRecharge) this.renderRecharge();
 
     // 粒子
@@ -1695,56 +1727,38 @@ class SummonHall {
     });
   }
 
-  // ============ 出击界面 ============
+  // ============ 出击界面（参考截图复刻：进度条+资源栏+进军/Auto+底部队伍）============
   private renderSortie(): void {
     const ctx = this.ctx;
     this.buttons = [];
-    // 雷电城堡氛围：压暗 + 闪电
-    ctx.fillStyle = 'rgba(20,8,30,0.5)';
-    ctx.fillRect(0, 0, W, H);
-    const t = this.last / 1000;
-    if (Math.sin(t * 0.7) > 0.96) {
-      ctx.fillStyle = 'rgba(200,180,255,0.2)';
-      ctx.fillRect(0, 0, W, H);
-    }
 
-    // 顶部：进度条（行动力由全局 HUD 统一显示）
-    const prog = this.displayProg;
-    const px = W / 2 - 220, pw = 440, py = 18, ph = 26;
-    this.rr(px, py, pw, ph, 13); ctx.fillStyle = '#0d0a16'; ctx.fill();
-    this.rr(px + 2, py + 2, Math.max(0, (pw - 4) * prog), ph - 4, 11);
-    ctx.fillStyle = '#5fce5f'; ctx.fill();
-    this.rr(px, py, pw, ph, 13); ctx.strokeStyle = '#c8b285'; ctx.lineWidth = 2; ctx.stroke();
-    this.text(this.activeStage.name, px + pw / 2, py + 14, 13, '#fff', 'center', 'bold');
-    this.text(`${Math.floor(prog * 100)}%`, px + pw - 36, py + 14, 14, '#fff', 'center', 'bold');
-    this.text(`第 ${this.activeStage.stepsTaken || 0} 步`, px + pw / 2, py + 42, 12, '#cfc4a8', 'center');
+    // 共用框架：进度条 / 行动力 / 资源栏 / 左侧竖排 / 菜单
+    this.buttons.push(...drawExploreChrome(ctx, this.exploreChromeData(), this.hover));
 
     // 探索事件提示
     if (this.exploreMsg && this.exploreMsgT < 3) this.renderExploreToast();
 
     // 通关引导：回地图解锁下一关
     if (this.activeStage.progress >= 1) {
-      this.pill(W / 2 - 210, 250, 420, 32, 'rgba(16,50,28,0.92)', '#a8f0c0');
-      this.text('✅ 本关已通关！回地图挑战下一关', W / 2, 271, 14, '#a8f0c0', 'center', 'bold');
+      this.pill(W / 2 - 210, 360, 420, 32, 'rgba(16,50,28,0.92)', '#a8f0c0');
+      this.text('✅ 本关已通关！回地图挑战下一关', W / 2, 381, 14, '#a8f0c0', 'center', 'bold');
     }
 
-    // 走路弹跳：中央小人/队伍前跳示意
-    this.renderMarchHop();
-
-    // 进军 / Auto（动画中禁用重复点）
+    // 进军 / Auto（截图布局：左大绿按钮 + 右 Auto）
     const cost = 10;
     const busy = !!this.marchAnim;
-    glassButton(ctx, W / 2 - 230, 300, 280, 70, busy ? '前进中…' : `进军（🔥-${cost}）`, {
-      kind: busy ? 'gray' : 'green', hover: !busy && this.hover === 'march', fontSize: 24,
+    glassButton(ctx, EXPLORE.march.x, EXPLORE.march.y, EXPLORE.march.w, EXPLORE.march.h,
+      busy ? '前进中…' : `进军（🔥-${cost}）`, {
+        kind: busy ? 'gray' : 'green', hover: !busy && this.hover === 'march', fontSize: 26,
+      });
+    this.buttons.push({ ...EXPLORE.march, id: 'march' });
+    glassButton(ctx, EXPLORE.auto.x, EXPLORE.auto.y, EXPLORE.auto.w, EXPLORE.auto.h, busy ? '…' : 'Auto', {
+      kind: busy ? 'gray' : 'green', hover: !busy && this.hover === 'auto', fontSize: 24,
     });
-    this.buttons.push({ x: W / 2 - 230, y: 300, w: 280, h: 70, id: 'march' });
-    glassButton(ctx, W / 2 + 70, 300, 180, 70, busy ? '…' : 'Auto', {
-      kind: busy ? 'gray' : 'green', hover: !busy && this.hover === 'auto', fontSize: 22,
-    });
-    this.buttons.push({ x: W / 2 + 70, y: 300, w: 180, h: 70, id: 'auto' });
+    this.buttons.push({ ...EXPLORE.auto, id: 'auto' });
 
-    // 底部队伍（带弹跳）
-    this.renderTeamStrip(H - 180, true);
+    // 底部 5 卡横排
+    this.buttons.push(...drawTeamStripBottom(ctx, this.teamStripData(), this.hover, this.last / 1000));
   }
 
   /** 进军时：角色往前蹦一下 */
@@ -2161,118 +2175,149 @@ class SummonHall {
   }
 
   // ============ 战斗界面 ============
+  // ============ 战斗（参考截图复刻：遭遇 → 主界面 → 技能确认 → 胜利）============
   private renderBattle(): void {
-    const ctx = this.ctx;
     this.buttons = [];
     if (!this.battle) { this.startBattle(); return; }
     const b = this.battle;
-    const t = this.last / 1000;
 
-    // 氛围：魔女讨伐偏紫红，普通遭遇偏黄昏
-    ctx.fillStyle = b.raid ? 'rgba(40,6,40,0.5)' : 'rgba(30,10,20,0.4)';
-    ctx.fillRect(0, 0, W, H);
+    if (this.battlePhase === 'encounter') this.renderEncounter();
+    else this.renderBattleMain();
 
-    // 敌方 BOSS（顶部中央）
-    const boss = b.enemies[0];
-    const ehp = Math.max(0, boss.hp / boss.hpMax);
-    drawCard(ctx, boss.card, W / 2, 150, 150, 210, { showName: true, showBadge: true });
-    this.rr(W / 2 - 110, 262, 220, 13, 6); ctx.fillStyle = '#0d0a16'; ctx.fill();
-    this.rr(W / 2 - 108, 264, 216 * ehp, 9, 4); ctx.fillStyle = '#e85c5c'; ctx.fill();
-    this.text(`${Math.max(0, Math.floor(boss.hp)).toLocaleString()}`, W / 2, 287, 12, '#ffb3b3', 'center', 'bold');
-    if (b.raid) {
-      this.pill(W / 2 + 130, 120, 130, 30, '#0d0a16', '#ff5ce8');
-      this.text(`Lv.${b.raid.level} ${b.raid.archWitch ? '超魔女' : '魔女'}`, W / 2 + 195, 135, 12, '#ffb3f0', 'center', 'bold');
-      const { nextInSec } = tickBattlePt(this.db);
-      this.text(`战斗体力 ${this.db.user.battlePt}/${this.db.user.battlePtMax}${nextInSec > 0 ? `（${Math.ceil(nextInSec / 60)}分后+1）` : ''}`, 90, 66, 13, '#8fe8ff', 'center', 'bold');
+    // 技能确认弹窗（压在战斗主界面上）
+    if (this.battlePhase === 'skillConfirm' && this.skillStarIdx >= 0) {
+      const slot = b.team[this.skillStarIdx];
+      if (slot) {
+        const info: SkillInfo = {
+          name: slot.skillName || '技能', lv: slot.lv, cost: 60,
+          desc: `给予敌方全体攻击力${Math.round((slot.skillMult || 1) * 100)}%的伤害`,
+          element: slot.card.element,
+        };
+        this.buttons.push(...drawSkillConfirm(this.ctx, info, this.hover));
+      } else this.battlePhase = 'fighting';
     }
-    this.text('确认状态', W - 60, 66, 13, '#cfc4a8', 'right');
-
-    // 战斗横幅（魔女出现 / 战斗开始）
-    if (b.bannerT < 1.6) {
-      const ba = Math.min(1, Math.min(b.bannerT / 0.2, (1.6 - b.bannerT) / 0.4));
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, ba);
-      ctx.font = 'bold 54px system-ui, "Arial Black", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.lineWidth = 10; ctx.strokeStyle = '#4a0808';
-      ctx.strokeText(b.banner, W / 2, H / 2 - 60);
-      const bg2 = ctx.createLinearGradient(0, H / 2 - 90, 0, H / 2 - 30);
-      bg2.addColorStop(0, '#fff'); bg2.addColorStop(1, b.raid ? '#ff5ce8' : '#ffd24d');
-      ctx.fillStyle = bg2;
-      ctx.fillText(b.banner, W / 2, H / 2 - 60);
-      ctx.restore();
-    }
-
-    // 伤害飘字
-    for (const d of b.dmgFloat) {
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, 1 - d.t);
-      ctx.font = 'bold 34px system-ui, "Arial Black", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.strokeStyle = '#000'; ctx.lineWidth = 5;
-      ctx.strokeText(d.v, d.x, d.y - d.t * 60);
-      ctx.fillStyle = d.color;
-      ctx.fillText(d.v, d.x, d.y - d.t * 60);
-      ctx.restore();
-    }
-
-    // 行动记录（最近回合）
-    if (b.lastActions.length > 0 && !b.victory) {
-      ctx.save();
-      ctx.globalAlpha = 0.85;
-      let ly = 330;
-      for (const a of b.lastActions.slice(-4)) {
-        const tag = a.skill ? `【${a.skill ? '技能' : ''}】` : '';
-        const em = a.em > 1 ? ` 克制×${a.em}` : '';
-        const crit = a.crit ? ' 暴击!' : '';
-        this.text(`${a.actor} ${tag} ${a.dmg.toLocaleString()}${em}${crit}`, 24, ly, 13, '#e8d5a8', 'left');
-        ly += 20;
-      }
-      ctx.restore();
-    }
-
-    // 我方 5 卡（底部，可点发动技能）
-    const baseY = H - 260;
-    const cw = 150, ch = 212, gx = 16;
-    const total = 5 * cw + 4 * gx;
-    let x = (W - total) / 2;
-    for (let i = 0; i < b.team.length; i++) {
-      const slot = b.team[i];
-      const alive = slot.hp > 0;
-      ctx.save();
-      if (!alive) ctx.globalAlpha = 0.35;
-      const hov = this.hover === `skill:${i}`;
-      if (hov && alive && !b.victory && !b.defeated) { ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 18; }
-      drawCard(ctx, slot.card, x + cw / 2, baseY + ch / 2, cw, ch,
-        { showName: false, showBadge: true, rainbowT: (t * 0.3) % 1 });
-      ctx.restore();
-      if (slot.isLeader) {
-        this.pill(x + 4, baseY - 4, 40, 18, '#3a2a08', '#ffd24d');
-        this.text('队长', x + 24, baseY + 6, 10, '#ffd24d', 'center', 'bold');
-      }
-      // HP
-      const hpr = Math.max(0, slot.hp / slot.hpMax);
-      this.rr(x + 6, baseY + ch + 4, cw - 12, 8, 4); ctx.fillStyle = '#0d0a16'; ctx.fill();
-      this.rr(x + 6, baseY + ch + 4, (cw - 12) * hpr, 8, 4);
-      ctx.fillStyle = hpr > 0.3 ? '#5fce5f' : '#e85c5c'; ctx.fill();
-      this.text(String(Math.floor(Math.max(0, slot.hp))), x + cw / 2, baseY + ch + 18, 10, '#cfc4a8', 'center');
-      if (alive && !b.victory && !b.defeated) this.buttons.push({ x, y: baseY, w: cw, h: ch, id: `skill:${i}` });
-      x += cw + gx;
-    }
-
-    // 撤退 / 自动：原版风格圆形大按钮（左红 / 右金）
-    this.roundButton(86, H - 84, 58, '撤退', '#c03030', '#ff7a6a', this.hover === 'retreat');
-    this.buttons.push({ x: 86 - 58, y: H - 84 - 58, w: 116, h: 116, id: 'retreat' });
-    this.roundButton(W - 86, H - 84, 58, b.auto ? '自动中' : '自动', b.auto ? '#2a8a4a' : '#8a6a20', b.auto ? '#5fce8a' : '#ffd24d', this.hover === 'bAuto');
-    this.buttons.push({ x: W - 86 - 58, y: H - 84 - 58, w: 116, h: 116, id: 'bAuto' });
-
-    // 技能特效（最上层，覆盖卡片）
-    this.renderFx();
-
-    // 技能确认弹窗
-    if (b.skillPrompt !== null) this.renderSkillPrompt(b.skillPrompt);
     // 胜利结算
-    if (b.victory) this.renderVictory();
+    if (this.battlePhase === 'victory') {
+      const entries: VictoryEntry[] = b.team.map(s => ({
+        card: s.card, lv: s.lv, rarityTag: s.card.rarity,
+        gain: String(Math.floor(Math.max(0, s.hp))),
+        levelLabel: `等级${s.lv}`,
+        expRatio: 0.65,
+      }));
+      this.buttons.push(...drawVictory(this.ctx, entries, this.hover));
+    }
+  }
+
+  /** 遭遇界面（截图：敌卡居中 + 战斗开始/Auto + 底部队伍 + 探索框架） */
+  private renderEncounter(): void {
+    const ctx = this.ctx;
+    const b = this.battle!;
+    const boss = b.enemies[0];
+    const E = ENCOUNTER;
+    this.buttons.push(...drawExploreChrome(ctx, this.exploreChromeData(), this.hover));
+
+    // 敌卡（居中上部）
+    drawBattleCard(ctx, boss.card, E.enemy.cx, E.enemy.cy, E.enemy.cw, E.enemy.ch,
+      { elemBadge: true, rarityTag: boss.card.rarity, lv: b.raid?.level ?? boss.lv });
+    const ehp = Math.max(0, boss.hp / boss.hpMax);
+    drawHpBar(ctx, E.enemy.cx - 78, E.enemy.cy + E.enemyHpDy, 170, 14, ehp,
+      { value: String(Math.floor(Math.max(0, boss.hp))), valueColor: COLORS.hpNumEnemy });
+
+    // raid 信息框（右侧：名称/等级/血条/逃亡倒计时）
+    if (b.raid) {
+      const ix = E.enemy.cx + 160, iy = E.enemy.cy - 92, iw = 300, ih = 178;
+      metalDialog(ctx, ix, iy, iw, ih);
+      this.text(b.raid.name, ix + iw / 2, iy + 32, 20, '#fff', 'center', 'bold');
+      this.text(`等级${b.raid.level}`, ix + iw / 2, iy + 66, 17, '#e8d5a8', 'center', 'bold');
+      drawHpBar(ctx, ix + 30, iy + 92, iw - 60, 18, ehp,
+        { value: String(Math.floor(Math.max(0, b.raid.hp))), valueColor: COLORS.hpNumEnemy });
+      this.text('离逃亡还剩余 --:--:--', ix + iw / 2, iy + 144, 14, '#ffe14d', 'center', 'bold');
+    }
+
+    // 战斗开始（红）/ Auto（绿）
+    glassButton(ctx, E.start.x, E.start.y, E.start.w, E.start.h, '战斗开始',
+      { kind: 'red', hover: this.hover === 'batStart', fontSize: 26 });
+    this.buttons.push({ ...E.start, id: 'batStart' });
+    glassButton(ctx, E.auto.x, E.auto.y, E.auto.w, E.auto.h, 'Auto',
+      { kind: 'green', hover: this.hover === 'batAutoEnc', fontSize: 24 });
+    this.buttons.push({ ...E.auto, id: 'batAutoEnc' });
+
+    // 底部队伍
+    this.buttons.push(...drawTeamStripBottom(ctx, this.teamStripData(), this.hover, this.last / 1000));
+  }
+
+  /** 战斗主界面（截图：敌顶我底 5 卡 + 星星 + 撤退/自动圆钮 + 确认状态） */
+  private renderBattleMain(): void {
+    const ctx = this.ctx;
+    const b = this.battle!;
+    const t = this.last / 1000;
+    const boss = b.enemies[0];
+
+    // 敌卡（顶部居中）+ 敌血条
+    drawBattleCard(ctx, boss.card, BAT.enemy.cx, BAT.enemy.cy, BAT.enemy.cw, BAT.enemy.ch,
+      { elemBadge: true, lv: b.raid?.level ?? boss.lv });
+    const ehp = Math.max(0, boss.hp / boss.hpMax);
+    drawHpBar(ctx, BAT.enemy.cx - BAT.enemyHp.w / 2 + 8, BAT.enemy.cy + BAT.enemyHp.dy,
+      BAT.enemyHp.w, BAT.enemyHp.h, ehp,
+      { element: boss.card.element, value: String(Math.floor(Math.max(0, boss.hp))), valueColor: COLORS.hpNumEnemy });
+
+    // 确认状态（右上）
+    glassButton(ctx, BAT.statusBtn.x, BAT.statusBtn.y, BAT.statusBtn.w, BAT.statusBtn.h, '确认状态',
+      { kind: 'gray', hover: this.hover === 'batStatus', fontSize: 15 });
+    this.buttons.push({ ...BAT.statusBtn, id: 'batStatus' });
+
+    // 我方 5 卡 + 血条 + 技能星
+    const n = b.team.length;
+    const totalW = n * BAT.ally.cw + (n - 1) * BAT.ally.gap;
+    let x = (W - totalW) / 2;
+    for (let i = 0; i < n; i++) {
+      const s = b.team[i];
+      const cx = x + BAT.ally.cw / 2;
+      drawBattleCard(ctx, s.card, cx, BAT.ally.cy, BAT.ally.cw, BAT.ally.ch,
+        { elemBadge: true, selected: this.skillStarIdx === i, dim: s.hp <= 0, rainbowT: (t * 0.3) % 1 });
+      const hpr = Math.max(0, s.hp / s.hpMax);
+      drawHpBar(ctx, cx - BAT.allyHp.w / 2 + 8, BAT.ally.cy + BAT.allyHp.dy,
+        BAT.allyHp.w, BAT.allyHp.h, hpr,
+        { element: s.card.element, value: String(Math.floor(Math.max(0, s.hp))), valueColor: COLORS.hpNumAlly });
+      // 技能星（fighting 且存活时可点）
+      if (this.battlePhase === 'fighting' && s.hp > 0) {
+        const stx = cx, sty = BAT.ally.cy + BAT.star.dy;
+        drawSkillStar(ctx, stx, sty, BAT.star.r, t + i * 0.7, this.hover === `star:${i}`);
+        this.buttons.push({ x: stx - BAT.star.r, y: sty - BAT.star.r, w: BAT.star.r * 2, h: BAT.star.r * 2, id: `star:${i}` });
+      }
+      x += BAT.ally.cw + BAT.ally.gap;
+    }
+
+    // 撤退 / 自动（橙金圆钮）
+    drawCircleButton(ctx, BAT.retreat.cx, BAT.retreat.cy, BAT.retreat.r, '撤退', this.hover === 'batRetreat');
+    this.buttons.push({ x: BAT.retreat.cx - BAT.retreat.r, y: BAT.retreat.cy - BAT.retreat.r, w: BAT.retreat.r * 2, h: BAT.retreat.r * 2, id: 'batRetreat' });
+    drawCircleButton(ctx, BAT.auto.cx, BAT.auto.cy, BAT.auto.r, '自动', this.hover === 'batAuto');
+    this.buttons.push({ x: BAT.auto.cx - BAT.auto.r, y: BAT.auto.cy - BAT.auto.r, w: BAT.auto.r * 2, h: BAT.auto.r * 2, id: 'batAuto' });
+  }
+
+  /** 探索框架数据（进度条/行动力/资源栏） */
+  private exploreChromeData(): ExploreChromeData {
+    const s = this.activeStage;
+    return {
+      stageLabel: s.stageId.replace('r', '').replace('-s', '-'),
+      progRatio: this.displayProg,
+      progText: `${Math.floor(this.displayProg * 100)}%`,
+      energy: this.db.user.energy, energyMax: this.db.user.energyMax,
+      resources: [
+        { icon: '🪙', value: String(this.db.user.gold) },
+        { icon: '🧪', value: String(this.db.inventory.materials.upgradePotion || 0) },
+        { icon: '⚙️', value: String(this.db.user.friendPt) },
+        { icon: '💎', value: String(this.db.user.gems) },
+      ],
+    };
+  }
+
+  /** 底部队伍条数据 */
+  private teamStripData(): { card: Card; lv: number; rarityTag: string; hpRatio: number; element: string }[] {
+    return this.teamCombatants().map(c => ({
+      card: c.card, lv: c.lv, rarityTag: c.card.rarity,
+      hpRatio: c.hpMax > 0 ? Math.max(0, c.hp / c.hpMax) : 1, element: c.card.element,
+    }));
   }
 
   /**
