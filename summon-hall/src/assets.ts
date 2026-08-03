@@ -440,6 +440,29 @@ export function loadAssetImage(src: string): HTMLImageElement {
   return img;
 }
 
+/** 限量缓存加载器：轮播大图专用（133 地图 / 74 立绘全量驻留会爆内存，只保留最近几张） */
+export class RotationLoader {
+  private cache = new Map<string, HTMLImageElement>();
+  constructor(private maxKeep = 6) {}
+  get(src: string): HTMLImageElement {
+    let img = this.cache.get(src);
+    if (img) {
+      // LRU：命中后移到末尾
+      this.cache.delete(src);
+      this.cache.set(src, img);
+      return img;
+    }
+    img = new Image();
+    img.src = src;
+    this.cache.set(src, img);
+    while (this.cache.size > this.maxKeep) {
+      const oldest = this.cache.keys().next().value!;
+      this.cache.delete(oldest);
+    }
+    return img;
+  }
+}
+
 /** cover 绘制（铺满画布，可裁边） */
 export function drawCover(
   ctx: CanvasRenderingContext2D,

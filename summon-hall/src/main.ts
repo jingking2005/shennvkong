@@ -16,7 +16,7 @@ import {
   type Combatant, type ExploreResult, type SkillFx,
   type ChestReward,
 } from './logic';
-import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST } from './assets';
+import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST, EVENT_MAP_BGS, NAVI_SPRITES, naviSprite, naviName, RotationLoader } from './assets';
 import { audio } from './audio';
 import {
   drawBattleCard, drawHpBar, drawSkillStar, drawCircleButton, drawSkillConfirm,
@@ -132,6 +132,7 @@ class SummonHall {
   private pillarColor = '#ffe14d';
   private showRates = false;         // 提供比率浮层
   private showLogin = false;         // 每日签到浮层
+  private naviLoader = new RotationLoader(6); // 看板娘轮播（懒加载）
   private cardDetail: Card | null = null; // 卡牌详情浮层
   private rateCards: Card[] = [];    // 提供比率浮层展示的卡
   private meta = new Map<string, BannerMeta>();
@@ -202,6 +203,7 @@ class SummonHall {
     }, { passive: false });
 
     this.bg.resize(W, H);
+    this.bg.setHallCarousel(EVENT_MAP_BGS); // 大厅背景：活动地图轮播
     const saved = loadDB();
     if (saved) this.db = saved;
     this.buildMeta();
@@ -3140,7 +3142,7 @@ class SummonHall {
     const meta = this.meta.get(this.banner.id);
     const t = this.last / 1000;
 
-    // ── 顶栏下方：所持卡片数 / 商店（避开全局资源条与右上角按钮）──
+    // ── 顶栏下方：所持卡片数 / 签到 / 商店 ──
     this.cardCount = this.db.inventory.cards.length;
     this.pill(20, 64, 250, 32, '#0d0a16', '#c8b285');
     this.text(`所持卡片数：${this.cardCount}/${this.db.inventory.capacity}`, 145, 81, 14, '#e8d5a8', 'center', 'bold');
@@ -3154,11 +3156,13 @@ class SummonHall {
     this.text(canLogin ? '✦ 签到有礼' : '每日签到', W - 272, 82, 13, canLogin ? '#ffd24d' : '#8892a8', 'center', 'bold');
     this.buttons.push({ x: W - 340, y: 64, w: 136, h: 34, id: 'openLogin' });
 
-    // ── 左侧：当前卡池大立绘 banner ──
-    const bx = 20, by = 108, bw = 760, bh = 520;
+    // ── 左侧：看板娘版面 ──
+    this.renderNaviPanel(16, 108, 296, 560);
+
+    // ── 中间：当前卡池 ──
+    const bx = 326, by = 108, bw = 584, bh = 520;
     ctx.save();
     this.rr(bx, by, bw, bh, 12); ctx.clip();
-    // 立绘背景
     ctx.fillStyle = '#0d0a16';
     ctx.fillRect(bx, by, bw, bh);
     const portrait = meta?.portrait ?? null;
@@ -3178,74 +3182,74 @@ class SummonHall {
     ctx.fillStyle = g;
     ctx.fillRect(bx, by + bh * 0.4, bw, bh * 0.6);
     ctx.restore();
-    // 边框
     ctx.strokeStyle = this.banner.accent;
     ctx.lineWidth = 2;
     this.rr(bx, by, bw, bh, 12); ctx.stroke();
 
     // 卡池标题 + 倒计时
-    this.text(this.banner.name, bx + 22, by + 30, 26, this.banner.accent, 'left', 'bold', true);
+    this.text(this.banner.name, bx + 20, by + 30, 22, this.banner.accent, 'left', 'bold', true);
     const remain = Math.max(0, (meta?.endAt ?? Date.now()) - Date.now());
     const dd = Math.floor(remain / 86400000);
     const hh = Math.floor((remain % 86400000) / 3600000);
-    this.pill(bx + 22, by + 52, 210, 26, '#0d0a16', '#c8b285');
-    this.text(`【距离结束还有】${dd}天${hh}小时`, bx + 127, by + 66, 12, '#ffe9a8', 'center', 'bold');
-
-    // 说明文案
-    const tagline = meta?.tagline ?? '';
-    this.wrapText(tagline, bx + 24, by + bh - 120, bw - 48, 16, 15, '#f0e6cc', 'bold');
+    this.pill(bx + 20, by + 52, 196, 24, '#0d0a16', '#c8b285');
+    this.text(`【距离结束还有】${dd}天${hh}小时`, bx + 118, by + 65, 11, '#ffe9a8', 'center', 'bold');
 
     // 精选缩略卡（点详情）
     const show = bannerShowcase(this.banner, 3);
     show.forEach((c, i) => {
-      const cx = bx + bw - 200 + i * 62, cy = by + 120;
-      drawCard(ctx, c, cx, cy, 54, 76, { showName: false, showBadge: true });
-      this.buttons.push({ x: cx - 27, y: cy - 38, w: 54, h: 76, id: 'rates' });
+      const cx = bx + bw - 178 + i * 60, cy = by + 120;
+      drawCard(ctx, c, cx, cy, 52, 74, { showName: false, showBadge: true });
+      this.buttons.push({ x: cx - 26, y: cy - 37, w: 52, h: 74, id: 'rates' });
     });
     // 真实稀有度概率文案（按权重）
     const table = rateTable(this.banner);
-    const topE = table[0];
     const lrE = table.find(r => r.rarity === 'LR');
     this.text(`LR 出现率 ${lrE ? lrE.pct.toFixed(1) + '%' : this.banner.hardPity?.rarity ?? '—'}`,
-      bx + bw - 24, by + 92, 13, '#ffe14d', 'right', 'bold');
+      bx + bw - 20, by + 92, 12, '#ffe14d', 'right', 'bold');
 
-    // 保底进度条（右侧池下方留白；画在 banner 顶部小条）
+    // 保底进度条（单行胶囊：左进度条 + 右文字）
     const prog = this.gacha.pityProgress(this.banner);
     if (prog && this.banner.hardPity) {
-      const px0 = bx + 22, py0 = by + 88, pw2 = 220;
-      this.pill(px0 - 10, py0 - 14, pw2 + 20, 30, '#0d0a16', '#c8b285');
+      const px0 = bx + 20, py0 = by + 80, pw2 = 100;
+      this.pill(px0 - 10, py0 - 6, 348, 32, '#0d0a16', '#c8b285');
       const ratio = Math.min(1, prog.current / prog.threshold);
       ctx.save();
-      this.rr(px0, py0, pw2, 14, 7);
+      this.rr(px0, py0 + 5, pw2, 12, 6);
       ctx.fillStyle = '#241a30'; ctx.fill();
       if (ratio > 0) {
         ctx.fillStyle = '#ffd24d';
-        this.rr(px0, py0, Math.max(14, pw2 * ratio), 14, 7); ctx.fill();
+        this.rr(px0, py0 + 5, Math.max(12, pw2 * ratio), 12, 6); ctx.fill();
       }
       ctx.restore();
-      this.text(`距 ${this.banner.hardPity.rarity} 保底还差 ${prog.threshold - prog.current} 抽`,
-        px0 + pw2 / 2, py0 + 21, 11, '#e8d5a8', 'center', 'bold');
+      this.text(`距 ${this.banner.hardPity.rarity} 保底还差 ${Math.max(0, prog.threshold - prog.current)} 抽`,
+        px0 + pw2 + 12, py0 + 12, 12, '#e8d5a8', 'left', 'bold');
     }
+
+    // 说明文案
+    const tagline = meta?.tagline ?? '';
+    this.wrapText(tagline, bx + 20, by + bh - 178, bw - 40, 16, 14, '#f0e6cc', 'bold');
 
     // 四按钮（2×2）：上排 单抽(钻) / 十连(钻)，下排 单抽(券) / 十连(券)
     const tickets = meta?.tickets ?? 0;
-    const btnY = by + bh - 78;
-    const b1 = btnY - 72, b2 = btnY;
-    this.summonButton(bx + 40, b1, 348, 60, `用 💎 ${this.banner.costSingle}`, `召唤 1 次`, this.jewels >= this.banner.costSingle, 'pull1');
-    this.summonButton(bx + 408, b1, 332, 60, `用 💎 ${this.banner.costTen}`, `进行 10 连召唤`, this.jewels >= this.banner.costTen, 'pull10');
-    this.summonButton(bx + 40, b2, 348, 60, `用 1 张召唤券`, `召唤 1 次`, tickets > 0, 'pull1ticket');
-    this.summonButton(bx + 408, b2, 332, 60, `用 10 张召唤券`, `进行 10 连召唤`, tickets >= 10, 'pull10ticket');
+    const btnY = by + bh - 74;
+    const b1 = btnY - 68, b2 = btnY;
+    const bw2 = 272;
+    this.summonButton(bx + 16, b1, bw2, 58, `用 💎 ${this.banner.costSingle}`, `召唤 1 次`, this.jewels >= this.banner.costSingle, 'pull1');
+    this.summonButton(bx + 296, b1, bw2, 58, `用 💎 ${this.banner.costTen}`, `进行 10 连召唤`, this.jewels >= this.banner.costTen, 'pull10');
+    this.summonButton(bx + 16, b2, bw2, 58, `用 1 张召唤券`, `召唤 1 次`, tickets > 0, 'pull1ticket');
+    this.summonButton(bx + 296, b2, bw2, 58, `用 10 张召唤券`, `进行 10 连召唤`, tickets >= 10, 'pull10ticket');
     this.text(`目前持有数  🎟 ${tickets}  /  💎 ${this.jewels.toLocaleString()}`,
-      bx + 40, by + bh - 8, 13, '#ffe9a8', 'left', 'bold');
+      bx + 20, by + bh - 4, 12, '#ffe9a8', 'left', 'bold');
 
     // 提供比率一览
-    this.pill(bx + bw / 2 - 110, by + bh + 8, 220, 34, '#0d0a16', '#c8b285');
-    this.text('提供比率一览', bx + bw / 2, by + bh + 26, 14, '#e8d5a8', 'center', 'bold');
-    this.buttons.push({ x: bx + bw / 2 - 110, y: by + bh + 8, w: 220, h: 34, id: 'rates' });
+    this.pill(bx + bw / 2 - 110, by + bh + 10, 220, 34, '#0d0a16', '#c8b285');
+    this.text('提供比率一览', bx + bw / 2, by + bh + 28, 14, '#e8d5a8', 'center', 'bold');
+    this.buttons.push({ x: bx + bw / 2 - 110, y: by + bh + 10, w: 220, h: 34, id: 'rates' });
 
-    // ── 右侧：卡池列表（自适应高度） ──
+    // ── 右侧：卡池列表（完整放下 7 个池） ──
     const rx = bx + bw + 14, rw = W - rx - 16;
-    const itemH = Math.min(92, Math.floor((H - 90) / BANNERS.length) - 8);
+    const availH = H - 108 - 92; // 顶栏与底部导航之间
+    const itemH = Math.min(92, Math.floor((availH - (BANNERS.length - 1) * 8) / BANNERS.length));
     let ry = 108;
     for (const b of BANNERS) {
       this.renderBannerListItem(b, rx, ry, rw, itemH);
@@ -3254,6 +3258,54 @@ class SummonHall {
 
     // 提供比率浮层
     if (this.showRates) this.renderRatesOverlay();
+  }
+
+  /** 看板娘版面：立绘轮播（呼吸 + 交叉淡入）+ 名牌 */
+  private renderNaviPanel(x: number, y: number, w: number, h: number): void {
+    const ctx = this.ctx;
+    const t = this.last / 1000;
+    const ROT = 12, FADE = 1.4;
+    const idx = Math.floor(t / ROT) % NAVI_SPRITES.length;
+    const nidx = (idx + 1) % NAVI_SPRITES.length;
+    const fade = Math.min(1, Math.max(0, (t % ROT - (ROT - FADE)) / FADE));
+    const cur = this.naviLoader.get(naviSprite(idx));
+    const nxt = this.naviLoader.get(naviSprite(nidx));
+
+    // 面板底
+    this.rr(x, y, w, h, 14);
+    ctx.fillStyle = 'rgba(10,8,20,0.5)';
+    ctx.fill();
+
+    ctx.save();
+    this.rr(x, y, w, h, 14); ctx.clip();
+    const breathe = 1 + Math.sin(t * 0.8) * 0.012;
+    const drawSprite = (img: HTMLImageElement, alpha: number) => {
+      if (!img.complete || !img.naturalWidth) return;
+      const sc = ((h - 60) / img.naturalHeight) * breathe;
+      const dw = img.naturalWidth * sc, dh = img.naturalHeight * sc;
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(img, x + (w - dw) / 2, y + h - 56 - dh, dw, dh);
+      ctx.globalAlpha = 1;
+    };
+    drawSprite(cur, 1);
+    if (fade > 0) drawSprite(nxt, fade);
+    // 底部名牌渐变压暗
+    const g = ctx.createLinearGradient(0, y + h - 100, 0, y + h);
+    g.addColorStop(0, 'rgba(6,4,14,0)');
+    g.addColorStop(1, 'rgba(6,4,14,0.95)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y + h - 100, w, 100);
+    ctx.restore();
+
+    // 边框 + 角饰
+    ctx.strokeStyle = '#c8b285';
+    ctx.lineWidth = 2;
+    this.rr(x, y, w, h, 14); ctx.stroke();
+
+    // 名牌
+    const name = naviName(naviSprite(fade > 0.5 ? nidx : idx));
+    this.text('─ 今日向导 ─', x + w / 2, y + h - 46, 11, '#cfc4a8', 'center');
+    this.text(name, x + w / 2, y + h - 22, 18, '#ffe9a8', 'center', 'bold', true);
   }
 
   private imgOf(card: Card): HTMLImageElement | null {

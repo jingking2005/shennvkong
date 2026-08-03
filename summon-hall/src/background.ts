@@ -1,8 +1,10 @@
 /**
  * 背景 — 真实插画 + 视差 + 呼吸光效
- * 大厅：黄金神殿（带星尘漂浮、中央光脉呼吸）
+ * 大厅：活动地图轮播（Ken Burns 横移 + 交叉淡入），兜底黄金神殿
  * 稀有揭示：星空金卡
  */
+
+import { RotationLoader } from './assets';
 
 export interface BgLayer {
   img: HTMLImageElement;
@@ -19,6 +21,10 @@ function loadImage(src: string): BgLayer {
 
 interface Dust { x: number; y: number; r: number; vy: number; ph: number; sp: number; }
 
+/** 大厅轮播间隔（秒）与淡入时长 */
+const HALL_ROTATE_SEC = 14;
+const HALL_FADE_SEC = 1.6;
+
 export class Background {
   private w = 0; private h = 0;
   private hall = loadImage('/images/_bg_temple_gold.png');
@@ -27,6 +33,9 @@ export class Background {
   private time = 0;
   private mode: 'hall' | 'rare' = 'hall';
   private fadeToRare = 0; // 0=hall 1=rare
+  /** 大厅轮播素材（地图）；空数组 = 只用兜底神殿 */
+  private hallSources: string[] = [];
+  private hallLoader = new RotationLoader(8);
 
   resize(w: number, h: number): void {
     this.w = w; this.h = h;
@@ -42,6 +51,11 @@ export class Background {
 
   setMode(m: 'hall' | 'rare'): void {
     this.mode = m;
+  }
+
+  /** 设置大厅轮播素材（活动地图列表） */
+  setHallCarousel(sources: string[]): void {
+    this.hallSources = sources;
   }
 
   /** 稀有揭示时淡入星空背景 */
@@ -72,6 +86,31 @@ export class Background {
 
   private ctxRef: CanvasRenderingContext2D | null = null;
 
+  /** 大厅轮播：当前张 + 末尾 1.6s 交叉淡入下一张 */
+  private drawHallCarousel(alpha: number): void {
+    const n = this.hallSources.length;
+    const idx = Math.floor(this.time / HALL_ROTATE_SEC) % n;
+    const nidx = (idx + 1) % n;
+    const fade = Math.min(1, Math.max(0,
+      (this.time % HALL_ROTATE_SEC - (HALL_ROTATE_SEC - HALL_FADE_SEC)) / HALL_FADE_SEC));
+    this.drawPano(this.hallLoader.get(this.hallSources[idx]), alpha);
+    if (fade > 0) this.drawPano(this.hallLoader.get(this.hallSources[nidx]), alpha * fade);
+  }
+
+  /** 全景绘制：高度铺满，超宽部分缓慢横移扫过（Ken Burns） */
+  private drawPano(img: HTMLImageElement, alpha: number): void {
+    if (!img.complete || !img.naturalWidth) return;
+    const ctx = this.ctxRef!;
+    const scale = this.h / img.naturalHeight;
+    const dw = img.naturalWidth * scale;
+    const range = Math.max(0, dw - this.w);
+    const sweep = range > 0 ? (0.5 + 0.5 * Math.sin(this.time * 0.04)) : 0.5;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, -range * sweep, 0, dw, this.h);
+    ctx.restore();
+  }
+
   render(ctx: CanvasRenderingContext2D): void {
     this.ctxRef = ctx;
     // 底
@@ -83,7 +122,9 @@ export class Background {
     const panX = Math.sin(this.time * 0.15) * 8;
     const panY = Math.cos(this.time * 0.12) * 6;
 
-    if (this.hall.loaded) {
+    if (this.hallSources.length > 0) {
+      this.drawHallCarousel(1 - this.fadeToRare);
+    } else if (this.hall.loaded) {
       this.drawCover(this.hall.img, 1 - this.fadeToRare, breathe, panX, panY);
     }
     if (this.fadeToRare > 0 && this.rare.loaded) {
