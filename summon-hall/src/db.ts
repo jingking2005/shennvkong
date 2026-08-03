@@ -150,8 +150,8 @@ const STAGE_DEFS: { regionId: string; stageId: string; name: string; energyCost:
   { regionId: 'r2', stageId: 'r2-s3', name: '诸神黄昏', energyCost: 40, enemyPower: 300000 },
 ];
 
-/** 体力数值平衡：上限 120（3min/点 → 约 6 小时回满），出战一趟扣 10 */
-export const ENERGY_MAX = 120;
+/** 体力数值平衡：上限 600（3min/点），出战一趟扣 10 */
+export const ENERGY_MAX = 600;
 /** 仓库默认容量 */
 export const INV_CAPACITY = 200;
 
@@ -195,8 +195,8 @@ export function loadDB(): DB | null {
       db.user.battlePt = Math.max(db.user.battlePt || 0, 2000);
       db.user.battlePtRecoverAt = Date.now();
     }
-    // 体力上限迁移：旧原型 3000 → 120（3min/点满需 150h，等于死锁）
-    if (!db.user.energyMax || db.user.energyMax > ENERGY_MAX) {
+    // 体力上限迁移：统一对齐 ENERGY_MAX（旧 120 → 600；旧原型 3000 → 600）
+    if (!db.user.energyMax || db.user.energyMax !== ENERGY_MAX) {
       db.user.energyMax = ENERGY_MAX;
       db.user.energy = Math.min(db.user.energy ?? 0, ENERGY_MAX);
       db.user.energyRecoverAt = Date.now();
