@@ -83,7 +83,7 @@ OC-00（本文件）→ OC-01 稳定性 → OC-02 数据基础设施 → OC-03 �
 - **验收**：相同 seed 事件日志完全一致；normal/boss/round/king 四类 fixture；覆盖 1/5/0 单位边界
 - **预估**：3-4h
 
-## OC-07：抽卡引擎、动画与经济边界
+## OC-07：抽卡引擎、动画与经济边界 ✅ 已完成（2026-08-03，commit 6daff8d）
 
 - **所有者**：OpenCode
 - **可修改文件**：`src/gacha.ts`、新增 `src/systems/gacha/gacha-engine.ts`、`gacha-config.json`、`gacha-visuals.json` 及测试
