@@ -5,7 +5,7 @@
  * 每档独立计数「自上次命中 ≥该稀有度以来的抽数」，到阈值强制命中。
  */
 
-import { SUMMON_CARDS, RARITY_RANK, type Card, type Rarity } from '../../data';
+import { SUMMON_CARDS, ALL_CARDS, RARITY_RANK, type Card, type Rarity } from '../../data';
 import { mulberry32 } from '../battle/rng';
 import configJson from './gacha-config.json';
 
@@ -25,6 +25,8 @@ export interface Banner {
   hardPities?: HardPity[];
   up?: { cardId: string; upRate: number }[];
   limitedTo?: string[];
+  /** 卡池来源：'summon'（默认，排除 SPECIAL 道具/经验卡）| 'all'（含 X 狗粮等 SPECIAL 卡） */
+  poolSource?: 'summon' | 'all';
 }
 
 /** 概率/保底唯一事实源：gacha-config.json */
@@ -65,13 +67,14 @@ export function bannerShowcase(banner: Banner, perRarity = 4): Card[] {
   return out;
 }
 
-/** 卡池可抽卡集合：限池白名单优先，未配置则全可召唤池 */
+/** 卡池可抽卡集合：限池白名单优先；poolSource='all' 时用全卡池（含 SPECIAL 狗粮），否则可召唤池 */
 export function bannerCards(banner: Banner): Card[] {
+  const source = banner.poolSource === 'all' ? ALL_CARDS : SUMMON_CARDS;
   if (banner.limitedTo?.length) {
     const set = new Set(banner.limitedTo);
-    return SUMMON_CARDS.filter(c => set.has(c.id));
+    return source.filter(c => set.has(c.id));
   }
-  return SUMMON_CARDS;
+  return source;
 }
 
 export interface PityProgress { rarity: Rarity; current: number; threshold: number; }

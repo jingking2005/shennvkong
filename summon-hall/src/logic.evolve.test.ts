@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import { seedDB, makeOwnedCard, type DB } from './db';
 import { cardsByRarity } from './data';
-import { evolveRate, prepareEvolve, applyEvolve, ownedToCombatant, MAX_STAR, STAR_STAT_MULT } from './logic';
+import { evolveRate, evolveBoostRate, evolveFailureStar, prepareEvolve, applyEvolve, ownedToCombatant, MAX_STAR, STAR_STAT_MULT, EVOLVE_FAIL_BONUS } from './logic';
 
 function freshDB(): DB {
   return seedDB((r, n) => cardsByRarity(r).slice(0, n));
@@ -34,6 +34,18 @@ describe('evolveRate', () => {
     expect(evolveRate(1, 0)).toBe(70);
     expect(evolveRate(0, 2)).toBeNull();
     expect(evolveRate(2, 0)).toBeNull();
+  });
+});
+
+describe('evolveBoostRate', () => {
+  it('稀有度差 0:+10 / +1:15 / +2:30 / +3:60 / ≥+4:100；低于主卡不加成', () => {
+    expect(evolveBoostRate('UR', 'UR')).toBe(10);      // 同稀有度
+    expect(evolveBoostRate('UR', 'LR')).toBe(15);      // +1 级
+    expect(evolveBoostRate('R', 'UR')).toBe(30);       // +2 级
+    expect(evolveBoostRate('N', 'SR')).toBe(30);       // +2 级（N→SR）
+    expect(evolveBoostRate('N', 'UR')).toBe(60);       // +3 级
+    expect(evolveBoostRate('N', 'VR')).toBe(100);      // ≥+4 级
+    expect(evolveBoostRate('SR', 'R')).toBe(0);        // 低于主卡
   });
 });
 
@@ -103,6 +115,99 @@ describe('prepareEvolve + applyEvolve', () => {
     const b = addCard(db, 'UR', 0);
     const prep = prepareEvolve(db, a, [b]);
     expect(prep.ok).toBe(false);
+  });
+
+  it('加成卡提升成功率：rate=base+boost，0 级 +10 / 1级 +15 / 2级 +30 / 3级 +60 / ≥4级 +100', () => {
+    const db = freshDB();
+    const a = addCard(db, 'UR', 0);
+    const b = addCard(db, 'UR', 0);         // 同名素材
+    const bo = addCard(db, 'LR', 0);       // 加成卡 UR→LR +1级 → +15
+    const prep = prepareEvolve(db, a, [b], () => 0, 0.08, [bo]);
+    expect(prep.ok).toBe(true);
+    expect(prep.rate).toBe(100);           // 90 + 15 > 100 封顶
+    expect(prep.boost).toBe(15);
+  });
+
+  it('低级加成卡不加成（boost=0，rate 不变，结果仍算成功/失败正常）', () => {
+    const db = freshDB();
+    const a = addCard(db, 'UR', 2);
+    const b = addCard(db, 'UR', 1);
+    const n = addCard(db, 'N', 0);         // 低于主卡
+    const prep = prepareEvolve(db, a, [b], () => 0, 0.08, [n]);
+    expect(prep.ok).toBe(true);
+    expect(prep.boost).toBe(0);
+    expect(prep.rate).toBe(evolveRate(2, 1));     // 混星 (10-3)*10-10=60? 实际由 evolveRate 决定
+  });
+
+  it('加成卡校验：重复选择 / 与素材重复 / 与主卡重复 → 拒绝', () => {
+    const db = freshDB();
+    const a = addCard(db, 'UR', 0);
+    const b = addCard(db, 'UR', 0, 1);
+    const bo = addCard(db, 'UR', 0, 2);
+    expect(prepareEvolve(db, a, [b], () => 0, 0.08, [bo, bo]).ok).toBe(false);    // 同一张重复
+    expect(prepareEvolve(db, a, [b], () => 0, 0.08, [b]).ok).toBe(false);         // 与素材重复
+    expect(prepareEvolve(db, a, [b], () => 0, 0.08, [a]).ok).toBe(false);         // 与主卡重复
+  });
+
+  it('applyEvolve 消耗加成卡（无论成功失败）', () => {
+    const db = freshDB();
+    const a = addCard(db, 'UR', 0);
+    const b = addCard(db, 'UR', 0);         // 同名素材
+    const bo = addCard(db, 'LR', 0);
+    const prep = prepareEvolve(db, a, [b], () => 0, 0.08, [bo]);  // 成功
+    expect(prep.ok).toBe(true);
+    applyEvolve(db, a, [b], prep, [bo]);
+    expect(db.inventory.cards.find(o => o.instId === bo)).toBeUndefined();  // 加成卡已消耗
+
+    const db2 = freshDB();
+    const c = addCard(db2, 'UR', 0);
+    const d = addCard(db2, 'UR', 0);        // 同名素材
+    const bo2 = addCard(db2, 'LR', 0);
+    const prep2 = prepareEvolve(db2, c, [d], () => 1.1, 0.08, [bo2]);  // 必失败（1.1*100 > 100）
+    expect(prep2.ok).toBe(true);
+    expect(prep2.success).toBe(false);
+    applyEvolve(db2, c, [d], prep2, [bo2]);
+    expect(db2.inventory.cards.find(o => o.instId === bo2)).toBeUndefined(); // 失败也消耗
+  });
+});
+
+describe('失败补偿 + 降星保底', () => {
+  it('失败补偿：同一主卡每失败 +30%，上限 +90%（3 次封顶），成功清零', () => {
+    const db = freshDB();
+    const a = addCard(db, 'UR', 0);
+    let b = addCard(db, 'UR', 0);
+    // 初始无补偿
+    expect(prepareEvolve(db, a, [b], () => 1.1, 0.08).bonus).toBe(0);
+    // 失败 1 次 → 下次 +30%（失败损毁素材，重新补一张）
+    const f1 = prepareEvolve(db, a, [b], () => 1.1);
+    applyEvolve(db, a, [b], f1);
+    expect(db.inventory.cards.find(o => o.instId === a)?.evoFailStacks).toBe(1);
+    b = addCard(db, 'UR', 0);
+    expect(prepareEvolve(db, a, [b], () => 1.1).bonus).toBe(30);
+    // 失败到第 3 次 → +90%（封顶）
+    for (let i = 0; i < 3; i++) {
+      b = addCard(db, 'UR', 0);
+      const f = prepareEvolve(db, a, [b], () => 1.1);
+      applyEvolve(db, a, [b], f);
+    }
+    expect(db.inventory.cards.find(o => o.instId === a)?.evoFailStacks).toBe(4);
+    b = addCard(db, 'UR', 0);
+    expect(prepareEvolve(db, a, [b], () => 1.1).bonus).toBe(90);
+    // 成功清零
+    b = addCard(db, 'UR', 0);
+    const ok = prepareEvolve(db, a, [b], () => 0);
+    applyEvolve(db, a, [b], ok);
+    expect(db.inventory.cards.find(o => o.instId === a)?.evoFailStacks).toBe(0);
+  });
+
+  it('降星保底：≥7 不降（保持原星），5/6 只降到 5，<5 正常降 1（0 不降）', () => {
+    expect(evolveFailureStar(0)).toBe(0);
+    expect(evolveFailureStar(3)).toBe(2);
+    expect(evolveFailureStar(4)).toBe(3);
+    expect(evolveFailureStar(5)).toBe(5);
+    expect(evolveFailureStar(6)).toBe(5);
+    expect(evolveFailureStar(7)).toBe(7);
+    expect(evolveFailureStar(9)).toBe(9);
   });
 });
 

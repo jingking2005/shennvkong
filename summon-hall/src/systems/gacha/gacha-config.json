@@ -60,28 +60,26 @@
       "hardPities": [{ "rarity": "LR", "threshold": 10 }]
     },
     {
-      "id": "collab", "name": "魔界出击联动召唤", "sub": "联动 · 限定卡 UP", "accent": "#3ef0e0",
-      "costSingle": 500, "costTen": 5000,
+      "id": "collab", "name": "VR 确定召唤", "sub": "50连必出 VR · LR 常出", "accent": "#3ef0e0",
+      "costSingle": 2000, "costTen": 20000,
       "pool": [
-        { "rarity": "SR", "weight": 38 }, { "rarity": "UR", "weight": 36 },
-        { "rarity": "LR", "weight": 18 }, { "rarity": "X", "weight": 6.5 },
-        { "rarity": "VR", "weight": 1.5 }
+        { "rarity": "UR", "weight": 40 }, { "rarity": "LR", "weight": 40 },
+        { "rarity": "X", "weight": 15 }, { "rarity": "VR", "weight": 5 }
       ],
-      "softPity": "UR",
-      "hardPities": [{ "rarity": "X", "threshold": 30 }],
+      "softPity": "LR",
+      "hardPities": [
+        { "rarity": "VR", "threshold": 50 }
+      ],
       "up": []
     },
     {
-      "id": "element", "name": "元素精选召唤", "sub": "光/暗/炎 轮换 UP", "accent": "#ffb42e",
+      "id": "element", "name": "元素精选召唤", "sub": "全部 X 卡 · 经验狗粮", "accent": "#ffb42e",
       "costSingle": 400, "costTen": 4000,
+      "poolSource": "all",
       "pool": [
-        { "rarity": "R", "weight": 30 }, { "rarity": "SR", "weight": 40 },
-        { "rarity": "UR", "weight": 22 }, { "rarity": "LR", "weight": 6.5 },
-        { "rarity": "X", "weight": 1.5 }
+        { "rarity": "X", "weight": 100 }
       ],
-      "softPity": "SR",
-      "hardPities": [{ "rarity": "UR", "threshold": 45 }],
-      "up": []
+      "softPity": "X"
     }
   ]
 }

@@ -36,6 +36,8 @@ export interface Combatant {
   isLeader: boolean;
   /** 怒气 0..100：玩家侧满 100 才能放技能；普攻/受击积攒 */
   rage: number;
+  /** 装备提供的复活次数（死亡时 50% HP 复活一次） */
+  reviveCharges?: number;
 }
 
 export interface BattleAction {
@@ -106,6 +108,12 @@ export function runBattleTurn(
     const em = elementalMultiplier(c.element, target.element);
 
     target.hp = Math.max(0, target.hp - hit.damage);
+    // 装备复活：死亡时若还有复活次数 → 50% HP 复活，消耗一次
+    if (target.hp === 0 && (target.reviveCharges ?? 0) > 0) {
+      target.reviveCharges = (target.reviveCharges ?? 1) - 1;
+      target.hp = Math.max(1, Math.floor(target.hpMax * 0.5));
+      events.push({ turn, phase: 'revive', actorId: target.instId, amount: target.hp, source: FILL });
+    }
     events.push({
       turn, phase: 'attack', actorId: c.instId, targetId: target.instId,
       amount: hit.damage, effectId: useSkill ? c.skillFx : undefined, source: FILL,

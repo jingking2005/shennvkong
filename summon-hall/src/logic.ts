@@ -45,7 +45,7 @@ export function assignSkillFx(element: string, rarity: string): SkillFx {
 }
 
 // ─────────────────────────── 有效属性（含进化加成；常数来自 battle-config）───────────────────────────
-export function ownedToCombatant(o: OwnedCard, isLeader = false): Combatant | null {
+export function ownedToCombatant(o: OwnedCard, isLeader = false, db?: DB): Combatant | null {
   const card = getCard(o.cardId);
   if (!card) return null;
   const C = BATTLE_CONFIG;
@@ -59,7 +59,7 @@ export function ownedToCombatant(o: OwnedCard, isLeader = false): Combatant | nu
   );
   const tier = RARITY_RANK[card.rarity];
   const fx = assignSkillFx(card.element, card.rarity);
-  return {
+  const cb: Combatant = {
     instId: o.instId, card, lv: o.lv,
     atk, hp: hpMax, hpMax, def: card.stats.defense,
     speed: Math.floor((card.stats.speed || 100) * starScale),
@@ -72,6 +72,12 @@ export function ownedToCombatant(o: OwnedCard, isLeader = false): Combatant | nu
     isLeader,
     rage: 0,
   };
+  // 装备加成（若持有装备）
+  if (db && o.equipInstId) {
+    const equip = (db.inventory.equips || []).find(e => e.instId === o.equipInstId);
+    applyEquip(cb, equip);
+  }
+  return cb;
 }
 
 /** 队长技能：全队攻击 +10% */
@@ -362,14 +368,27 @@ export function evolveRate(starA: number, starB: number): number | null {
   return Math.max(5, base - (mixed ? 10 : 0));
 }
 
+export const EVOLVE_FAIL_BONUS = 30;       // 每次失败补偿 +30%（同一主卡累积）
+export const EVOLVE_FAIL_BONUS_MAX = 3;    // 最多累积 3 次（+90%）
 export interface EvolvePrep {
   ok: boolean;
   reason?: string;
-  rate: number;           // 成功率 %
-  success: boolean;       // 预掷结果（动画播完才落库）
+  rate: number;          // 最终成功率（含加成卡+失败补偿）%，封顶 100
+  boost: number;         // 加成卡提供的加成 %
+  bonus: number;         // 失败补偿加成 %
+  success: boolean;
   newEvoStage: number;
   inheritedAtk: number;
   inheritedHp: number;
+}
+
+/** 加成卡成功率提升（%）：稀有度差 0:+10 / +1:15 / +2:30 / +3:60 / ≥+4:100；低于主卡不加成 */
+export function evolveBoostRate(targetRarity: string, boosterRarity: string): number {
+  const diff = (RARITY_RANK[boosterRarity as keyof typeof RARITY_RANK] ?? 0) -
+    (RARITY_RANK[targetRarity as keyof typeof RARITY_RANK] ?? 0);
+  if (diff < 0) return 0;
+  if (diff >= 4) return 100;
+  return [10, 15, 30, 60][diff];
 }
 
 /**
@@ -378,15 +397,20 @@ export interface EvolvePrep {
  *  - 同名卡×1（星级差 ≤1）：rate = evolveRate(主星, 素材星)，结果 = max+1
  *  - 同稀有度卡×2（无需同名）：rate = 同星基准 (10-(主星+1))×10%，结果 = 主星+1
  */
-export function prepareEvolve(db: DB, instA: string, matInsts: string[], rng: () => number = Math.random, inheritRate = 0.08): EvolvePrep {
-  const res: EvolvePrep = { ok: false, rate: 0, success: false, newEvoStage: 0, inheritedAtk: 0, inheritedHp: 0 };
+export function prepareEvolve(db: DB, instA: string, matInsts: string[], rng: () => number = Math.random, inheritRate = 0.08, boosterInsts: string[] = []): EvolvePrep {
   const a = db.inventory.cards.find(c => c.instId === instA);
+  const res: EvolvePrep = { ok: false, rate: 0, boost: 0, bonus: 0, success: false, newEvoStage: 0, inheritedAtk: 0, inheritedHp: 0 };
   if (!a) { res.reason = '卡牌不存在'; return res; }
   if (a.evoStage >= MAX_STAR) { res.reason = `已达 ${MAX_STAR} 星上限`; return res; }
   const mats = matInsts.map(id => db.inventory.cards.find(c => c.instId === id));
   if (mats.some(m => !m)) { res.reason = '素材卡不存在'; return res; }
   if (new Set(matInsts).size !== matInsts.length || matInsts.includes(instA)) { res.reason = '素材卡重复'; return res; }
   const cardA = getCard(a.cardId)!;
+  // 加成卡校验：存在、不重复、不是主卡/素材
+  const boosters = boosterInsts.map(id => db.inventory.cards.find(c => c.instId === id));
+  if (boosters.some(b => !b)) { res.reason = '加成卡不存在'; return res; }
+  const allIds = [...matInsts, ...boosterInsts];
+  if (new Set(allIds).size !== allIds.length || boosterInsts.includes(instA)) { res.reason = '加成卡与素材重复'; return res; }
 
   let rate: number;
   if (mats.length === 1) {
@@ -416,14 +440,38 @@ export function prepareEvolve(db: DB, instA: string, matInsts: string[], rng: ()
     res.inheritedHp += Math.floor(mHp * ir);
   }
 
+  // 加成卡加成（%）：按稀有度差累加（多张可叠加；rate 最终封顶 100）
+  let boost = 0;
+  for (const b of boosters) {
+    const bc = getCard(b!.cardId)!;
+    boost += evolveBoostRate(cardA.rarity, bc.rarity);
+  }
+
+  // 失败补偿：同一主卡每失败一次 +30%（上限 +90%），成功清零
+  const bonus = Math.min(EVOLVE_FAIL_BONUS_MAX, a.evoFailStacks ?? 0) * EVOLVE_FAIL_BONUS;
+
   res.ok = true;
-  res.rate = rate;
-  res.success = rng() * 100 < rate;
+  res.boost = boost;
+  res.bonus = bonus;
+  res.rate = Math.min(100, rate + boost + bonus);
+  res.success = rng() * 100 < res.rate;
   return res;
 }
 
-/** 应用升星结果：成功=主卡加星+继承、素材消耗；失败=主卡降 1 星（0 星不降）、素材损毁 */
-export function applyEvolve(db: DB, instA: string, matInsts: string[], prep: EvolvePrep): void {
+/**
+ * 降星保底：≥7 星不降（回退到当前星=不掉档）；5/6 星只降到 5 星；<5 星正常降 1 星（0 星不降）。
+ */
+export function evolveFailureStar(star: number): number {
+  if (star >= 7) return star;
+  if (star >= 5) return 5;
+  return Math.max(0, star - 1);
+}
+
+/**
+ * 应用升星结果：成功=主卡加星+继承、素材消耗+加成卡消耗+失败补偿清零；
+ * 失败=主卡按保底规则降星（≥5 不往下掉）、素材+加成卡损毁、失败补偿 +1 累积。
+ */
+export function applyEvolve(db: DB, instA: string, matInsts: string[], prep: EvolvePrep, boosterInsts: string[] = []): void {
   const inv = db.inventory;
   const a = inv.cards.find(c => c.instId === instA);
   if (!a || !prep.ok) return;
@@ -431,16 +479,97 @@ export function applyEvolve(db: DB, instA: string, matInsts: string[], prep: Evo
     a.atkBonus += prep.inheritedAtk;
     a.hpBonus += prep.inheritedHp;
     a.evoStage = prep.newEvoStage;
+    a.evoFailStacks = 0;
   } else {
-    a.evoStage = Math.max(0, a.evoStage - 1);
+    a.evoStage = evolveFailureStar(a.evoStage);
+    a.evoFailStacks = (a.evoFailStacks ?? 0) + 1;
   }
-  const drop = new Set(matInsts);
+  const drop = new Set([...matInsts, ...boosterInsts]);
   inv.cards = inv.cards.filter(c => !drop.has(c.instId));
 }
 
 export function maxLv(rarity: string, evoStage: number): number {
   const base = RARITY_RANK[rarity as keyof typeof RARITY_RANK] || 1;
   return base * 20 + evoStage * 10;
+}
+
+// ─────────────────────────── 装备（X 级装备卡）───────────────────────────
+
+export type EquipKind = 'atkFlat' | 'hpFlat' | 'speed' | 'atkMult' | 'globalMult' | 'revive';
+
+export interface EquipDef {
+  cardId: string;
+  name: string;
+  kind: EquipKind;
+  /** 数值描述（攻/体/速为数值；乘区为百分比；复活为次数） */
+  value: number;
+  desc: string;
+}
+
+const EQUIP_KINDS: EquipKind[] = ['atkFlat', 'hpFlat', 'speed', 'atkMult', 'globalMult', 'revive'];
+
+/** X 级卡 → 装备定义：按 cardId 稳定哈希分配 6 种效果（原创规则，非原版数值） */
+export function equipDefFor(cardId: string): EquipDef | null {
+  const card = getCard(cardId);
+  if (!card || card.rarity !== 'X') return null;
+  let h = 0;
+  for (let i = 0; i < cardId.length; i++) h = (h * 31 + cardId.charCodeAt(i)) >>> 0;
+  const kind = EQUIP_KINDS[h % EQUIP_KINDS.length];
+  const tier = (h >> 3) % 3; // 0/1/2 三档强度
+  switch (kind) {
+    case 'atkFlat':   return { cardId, name: card.name, kind, value: 120 + tier * 120, desc: `攻击力 +${120 + tier * 120}` };
+    case 'hpFlat':    return { cardId, name: card.name, kind, value: 900 + tier * 900, desc: `生命力 +${900 + tier * 900}` };
+    case 'speed':     return { cardId, name: card.name, kind, value: 6 + tier * 4, desc: `速度 +${6 + tier * 4}` };
+    case 'atkMult':   return { cardId, name: card.name, kind, value: 6 + tier * 4, desc: `攻击力 ×${(1 + (6 + tier * 4) / 100).toFixed(2)}` };
+    case 'globalMult': return { cardId, name: card.name, kind, value: 4 + tier * 3, desc: `全属性 ×${(1 + (4 + tier * 3) / 100).toFixed(2)}` };
+    case 'revive':    return { cardId, name: card.name, kind, value: 1, desc: '战斗死亡时复活 1 次（50% HP）' };
+  }
+}
+
+/** 装备新装备：目标槽位已有时直接替换（旧装备留在装备库，不消耗） */
+export function equipCard(db: DB, cardInstId: string, equipInstId: string): EquipDef | null {
+  const card = db.inventory.cards.find(c => c.instId === cardInstId);
+  const equip = (db.inventory.equips || []).find(e => e.instId === equipInstId);
+  if (!card || !equip) return null;
+  card.equipInstId = equipInstId;
+  return equipDefFor(equip.cardId);
+}
+
+/** 卸下装备 */
+export function unequipCard(db: DB, cardInstId: string): void {
+  const card = db.inventory.cards.find(c => c.instId === cardInstId);
+  if (card) card.equipInstId = undefined;
+}
+
+/** 装备实例入库（元素池抽到的 X 卡） */
+export function addEquipToInventory(db: DB, cardId: string): string {
+  const inv = db.inventory;
+  if (!inv.equips) inv.equips = [];
+  const e = { instId: newInstId(), cardId, gainedAt: Date.now() };
+  inv.equips.push(e);
+  return e.instId;
+}
+
+/** 战斗面板加成：装备效果应用到 Combatant（含复活次数） */
+export function applyEquip(cb: Combatant, equip: { cardId: string } | undefined): void {
+  if (!equip) return;
+  const def = equipDefFor(equip.cardId);
+  if (!def) return;
+  switch (def.kind) {
+    case 'atkFlat': cb.atk += def.value; break;
+    case 'hpFlat': cb.hpMax += def.value; cb.hp += def.value; break;
+    case 'speed': cb.speed += def.value; break;
+    case 'atkMult': cb.atk = Math.floor(cb.atk * (1 + def.value / 100)); break;
+    case 'globalMult': {
+      const m = 1 + def.value / 100;
+      cb.atk = Math.floor(cb.atk * m);
+      cb.hpMax = Math.floor(cb.hpMax * m);
+      cb.hp = Math.floor(cb.hp * m);
+      cb.speed = Math.floor(cb.speed * m);
+      break;
+    }
+    case 'revive': cb.reviveCharges = def.value; break;
+  }
 }
 
 // ─────────────────────────── 强化（喂狗粮）───────────────────────────

@@ -7,6 +7,8 @@ import { RARITY_RANK } from '../../data';
 
 const fate = BANNERS.find(b => b.id === 'fate')!;
 const legend = BANNERS.find(b => b.id === 'legend')!;
+const collab = BANNERS.find(b => b.id === 'collab')!;
+const element = BANNERS.find(b => b.id === 'element')!;
 
 describe('配置加载', () => {
   it('7 池全部来自 gacha-config.json，权重为正', () => {
@@ -73,6 +75,50 @@ describe('保底机制', () => {
     expect(prog.length).toBe(2);
     expect(prog[0].rarity).toBe('UR');
     expect(prog[0].current).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('VR 确定召唤（原魔界联动）', () => {
+  it('价格最贵：单抽 2000 钻 / 十连 20000 钻', () => {
+    expect(collab.costSingle).toBe(2000);
+    expect(collab.costTen).toBe(20000);
+  });
+
+  it('50 抽内必出 ≥VR（硬保底）', () => {
+    const g = new Gacha(31);
+    let sinceVr = 0;
+    for (let i = 0; i < 500; i++) {
+      const p = g.pullOne(collab);
+      sinceVr++;
+      if (RARITY_RANK[p.card.rarity] >= RARITY_RANK.VR) sinceVr = 0;
+      expect(sinceVr).toBeLessThanOrEqual(50);
+    }
+  });
+
+  it('十连必出 ≥LR（softPity）且 LR 权重高（LR+X+VR ≈ 60%）', () => {
+    const g = new Gacha(77);
+    for (let round = 0; round < 15; round++) {
+      const pulls = g.pullTen(collab);
+      expect(pulls.some(p => RARITY_RANK[p.card.rarity] >= RARITY_RANK.LR)).toBe(true);
+    }
+    const lrWeight = collab.pool.reduce((s, e) => s + (RARITY_RANK[e.rarity] >= RARITY_RANK.LR ? e.weight : 0), 0);
+    const total = collab.pool.reduce((s, e) => s + e.weight, 0);
+    expect(lrWeight / total).toBeGreaterThan(0.5);
+  });
+});
+
+describe('元素精选召唤（全 X 狗粮）', () => {
+  it('池子只有 X：抽 100 次全部为 X 卡', () => {
+    const g = new Gacha(2026);
+    for (let i = 0; i < 100; i++) {
+      expect(g.pullOne(element).card.rarity).toBe('X');
+    }
+  });
+
+  it('十连全部为 X', () => {
+    const g = new Gacha(8);
+    const pulls = g.pullTen(element);
+    expect(pulls.every(p => p.card.rarity === 'X')).toBe(true);
   });
 });
 

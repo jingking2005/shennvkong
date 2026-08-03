@@ -86,7 +86,7 @@ export interface StageDefinition {
 
 export interface BattleEvent {
   turn: number;
-  phase: 'wave-start' | 'skill-check' | 'attack' | 'status' | 'death-check' | 'wave-clear' | 'battle-end';
+  phase: 'wave-start' | 'skill-check' | 'attack' | 'status' | 'death-check' | 'wave-clear' | 'battle-end' | 'revive';
   actorId?: string;
   targetId?: string;
   amount?: number;

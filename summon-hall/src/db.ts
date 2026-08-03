@@ -65,6 +65,17 @@ export interface OwnedCard {
   locked: boolean;
   /** 获得时间戳（用于 NEW 标记）；种子/旧存档缺省 */
   gainedAt?: number;
+  /** 升星失败次数（同一主卡累积，每次失败 +1，成功归零；用于下次合成补偿 +30%/次） */
+  evoFailStacks?: number;
+  /** 已装备的装备实例 id（来自 inventory.equips） */
+  equipInstId?: string;
+}
+
+/** 玩家持有的装备实例（装备库，独立于卡库） */
+export interface OwnedEquip {
+  instId: string;      // 实例 id
+  cardId: string;      // 目录卡 id（X 级卡）
+  gainedAt: number;    // 获得时间戳
 }
 
 /** 库存（卡牌仓库） */
@@ -73,6 +84,7 @@ export interface UserInventory {
   cards: OwnedCard[];
   capacity: number;
   materials: Record<string, number>; // 强化素材
+  equips?: OwnedEquip[];             // 装备库（X 级装备卡）
 }
 
 /** 章节关卡 */
@@ -252,7 +264,7 @@ export function makeOwnedCard(cardId: string, lv = 1): OwnedCard {
 
 /** 种子：初始化数据库 */
 export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
-  const inv: UserInventory = { uid: 'u1', cards: [], capacity: INV_CAPACITY, materials: { upgradePotion: 3, enhanceStone: 50, evolveGem: 10 } };
+  const inv: UserInventory = { uid: 'u1', cards: [], capacity: INV_CAPACITY, materials: { upgradePotion: 3, enhanceStone: 50, evolveGem: 10 }, equips: [] };
   // 初始给几张卡（用可召唤池）
   const seed: [Rarity, number][] = [['X', 1], ['VR', 1], ['LR', 2], ['UR', 3], ['SR', 5], ['R', 10], ['N', 10]];
   for (const [r, n] of seed) {

@@ -13,7 +13,8 @@ import {
   ExploreStage, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
   claimRaidReward, claimAllRaidRewards, tickBattlePt, tickEnergy, openChest,
   ownedToCombatant, leaderAtkBonus, canClaimLogin, claimDailyLogin, LOGIN_REWARDS,
-  autoFodder, findDuplicate, evolveRate, prepareEvolve, applyEvolve, MAX_STAR, STAR_STAT_MULT,
+  autoFodder, findDuplicate, evolveRate, evolveBoostRate, evolveFailureStar, prepareEvolve, applyEvolve, MAX_STAR, STAR_STAT_MULT,
+  equipDefFor, equipCard, unequipCard, addEquipToInventory, type EquipDef,
   type Combatant, type ExploreResult, type SkillFx, type EvolvePrep,
   type ChestReward, type ChestQuality, mulberry32,
 } from './logic';
@@ -192,10 +193,14 @@ class SummonHall {
   private evolveMatPair: string[] = [];         // 同稀有度模式：选中的两张素材
   private evolveTab: 'same' | 'rarity' = 'same';
   private evolveFrom: Page = 'inventory';       // 返回页
+  private evolveBoosters: string[] = [];        // 选中的加成卡（最多 3 张，按稀有度差提升成功率）
+  private evolveBoostOpen = false;              // 加成卡选择弹层是否展开
   /** 升星融合动画（非 null 时全屏覆盖并拦截输入） */
-  private evolveAnim: { targetInst: string; mats: { instId: string; card: Card; star: number }[]; t: number; prep: EvolvePrep; applied: boolean; tgtCard: Card; tgtStar: number } | null = null;
+  private evolveAnim: { targetInst: string; mats: { instId: string; card: Card; star: number }[]; boosterIds: string[]; t: number; prep: EvolvePrep; applied: boolean; tgtCard: Card; tgtStar: number } | null = null;
   private teamMsg = '';               // 操作反馈
   private teamMsgT = 0;
+  /** 详情弹层装备选择面板（true 时覆盖详情下层区域） */
+  private detailEquipOpen = false;
   /** 充值（调试）弹窗 */
   private showRecharge = false;
   /** 充值按钮上次点击时间（双击才打开调试面板） */
@@ -342,7 +347,7 @@ class SummonHall {
     this.teamInstIds.forEach((instId, i) => {
       const o = this.db.inventory.cards.find(c => c.instId === instId);
       if (!o) return;
-      const c = ownedToCombatant(o, i === 0);
+      const c = ownedToCombatant(o, i === 0, this.db);
       if (c) out.push(c);
     });
     return out;
@@ -871,6 +876,11 @@ class SummonHall {
     pulls.forEach(p => preloadImage(p.card).catch(() => {}));
     // ★ 抽到的卡入库（此前只加计数器，卡从未进库存——编队里看不到的根源）
     for (const p of pulls) {
+      // 元素精选池抽到的 X 卡 → 装备库（装备卡，不占卡位）
+      if (this.banner.id === 'element') {
+        addEquipToInventory(this.db, p.card.id);
+        continue;
+      }
       const tier = RANK[p.card.rarity] || 1;
       this.db.inventory.cards.push(makeOwnedCard(p.card.id, 1 + tier * 2));
     }
@@ -996,8 +1006,8 @@ class SummonHall {
       if (!ea.applied && ea.t >= 1.3) {
         ea.applied = true;
         const matIds = ea.mats.map(m => m.instId);
-        applyEvolve(this.db, ea.targetInst, matIds, ea.prep);
-        const dropSet = new Set(matIds);
+        applyEvolve(this.db, ea.targetInst, matIds, ea.prep, ea.boosterIds);
+        const dropSet = new Set([...matIds, ...ea.boosterIds]);
         if (this.teamInstIds.some(x => dropSet.has(x))) {
           this.teamInstIds = this.teamInstIds.filter(x => !dropSet.has(x));
           this.saveTeam();
@@ -1013,10 +1023,11 @@ class SummonHall {
       if (ea.t >= endT) {
         this.flashTeamMsg(ea.prep.success
           ? `升星成功！${'★'.repeat(ea.prep.newEvoStage)} 继承 ATK+${ea.prep.inheritedAtk} HP+${ea.prep.inheritedHp}`
-          : `合成失败……素材损毁，主卡降至 ${Math.max(0, ea.tgtStar - 1)} 星（成功率 ${ea.prep.rate}%）`);
+          : `合成失败……素材损毁，主卡降至 ${evolveFailureStar(ea.tgtStar)} 星（下次成功率 +30%）`);
         this.evolveAnim = null;
         this.evolveMatSel = null;
         this.evolveMatPair = [];
+        this.evolveBoosters = [];
       }
     }
 
@@ -2335,8 +2346,24 @@ class SummonHall {
     }
     // 详情内按钮
     if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
-    if (id === 'closeInvDetail') { this.detailInst = null; return; }
-    if (id === 'closeDetail') { this.detailInst = null; return; }
+    if (id === 'closeInvDetail') { this.detailInst = null; this.detailEquipOpen = false; return; }
+    if (id === 'closeDetail') { this.detailInst = null; this.detailEquipOpen = false; return; }
+    if (id === 'equipOpen') { this.detailEquipOpen = !this.detailEquipOpen; return; }
+    if (id === 'equipClose') { this.detailEquipOpen = false; return; }
+    if (id === 'equipRemove') {
+      if (this.detailInst) { unequipCard(this.db, this.detailInst); this.flashTeamMsg('已卸下装备'); saveDB(this.db); }
+      return;
+    }
+    if (id.startsWith('equipPick:')) {
+      const eid = id.slice(10);
+      if (this.detailInst) {
+        const def = equipCard(this.db, this.detailInst, eid);
+        if (def) this.flashTeamMsg(`已装备：${def.name}（${def.desc}）`);
+      }
+      this.detailEquipOpen = false;
+      saveDB(this.db);
+      return;
+    }
     if (id === 'quickEnhance') { this.doQuickEnhance(); return; }
     if (id === 'quickEvolve') { this.doQuickEvolve(); return; }
     if (id === 'lockCard') {
@@ -2370,7 +2397,7 @@ class SummonHall {
     const inv = this.db.inventory;
     // 关闭详情
     if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
-    if (id === 'closeTeamDetail') { this.detailInst = null; this.enhanceMode = false; this.enhancePicks.clear(); return; }
+    if (id === 'closeTeamDetail') { this.detailInst = null; this.detailEquipOpen = false; this.enhanceMode = false; this.enhancePicks.clear(); return; }
     // 筛选
     if (id.startsWith('filter:')) { this.invFilter = id.slice(7); this.invScroll = 0; return; }
     // 滚动（▲▼ 按钮已移除，滚轮/滚动条接管）
@@ -2407,6 +2434,22 @@ class SummonHall {
       return;
     }
     // 详情弹层按钮：强化 → 关闭详情进入选择模式（主卡记在 detailInstKeep）
+    if (id === 'equipOpen') { this.detailEquipOpen = !this.detailEquipOpen; return; }
+    if (id === 'equipClose') { this.detailEquipOpen = false; return; }
+    if (id === 'equipRemove') {
+      if (this.detailInst) { unequipCard(this.db, this.detailInst); this.flashTeamMsg('已卸下装备'); saveDB(this.db); }
+      return;
+    }
+    if (id.startsWith('equipPick:')) {
+      const eid = id.slice(10);
+      if (this.detailInst) {
+        const def = equipCard(this.db, this.detailInst, eid);
+        if (def) this.flashTeamMsg(`已装备：${def.name}（${def.desc}）`);
+      }
+      this.detailEquipOpen = false;
+      saveDB(this.db);
+      return;
+    }
     if (id === 'enhanceStart') { this.enhanceMode = true; this.enhancePicks.clear(); this.detailInstKeep = this.detailInst; this.detailInst = null; this.page = 'team'; return; }
     if (id === 'enhanceGo') {
       const target = this.detailInstKeep;
@@ -2480,6 +2523,7 @@ class SummonHall {
     this.evolveFrom = this.page === 'team' ? 'team' : 'inventory';
     this.detailInst = null; this.detailInstKeep = null;
     this.evolveMatSel = null; this.evolveMatPair = [];
+    this.evolveBoosters = []; this.evolveBoostOpen = false;
     this.evolveTarget = null;
     if (target) {
       this.evolveTarget = target;
@@ -2522,13 +2566,28 @@ class SummonHall {
     if (id === 'evoBack') {
       this.page = this.evolveFrom;
       this.evolveTarget = null; this.evolveMatSel = null; this.evolveMatPair = [];
+      this.evolveBoosters = []; this.evolveBoostOpen = false;
       this.syncBgm();
       return;
     }
-    if (id === 'evoTgtClear') { this.evolveTarget = null; this.evolveMatSel = null; this.evolveMatPair = []; return; }
+    if (id === 'evoTgtClear') { this.evolveTarget = null; this.evolveMatSel = null; this.evolveMatPair = []; this.evolveBoosters = []; this.evolveBoostOpen = false; return; }
+    if (id === 'evoBoostToggle') { this.evolveBoostOpen = !this.evolveBoostOpen; return; }
+    if (id === 'evoBoostClose') { this.evolveBoostOpen = false; return; }
+    if (id.startsWith('evoBoost:')) {
+      const instId = id.slice(9);
+      if (this.evolveBoosters.includes(instId)) {
+        this.evolveBoosters = this.evolveBoosters.filter(x => x !== instId);
+      } else if (this.evolveBoosters.length < 3) {
+        this.evolveBoosters.push(instId);
+      } else {
+        this.flashTeamMsg('最多选择 3 张加成卡');
+      }
+      return;
+    }
     if (id.startsWith('evoTgt:')) {
       this.evolveTarget = id.slice(7);
       this.evolveMatSel = null; this.evolveMatPair = [];
+      this.evolveBoosters = []; this.evolveBoostOpen = false;
       this.preselectEvolveMats();
       return;
     }
@@ -2555,7 +2614,8 @@ class SummonHall {
         this.flashTeamMsg(this.evolveTab === 'same' ? '请先选择一张同名素材卡' : '请先选择两张同稀有度素材卡');
         return;
       }
-      const prep = prepareEvolve(this.db, target, mats);
+      const boosters = this.evolveBoosters;
+      const prep = prepareEvolve(this.db, target, mats, undefined, undefined, boosters);
       if (!prep.ok) { this.flashTeamMsg(prep.reason || '无法合成'); return; }
       const t = this.db.inventory.cards.find(o => o.instId === target);
       const tgtCard = t ? getCard(t.cardId) : null;
@@ -2564,7 +2624,7 @@ class SummonHall {
         .map(mid => this.db.inventory.cards.find(o => o.instId === mid))
         .filter((o): o is OwnedCard => !!o)
         .map(o => ({ instId: o.instId, card: getCard(o.cardId)!, star: o.evoStage }));
-      this.evolveAnim = { targetInst: target, mats: matObjs, t: 0, prep, applied: false, tgtCard, tgtStar: t.evoStage };
+      this.evolveAnim = { targetInst: target, mats: matObjs, boosterIds: boosters, t: 0, prep, applied: false, tgtCard, tgtStar: t.evoStage };
       audio.playSe('skill');
       return;
     }
@@ -2678,12 +2738,24 @@ class SummonHall {
       }
     }
 
+    // 加成卡（右侧成功率提升）& 失败补偿
+    const boostCands = t ? this.db.inventory.cards.filter(o =>
+      o.instId !== t.instId && !o.locked && !matIds.includes(o.instId)
+      && !this.evolveBoosters.includes(o.instId)
+      && evolveBoostRate(tc.rarity, getCard(o.cardId)?.rarity ?? 'N') > 0
+    ).sort((x, y) => evolveBoostRate(tc.rarity, getCard(y.cardId)?.rarity ?? 'N') - evolveBoostRate(tc.rarity, getCard(x.cardId)?.rarity ?? 'N')) : [];
+    const selBoosts = this.evolveBoosters.map(id => this.db.inventory.cards.find(o => o.instId === id)).filter((o): o is OwnedCard => !!o);
+    const boostTotal = selBoosts.reduce((s, o) => s + evolveBoostRate(tc.rarity, getCard(o.cardId)?.rarity ?? 'N'), 0);
+    const failStack = t?.evoFailStacks ?? 0;
+    const bonusTotal = Math.min(3, failStack) * 30;
+
     // 成功率 / 结果预览 / 合成按钮
     if (rate !== null) {
-      const col = rate >= 80 ? '#6fce9a' : rate >= 50 ? '#ffd24d' : '#ff8c6a';
-      this.text(`成功率 ${rate}%`, W / 2, 486, 26, col, 'center', 'bold', true);
+      const finalRate = Math.min(100, rate + boostTotal + bonusTotal);
+      const col = finalRate >= 80 ? '#6fce9a' : finalRate >= 50 ? '#ffd24d' : '#ff8c6a';
+      this.text(`成功率 ${rate}%${boostTotal ? ` +${boostTotal}%加成卡` : ''}${bonusTotal ? ` +${bonusTotal}%补偿` : ''} = ${finalRate}%`, W / 2, 486, 22, col, 'center', 'bold', true);
       this.text(`→ ${'★'.repeat(Math.max(t.evoStage, ...(this.evolveTab === 'same' && mats[0] ? [mats[0].evoStage] : [])) + 1)}`, W / 2, 514, 18, '#ffe14d', 'center', 'bold');
-      this.text('失败：素材损毁，主卡降 1 星', W / 2, 538, 12, '#ff9c9c', 'center');
+      this.text(failStack > 0 ? `连续失败 ${failStack} 次（下次再失败 +30% 补偿，上限 +90%）` : '失败：素材损毁，主卡按保底降星（5★/7★ 不降）', W / 2, 538, 12, '#ff9c9c', 'center');
     } else {
       this.text(this.evolveTab === 'same'
         ? (mats[0] ? '星级差超过 1 不能合成' : '选择 1 张同名卡作为素材')
@@ -2691,8 +2763,41 @@ class SummonHall {
         W / 2, 496, 15, '#8892a8', 'center', 'bold');
     }
     const can = rate !== null && !this.evolveAnim;
-    glassButton(ctx, W / 2 - 140, 556, 280, 52, can ? `合成升星（${rate}%）` : '合成升星', { kind: can ? 'green' : 'gray', hover: can && this.hover === 'evoGo', fontSize: 20 });
+    glassButton(ctx, W / 2 - 140, 556, 280, 52, can ? `合成升星（${Math.min(100, rate + boostTotal + bonusTotal)}%）` : '合成升星', { kind: can ? 'green' : 'gray', hover: can && this.hover === 'evoGo', fontSize: 20 });
     if (can) this.buttons.push({ x: W / 2 - 140, y: 556, w: 280, h: 52, id: 'evoGo' });
+    const boostBtnLabel = this.evolveBoosters.length ? `＋加成卡（${this.evolveBoosters.length}/3 · +${boostTotal}%）` : '＋加成卡';
+    glassButton(ctx, W / 2 + 158, 556, 150, 52, boostBtnLabel, { kind: this.evolveBoosters.length ? 'green' : 'blue', hover: this.hover === 'evoBoostToggle', fontSize: 15 });
+    this.buttons.push({ x: W / 2 + 158, y: 556, w: 150, h: 52, id: 'evoBoostToggle' });
+
+    // 加成卡弹层（覆盖素材条上方区域）
+    if (this.evolveBoostOpen) {
+      this.rr(60, 560, W - 120, 175, 14);
+      ctx.fillStyle = 'rgba(14,10,26,0.94)'; ctx.fill();
+      ctx.strokeStyle = '#8b7ff0'; ctx.lineWidth = 2;
+      this.rr(60, 560, W - 120, 175, 14); ctx.stroke();
+      this.text(`加成卡（提升成功率：同级 +10 / 高1级 +15 / 高2级 +30 / 高3级 +60 / 高4级以上 +100）`, 80, 584, 13, '#b9a8ff', 'left', 'bold');
+      this.text(`已选 ${this.evolveBoosters.length}/3　合计 +${boostTotal}%`, W - 80, 584, 13, '#ffe14d', 'right', 'bold');
+      glassButton(ctx, W - 180, 594, 120, 30, '关闭', { kind: 'gray', hover: this.hover === 'evoBoostClose', fontSize: 14 });
+      this.buttons.push({ x: W - 180, y: 594, w: 120, h: 30, id: 'evoBoostClose' });
+      const bw = 66, bh = 92, by = 638;
+      boostCands.slice(0, 14).forEach((o, i) => {
+        const oc = getCard(o.cardId); if (!oc) return;
+        const cx = 80 + i * (bw + 8) + bw / 2;
+        const sel = this.evolveBoosters.includes(o.instId);
+        ctx.save();
+        if (sel) { ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 14; }
+        drawCard(ctx, oc, cx, by, bw, bh, { showName: false });
+        ctx.restore();
+        if (sel) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(cx - bw / 2, by - bh / 2, bw, bh, 7); ctx.stroke(); }
+        const bt = evolveBoostRate(tc.rarity, oc.rarity);
+        this.text(`+${bt}%`, cx, by + bh / 2 - 10, 10, '#8bffb0', 'center', 'bold');
+        this.text(`${'★'.repeat(o.evoStage) || '0星'}`, cx, by + bh / 2 + 2, 9, '#ffe9a8', 'center', 'bold');
+        this.buttons.push({ x: cx - bw / 2, y: by - bh / 2, w: bw, h: bh, id: `evoBoost:${o.instId}` });
+      });
+      if (!boostCands.length) {
+        this.text('没有可用的加成卡（需要稀有度不低于主卡的未锁定卡）', 80, 660, 13, '#8892a8', 'left');
+      }
+    }
 
     // 候选素材条
     const cands = this.evolveTab === 'same' ? this.sameCardCandidates(t) : this.rarityCandidates(t);
@@ -2978,7 +3083,7 @@ class SummonHall {
     const powMap = new Map<string, { atk: number; hp: number }>();
     if (this.invSort === 'attack' || this.invSort === 'hp') {
       for (const o of inv) {
-        const cb = ownedToCombatant(o);
+        const cb = ownedToCombatant(o, false, this.db);
         if (cb) powMap.set(o.instId, { atk: cb.atk, hp: cb.hpMax });
       }
     }
@@ -3054,12 +3159,44 @@ class SummonHall {
     this.renderDragLayer();
   }
 
+  /** 装备选择面板（详情弹层之上）：列出装备库，点击装备/卸下 */
+  private renderEquipOverlay(): void {
+    const ctx = this.ctx;
+    const o = this.db.inventory.cards.find(c => c.instId === this.detailInst);
+    if (!o) { this.detailEquipOpen = false; return; }
+    const equips = this.db.inventory.equips || [];
+    const ow = 560, oh = 320, ox = W / 2 - ow / 2, oy = H / 2 - oh / 2;
+    this.rr(ox, oy, ow, oh, 14);
+    ctx.fillStyle = 'rgba(10,7,20,0.96)'; ctx.fill();
+    ctx.strokeStyle = '#8b7ff0'; ctx.lineWidth = 2;
+    this.rr(ox, oy, ow, oh, 14); ctx.stroke();
+    this.text('装 备（X 级装备卡，点击装备）', ox + 20, oy + 30, 16, '#f5e0a0', 'left', 'bold', true);
+    this.text(`装备库 ${equips.length} 件`, ox + ow - 20, oy + 30, 13, '#ffe14d', 'right', 'bold');
+    glassButton(ctx, ox + ow - 110, oy + 12, 90, 32, '关闭', { kind: 'gray', hover: this.hover === 'equipClose', fontSize: 14 });
+    this.buttons.push({ x: ox + ow - 110, y: oy + 12, w: 90, h: 32, id: 'equipClose' });
+    if (!equips.length) {
+      this.text('暂无装备——去「元素精选召唤」抽取 X 级装备卡', ox + 20, oy + 160, 14, '#8892a8', 'left', 'bold');
+      return;
+    }
+    let ey = oy + 62;
+    for (const e of equips.slice(0, 7)) {
+      const def = equipDefFor(e.cardId);
+      const ownedBy = this.db.inventory.cards.find(c => c.equipInstId === e.instId);
+      const onThis = o.equipInstId === e.instId;
+      this.pill(ox + 16, ey, ow - 32, 32, onThis ? 'rgba(24,64,40,0.95)' : 'rgba(20,16,34,0.9)', onThis ? '#8bffb0' : '#5a5470');
+      this.text(def ? `${def.name}：${def.desc}` : e.cardId, ox + 26, ey + 20, 13, onThis ? '#b8ffd0' : '#f0e6cc', 'left', 'bold');
+      this.text(onThis ? '已装备（点击卸下）' : (ownedBy ? `被 ${ownedBy.cardId} 使用` : '点击装备'), ox + ow - 26, ey + 20, 12, onThis ? '#8bffb0' : '#8892a8', 'right', 'bold');
+      this.buttons.push({ x: ox + 16, y: ey, w: ow - 32, h: 32, id: `equipPick:${e.instId}` });
+      ey += 36;
+    }
+  }
+
   private renderInvDetail(): void {
     const ctx = this.ctx;
     const o = this.db.inventory.cards.find(c => c.instId === this.detailInst);
     if (!o) { this.detailInst = null; return; }
     const card = getCard(o.cardId); if (!card) { this.detailInst = null; return; }
-    const cb = ownedToCombatant(o);
+    const cb = ownedToCombatant(o, false, this.db);
     ctx.fillStyle = 'rgba(2,3,8,0.7)';
     ctx.fillRect(0, 0, W, H);
     const dw = 700, dh = 460, dx = W / 2 - dw / 2, dy = H / 2 - dh / 2;
@@ -3102,6 +3239,13 @@ class SummonHall {
       ['技能', card.skillName || '—'], ['获得', isFresh(o) ? '今天' : '较早'],
     ];
     for (const [l, v] of rowsS) { this.text(l, ix, ry, 15, '#e8a0c0', 'left', 'bold'); this.text(v, ix + 120, ry, 15, '#f0e6cc', 'left', 'bold'); ry += 28; }
+    // 装备行：显示当前装备（含效果），点击打开装备面板
+    const curEquip = o.equipInstId ? (this.db.inventory.equips || []).find(e => e.instId === o.equipInstId) : null;
+    const curDef = curEquip ? equipDefFor(curEquip.cardId) : null;
+    this.text('装备', ix, ry, 15, '#e8a0c0', 'left', 'bold');
+    this.text(curDef ? `⚔ ${curDef.name}（${curDef.desc}）` : '—（点击装备）', ix + 120, ry, 13, curDef ? '#8bffb0' : '#8892a8', 'left', 'bold');
+    this.buttons.push({ x: ix, y: ry - 18, w: 400, h: 30, id: 'equipOpen' });
+    ry += 28;
     // 文本下界：不得侵入按钮区（by2 = dy+dh-122）
     const textBound = dy + dh - 136;
     if ((o.atkBonus > 0 || o.hpBonus > 0) && ry <= textBound) { this.text(`升星继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 28; }
@@ -3137,6 +3281,7 @@ class SummonHall {
     this.buttons.push({ x: dx + 40 + (bw + 12), y: by, w: bw, h: bh, id: 'sellCard' });
     glassButton(ctx, dx + 20, dy + 14, 90, 42, '✕', { kind: 'gray', hover: this.hover === 'closeInvDetail', fontSize: 16 });
     this.buttons.push({ x: dx + 20, y: dy + 14, w: 90, h: 42, id: 'closeInvDetail' });
+    if (this.detailEquipOpen) this.renderEquipOverlay();
   }
 
   private renderShop(): void {
@@ -3301,7 +3446,7 @@ class SummonHall {
     const powMap = new Map<string, { atk: number; hp: number }>();
     if (this.invSort === 'attack' || this.invSort === 'hp') {
       for (const o of inv) {
-        const cb = ownedToCombatant(o);
+        const cb = ownedToCombatant(o, false, this.db);
         if (cb) powMap.set(o.instId, { atk: cb.atk, hp: cb.hpMax });
       }
     }
@@ -3421,7 +3566,7 @@ class SummonHall {
     const o = this.db.inventory.cards.find(c => c.instId === this.detailInst);
     if (!o) { this.detailInst = null; return; }
     const card = getCard(o.cardId); if (!card) { this.detailInst = null; return; }
-    const cb = ownedToCombatant(o);
+    const cb = ownedToCombatant(o, false, this.db);
     ctx.fillStyle = 'rgba(2,3,8,0.7)';
     ctx.fillRect(0, 0, W, H);
     const dw = 700, dh = 460, dx = W / 2 - dw / 2, dy = H / 2 - dh / 2;
@@ -3451,6 +3596,17 @@ class SummonHall {
       this.text(v, ix + 110, ry, 15, '#f0e6cc', 'left', 'bold');
       ry += 34;
     }
+    // 装备行：显示当前装备（含效果），点击打开装备面板
+    const curEquip = o.equipInstId ? (this.db.inventory.equips || []).find(e => e.instId === o.equipInstId) : null;
+    const curDef = curEquip ? equipDefFor(curEquip.cardId) : null;
+    this.text('装备', ix, ry, 15, '#e8a0c0', 'left', 'bold');
+    this.text(curDef ? `⚔ ${curDef.name}（${curDef.desc}）` : '—（点击装备）', ix + 110, ry, 13, curDef ? '#8bffb0' : '#8892a8', 'left', 'bold');
+    this.buttons.push({ x: ix, y: ry - 18, w: 380, h: 30, id: 'equipOpen' });
+    ry += 34;
+    // 装备效果已计入上方数值（提示）
+    if (curDef && curDef.kind !== 'revive') {
+      this.text(`（装备加成已计入）`, ix + 110, ry - 14, 10, '#6fce9a', 'left');
+    }
     if (o.atkBonus > 0 || o.hpBonus > 0) {
       this.text(`升星继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30;
     }
@@ -3476,6 +3632,7 @@ class SummonHall {
     // 关闭
     glassButton(ctx, dx + 20, dy + 14, 90, 42, '✕', { kind: 'gray', hover: this.hover === 'closeTeamDetail', fontSize: 16 });
     this.buttons.push({ x: dx + 20, y: dy + 14, w: 90, h: 42, id: 'closeTeamDetail' });
+    if (this.detailEquipOpen) this.renderEquipOverlay();
   }
 
   // ============ 战斗界面 ============
