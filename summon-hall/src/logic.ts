@@ -436,6 +436,24 @@ export function EnhanceCard(db: DB, targetInst: string, fodderInsts: string[]): 
   return res;
 }
 
+/** 一键强化：自动挑狗粮——未锁定、不在队伍、非目标自身，先 N 后 R，最多 max 张 */
+export function autoFodder(db: DB, targetInst: string, teamInsts: Set<string>, max = 6): string[] {
+  const ok = (o: OwnedCard) =>
+    o.instId !== targetInst && !o.locked && !teamInsts.has(o.instId);
+  const n = db.inventory.cards.filter(o => ok(o) && getCard(o.cardId)?.rarity === 'N');
+  const r = db.inventory.cards.filter(o => ok(o) && getCard(o.cardId)?.rarity === 'R');
+  return [...n, ...r].slice(0, max).map(o => o.instId);
+}
+
+/** 一键升星：找第一张可合成的同名卡（未锁定、不在队伍、非自身） */
+export function findDuplicate(db: DB, targetInst: string, teamInsts: Set<string>): OwnedCard | null {
+  const target = db.inventory.cards.find(o => o.instId === targetInst);
+  if (!target) return null;
+  return db.inventory.cards.find(o =>
+    o.instId !== targetInst && o.cardId === target.cardId && !o.locked && !teamInsts.has(o.instId),
+  ) ?? null;
+}
+
 /** 药水提供的经验（等价 1 张 R 卡狗粮） */
 export const POTION_EXP = 300;
 /** 使用一瓶药水的金币成本 */

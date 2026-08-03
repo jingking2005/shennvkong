@@ -5,7 +5,7 @@
 import { Background } from './background';
 import { drawCard, preloadImage, getImage, RARITY_COLOR } from './card';
 import { BANNERS, Gacha, rateTable, bannerShowcase, type Banner, type Pull } from './gacha';
-import { cardsByRarity, getCard, type Card, type Rarity } from './data';
+import { cardsByRarity, getCard, SUMMON_CARDS, type Card, type Rarity } from './data';
 import { Ease, Tweener } from './ease';
 import { glassButton, metalDialog, engravedText, roundRectPath } from './ui';
 import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchRaidBoss } from './db';
@@ -13,6 +13,7 @@ import {
   ExploreStage, EvolveCard, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
   claimRaidReward, claimAllRaidRewards, tickBattlePt, tickEnergy, openChest,
   ownedToCombatant, leaderAtkBonus, canClaimLogin, claimDailyLogin, LOGIN_REWARDS,
+  autoFodder, findDuplicate,
   type Combatant, type ExploreResult, type SkillFx,
   type ChestReward, type ChestQuality, mulberry32,
 } from './logic';
@@ -23,8 +24,8 @@ import { stageVisual } from './data/stages-runtime';
 import { audio } from './audio';
 import {
   drawBattleCard, drawHpBar, drawSkillStar, drawCircleButton, drawSkillConfirm,
-  drawVictory, drawExploreChrome, drawTeamStripBottom,
-  type SkillInfo, type VictoryEntry, type ExploreChromeData,
+  drawExploreChrome, drawTeamStripBottom,
+  type SkillInfo, type ExploreChromeData,
 } from './battle-ui/widgets';
 import { BAT, ENCOUNTER, EXPLORE, COLORS } from './battle-ui/layout';
 
@@ -702,8 +703,10 @@ class SummonHall {
         // 点击宝箱：开箱（卡片入库），播放 opening 动画
         if (b.chest && b.chest.phase === 'closed') {
           const pickCard = (r: string) => {
-            const pool = cardsByRarity(r as Rarity);
-            return pool[(Math.random() * pool.length) | 0];
+            const pool = SUMMON_CARDS.filter(c => c.rarity === r);
+            const fb = cardsByRarity(r as Rarity);
+            const use = pool.length ? pool : fb;
+            return use[(Math.random() * use.length) | 0];
           };
           b.chest.reward = openChest(this.db, b.chest.quality, pickCard, b.seed++);
           b.chest.phase = 'opening'; b.chest.t = 0;
@@ -2360,6 +2363,30 @@ class SummonHall {
       this.detailInst = target; this.detailInstKeep = null;
       return;
     }
+    // 一键强化：自动喂狗粮（未锁定 N→R，最多 6 张），仓库详情内直接完成
+    if (id === 'quickEnhance') {
+      const target = this.detailInst;
+      if (!target) return;
+      const fodder = autoFodder(this.db, target, new Set(this.teamInstIds));
+      if (!fodder.length) { this.flashTeamMsg('没有可用狗粮（需未锁定的 N/R 卡）'); return; }
+      const r = EnhanceCard(this.db, target, fodder);
+      if (r.ok) this.flashTeamMsg(`强化成功！喂 ${fodder.length} 张狗粮，Lv.${r.lvBefore} → Lv.${r.lvAfter}（金币-${r.goldSpent}）`);
+      else this.flashTeamMsg(r.reason || '强化失败');
+      saveDB(this.db);
+      return;
+    }
+    // 一键升星：有同名卡直接合成（最高 5 星）
+    if (id === 'quickEvolve') {
+      const target = this.detailInst;
+      if (!target) return;
+      const dup = findDuplicate(this.db, target, new Set(this.teamInstIds));
+      if (!dup) { this.flashTeamMsg('没有同名卡（升星需同名卡×1）'); return; }
+      const r = EvolveCard(this.db, target, dup.instId);
+      if (r.ok) this.flashTeamMsg(`升星成功！${'★'.repeat(r.newEvoStage)} 继承 ATK+${r.inheritedAtk} HP+${r.inheritedHp}`);
+      else this.flashTeamMsg(r.reason || '升星失败');
+      saveDB(this.db);
+      return;
+    }
     if (id === 'sellCard') {
       if (!this.detailInst) return;
       const o = inv.cards.find(c => c.instId === this.detailInst);
@@ -2414,19 +2441,27 @@ class SummonHall {
       if (f === 'SR') fy += 38, fx = 56; // 两行筛选
     }
 
-    // ── 排序 ──
-    const sorts: [string, string][] = [['rarity', '稀有度'], ['lv', '等级'], ['new', '最近获得']];
+    // ── 排序（稀有度/攻击力/体力/等级/最近获得）──
+    const sorts: [string, string][] = [['rarity', '稀有度'], ['attack', '攻击力'], ['hp', '体力'], ['lv', '等级'], ['new', '最近获得']];
     let sx = 56;
     this.text('排序', 56, 238, 12, '#8892a8', 'left', 'bold');
     sx = 96;
     for (const [k, label] of sorts) {
       const act = this.invSort === k;
-      glassButton(ctx, sx, 224, 92, 28, label, { kind: act ? 'green' : 'gray', hover: this.hover === `invs:${k}`, fontSize: 13 });
-      this.buttons.push({ x: sx, y: 224, w: 92, h: 28, id: `invs:${k}` });
-      sx += 100;
+      glassButton(ctx, sx, 224, 88, 28, label, { kind: act ? 'green' : 'gray', hover: this.hover === `invs:${k}`, fontSize: 13 });
+      this.buttons.push({ x: sx, y: 224, w: 88, h: 28, id: `invs:${k}` });
+      sx += 96;
     }
 
     // ── 网格 ──
+    // 攻击力/体力排序预算一次战力表，避免 sort 内重复构造
+    const powMap = new Map<string, { atk: number; hp: number }>();
+    if (this.invSort === 'attack' || this.invSort === 'hp') {
+      for (const o of inv) {
+        const cb = ownedToCombatant(o);
+        if (cb) powMap.set(o.instId, { atk: cb.atk, hp: cb.hpMax });
+      }
+    }
     const filtered = inv
       .filter(o => {
         const c = getCard(o.cardId); if (!c) return false;
@@ -2437,6 +2472,8 @@ class SummonHall {
         const na = a.gainedAt ?? 0, nb = b.gainedAt ?? 0;
         if (this.invSort === 'new') return nb - na;
         if (this.invSort === 'lv') return b.lv - a.lv;
+        if (this.invSort === 'attack') return (powMap.get(b.instId)?.atk ?? 0) - (powMap.get(a.instId)?.atk ?? 0);
+        if (this.invSort === 'hp') return (powMap.get(b.instId)?.hp ?? 0) - (powMap.get(a.instId)?.hp ?? 0);
         return rb - ra || b.lv - a.lv || nb - na;
       });
 
@@ -2551,15 +2588,16 @@ class SummonHall {
       }
     }
 
-    // 操作按钮两排：上排 强化/升星/划至队伍，下排 锁定/出售
+    // 操作按钮两排：上排 一键强化/升星/划至队伍（详情内直接完成），下排 锁定/出售
     const bw = 150, bh = 46, by = dy + dh - 66, by2 = by - 56;
-    glassButton(ctx, dx + 40, by2, bw, bh, '强化', { kind: 'green', hover: this.hover === 'enhanceStart', fontSize: 16 });
-    glassButton(ctx, dx + 40 + (bw + 12), by2, bw, bh, '升星', { kind: 'blue', hover: this.hover === 'evolveStart', fontSize: 16 });
+    const dup = findDuplicate(this.db, o.instId, new Set(this.teamInstIds));
+    glassButton(ctx, dx + 40, by2, bw, bh, '一键强化', { kind: 'green', hover: this.hover === 'quickEnhance', fontSize: 16 });
+    glassButton(ctx, dx + 40 + (bw + 12), by2, bw, bh, dup ? '升星 ★' : '升星(缺同名)', { kind: dup ? 'blue' : 'gray', hover: this.hover === 'quickEvolve' && !!dup, fontSize: 15 });
     glassButton(ctx, dx + 40 + (bw + 12) * 2, by2, bw, bh, '划至队伍', { kind: 'gray', hover: this.hover === 'invToTeam', fontSize: 16 });
     glassButton(ctx, dx + 40, by, bw, bh, o.locked ? '解锁' : '锁定', { kind: 'gray', hover: this.hover === 'lockCard', fontSize: 16 });
     glassButton(ctx, dx + 40 + (bw + 12), by, bw, bh, '出售', { kind: 'red', hover: this.hover === 'sellCard', fontSize: 16 });
-    this.buttons.push({ x: dx + 40, y: by2, w: bw, h: bh, id: 'enhanceStart' });
-    this.buttons.push({ x: dx + 40 + (bw + 12), y: by2, w: bw, h: bh, id: 'evolveStart' });
+    this.buttons.push({ x: dx + 40, y: by2, w: bw, h: bh, id: 'quickEnhance' });
+    this.buttons.push({ x: dx + 40 + (bw + 12), y: by2, w: bw, h: bh, id: 'quickEvolve' });
     this.buttons.push({ x: dx + 40 + (bw + 12) * 2, y: by2, w: bw, h: bh, id: 'invToTeam' });
     this.buttons.push({ x: dx + 40, y: by, w: bw, h: bh, id: 'lockCard' });
     this.buttons.push({ x: dx + 40 + (bw + 12), y: by, w: bw, h: bh, id: 'sellCard' });
@@ -2716,11 +2754,32 @@ class SummonHall {
     }
     this.text(`库存 ${inv.length}/${this.db.inventory.capacity}`, W - 60, 338, 14, '#cfc4a8', 'right', 'bold');
 
+    // 排序（与仓库共用 invSort：稀有度/攻击力/体力/等级/最近获得）
+    const tSorts: [string, string][] = [['rarity', '稀有度'], ['attack', '攻击力'], ['hp', '体力'], ['lv', '等级'], ['new', '最近']];
+    let tsx = 60;
+    for (const [k, label] of tSorts) {
+      const act = this.invSort === k;
+      glassButton(ctx, tsx, 356, 76, 24, label, { kind: act ? 'green' : 'gray', hover: this.hover === `invs:${k}`, fontSize: 12 });
+      this.buttons.push({ x: tsx, y: 356, w: 76, h: 24, id: `invs:${k}` });
+      tsx += 82;
+    }
+
+    const powMap = new Map<string, { atk: number; hp: number }>();
+    if (this.invSort === 'attack' || this.invSort === 'hp') {
+      for (const o of inv) {
+        const cb = ownedToCombatant(o);
+        if (cb) powMap.set(o.instId, { atk: cb.atk, hp: cb.hpMax });
+      }
+    }
     const filtered = inv.filter(o => {
       const c = getCard(o.cardId); if (!c) return false;
       return this.invFilter === 'ALL' || c.rarity === this.invFilter;
     }).sort((a, b) => {
       const ra = RANK[getCard(a.cardId)?.rarity ?? 'N'], rb = RANK[getCard(b.cardId)?.rarity ?? 'N'];
+      if (this.invSort === 'attack') return (powMap.get(b.instId)?.atk ?? 0) - (powMap.get(a.instId)?.atk ?? 0);
+      if (this.invSort === 'hp') return (powMap.get(b.instId)?.hp ?? 0) - (powMap.get(a.instId)?.hp ?? 0);
+      if (this.invSort === 'lv') return b.lv - a.lv;
+      if (this.invSort === 'new') return (b.gainedAt ?? 0) - (a.gainedAt ?? 0);
       return rb - ra || b.lv - a.lv;
     });
 
@@ -2903,16 +2962,8 @@ class SummonHall {
         this.buttons.push(...drawSkillConfirm(this.ctx, info, this.hover));
       } else this.battlePhase = 'fighting';
     }
-    // 胜利结算
-    if (this.battlePhase === 'victory') {
-      const entries: VictoryEntry[] = b.team.map(s => ({
-        card: s.card, lv: s.lv, rarityTag: s.card.rarity,
-        gain: String(Math.floor(Math.max(0, s.hp))),
-        levelLabel: `等级${s.lv}`,
-        expRatio: 0.65,
-      }));
-      this.buttons.push(...drawVictory(this.ctx, entries, this.hover));
-    }
+    // 胜利结算（含宝箱开启流程）
+    if (this.battlePhase === 'victory') this.renderVictory();
   }
 
   /** 遭遇界面（截图：敌卡居中 + 战斗开始/Auto + 底部队伍 + 探索框架） */
