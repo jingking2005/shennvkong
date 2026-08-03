@@ -1,205 +1,128 @@
 # 神女控 — 设计文档
 
-> 状态：待批准
-> 创建：2026-07-23
+> 状态：已批准（2026-08-03，随变更单冻结）
+> 创建：2026-07-23；重写：2026-08-03（OC-00）
 > 依赖：spec/requirements.md
+> 旧 Phase 1 爬虫/Phaser 设计已废弃（代码已删除），仅留本节说明。
 
 ---
 
-## Phase 1 设计（已实现，补文档）
-
-### 架构
+## 1. 总体架构
 
 ```
-MediaWiki API (Fandom)
-       │
-       ▼
-  client.py ─── 限速 1.5s / 重试 3 次 / 断点续传
-       │
-       ▼
-  parser.py ─── Wikitext Infobox 解析
-       │
-       ▼
-  crawler.py ── 全量调度（Category:Cards → 3500 页）
-  crawler_extra.py ── Skills/Events/Categories/ReleaseLog
-       │
-       ▼
-  images.py ─── 卡图下载（白名单过滤）
-       │
-       ▼
-  exporter.py ── JSON + CSV 双格式输出
-       │
-       ▼
-  quality_check.py ── 统计 + REPORT.md
+/Users/VazeniF/Desktop/神女控2/          ← 只读研究源（archive/apk/resources_index）
+        │  scripts/*.mjs 构建期读取
+        ▼
+summon-hall/public/archive/             ← 运行时资源（构建选定的白名单子集）
+summon-hall/src/data/*.json             ← manifest（含 Provenance 来源元数据）
+        │
+        ▼
+summon-hall/src/
+├── data.ts                    # 兼容导出层，逐步变薄
+├── data/
+│   ├── types.ts               # CardDefinition / StageDefinition / Provenance 等
+│   ├── provenance.ts          # 来源等级类型与工具
+│   ├── asset-resolver.ts      # AssetRef→URL、fallback、缓存、missingAssets 诊断
+│   ├── catalog.ts             # 卡牌目录查询
+│   └── *.json                 # cards.runtime / maps / battle-backgrounds / audio / ...
+├── systems/
+│   ├── battle/                # battle-engine / damage-calc / status-engine / battle-config
+│   ├── gacha/                 # gacha-engine（配置驱动）
+│   └── progression/
+├── logic.ts                   # 现有逻辑，逐步抽到 systems/
+└── main.ts                    # 渲染与交互入口（只消费事件，不算伤害）
 ```
 
-### 数据模型
-
-```python
-Card = {
-    "name": str,          # 卡牌名（英文）
-    "name_cn": str,       # 中文名（如有）
-    "rarity": str,        # N / R / SR / UR / LR
-    "element": str,       # Passion / Cool / Light / Dark / Special
-    "atk": int,           # 攻击力
-    "def": int,           # 防御力
-    "cost": int,          # 费用
-    "skill_name": str,    # 技能名
-    "skill_desc": str,    # 技能描述
-    "image_url": str,     # 卡图 URL
-    "image_local": str,   # 本地路径
-    "url": str,           # Wiki 页面 URL
-}
-```
-
-### 关键技术决策
+## 2. 关键技术决策
 
 | 决策 | 选择 | 理由 |
 |:---|:---|:---|
-| 图片过滤 | 白名单（文件名含卡牌名） | 黑名单无法穷举进化材料/碎片图 |
-| Skills 遍历 | 流式递归 + early-stop | 115 个子分类层级深，全量加载内存大 |
-| 断点续传 | checkpoint.json 记录索引 | 3500 页抓取耗时长，必须支持中断恢复 |
-| 限速 | 1.5s/请求 | Fandom 对高频访问返回 429 |
+| 技术栈 | Canvas2D + TS + Vite（现状延续） | 工程已收敛；重平台化掩盖不了数据问题 |
+| 资源接入 | 构建期白名单 manifest，运行时不扫目录 | 2.5G 归档不可全量复制；每项来源可审计 |
+| 卡牌索引 | `RESOURCE_INDEX.csv` 的 `path`/`files` 为唯一事实源 | 不按文件名猜 H/X/icon 存在性 |
+| 卡牌键 | 稳定 `cardKey`（规范化英文名/路径 slug）；旧 id 存 `legacyId` | `card_id_mapping.json` 仅 89 条，不可当全量 ID 表 |
+| 数值来源 | 字段级 `Provenance`；无法证明文件的一律 `inferred`/`original-fill` | 禁止冒充逆向恢复 |
+| 战斗随机性 | seedable RNG 注入，事件日志可回放 | 相同输入+seed ⇒ 相同日志，可测试 |
+| 图片策略 | 网格/编队用 128 icon；详情 lazy-load 640×896 主图 | 首屏性能 |
+| localStorage | 现有 key 语义不变，`legacyId` 保证迁移 | 用户存档不损坏 |
 
----
+## 3. 数据模型（核心类型）
 
-## Phase 2 设计（新增）
+```ts
+type DataProvenance = 'direct' | 'wiki-data' | 'native-schema' | 'inferred' | 'original-fill';
+interface Provenance { level: DataProvenance; sourceFile?: string; sourceNote?: string; verifiedAt?: string; }
 
-### 方案对比
+type CardForm = 'main' | 'h' | 'x' | 'evolved';
+interface CardAssetRef { role: 'main'|'icon'|'h'|'hIcon'|'x'|'xIcon'|'guildIcon'; asset: string; sourceFile: string; width?: number; height?: number; source: Provenance; }
 
-| 维度 | A) Phaser 3 + TS + Vite | B) 纯 DOM/Canvas 手写 |
-|:---|:---|:---|
-| 开发效率 | 高（场景管理、Tween、Sprite 内置） | 低（全部手写） |
-| 动画表现 | 丰富（粒子、Tween、帧动画） | 需自行实现 |
-| 社区/文档 | 成熟，示例丰富 | 无 |
-| 包体积 | ~1MB gzip | 极小 |
-| 学习成本 | 中（需学 Phaser API） | 低但开发量大 |
-| 后续扩展 | 容易（Tilemap、物理、音频内置） | 困难 |
-
-**推荐：方案 A**。卡牌游戏需要大量 UI 动画（攻击、技能、HP 变化），Phaser 3 的 Tween + Scene 管理可以大幅减少工作量。
-
-### 架构设计
-
-```
-game/
-├── public/
-│   └── assets/           # 卡图（从 Phase 1 images/ 软链或复制）
-├── src/
-│   ├── main.ts           # Phaser 游戏入口 + 配置
-│   ├── data/
-│   │   ├── cards.json    # 从 Phase 1 output/ 复制（只读）
-│   │   └── enemies.json  # 敌人队伍配置
-│   ├── models/
-│   │   ├── Card.ts       # 卡牌数据类型
-│   │   ├── Team.ts       # 队伍类型
-│   │   └── Battle.ts     # 战斗状态类型
-│   ├── systems/
-│   │   ├── BattleEngine.ts   # 回合制战斗核心逻辑（纯逻辑，无渲染）
-│   │   ├── DamageCalc.ts     # 伤害公式 + 属性克制
-│   │   └── SkillSystem.ts    # 技能触发判定
-│   ├── scenes/
-│   │   ├── BootScene.ts      # 资源加载
-│   │   ├── MenuScene.ts      # 主菜单
-│   │   ├── TeamScene.ts      # 编队界面
-│   │   ├── BattleScene.ts    # 战斗场景
-│   │   └── ResultScene.ts    # 结算画面
-│   └── ui/
-│       ├── CardSprite.ts     # 卡牌精灵组件
-│       ├── HealthBar.ts      # HP 条
-│       └── DamageText.ts     # 伤害数字
-├── index.html
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
-```
-
-### 核心分层
-
-- **数据层**（models/）：纯 TypeScript 类型定义，无副作用
-- **逻辑层**（systems/）：战斗引擎，纯函数，可独立测试
-- **渲染层**（scenes/ + ui/）：Phaser 场景，只负责展示
-
-### 战斗系统设计
-
-**回合流程：**
-```
-战斗开始
-  → 按速度排序所有存活单位
-  → 依次行动：
-      → 判定技能触发（概率 = skill_rate）
-      → 若触发：执行技能效果
-      → 否则：普通攻击
-      → 计算伤害 → 扣血 → 判定死亡
-  → 一轮结束 → 检查胜负
-  → 未分胜负 → 下一轮
-```
-
-**伤害公式：**
-```
-base_damage = ATK * skill_multiplier - DEF * 0.5
-element_bonus = 1.3（克制）/ 0.7（被克）/ 1.0（无）
-final_damage = max(1, floor(base_damage * element_bonus))
-```
-
-**属性克制环：**
-```
-Passion → Cool → Light → Dark → Passion（环形）
-Special：对所有属性 1.0，被所有属性 1.0
-```
-
-### 关键接口
-
-```typescript
-interface CardData {
-  id: string;
-  name: string;
-  name_cn?: string;
-  rarity: 'N' | 'R' | 'SR' | 'UR' | 'LR';
-  element: 'Passion' | 'Cool' | 'Light' | 'Dark' | 'Special';
-  atk: number;
-  def: number;
-  hp: number;        // 由 def * 系数 推算
-  speed: number;     // 由 rarity + atk 推算
-  skill: {
-    name: string;
-    desc: string;
-    rate: number;        // 触发概率 0-1
-    multiplier: number;  // 伤害倍率
-    target: 'single' | 'all';
-  };
-  image: string;     // 图片路径
+interface CardDefinition {
+  cardKey: string; legacyId?: string; originalCardId?: number; // 仅 89 条已知映射
+  name: { en: string; cn?: string };
+  rarity: 'N'|'R'|'SR'|'UR'|'LR'|'X'|'VR';
+  element: 'Cool'|'Dark'|'Light'|'Passion'|'Special';
+  stats: CardStats; skill?: SkillDefinition;
+  forms: CardAssetRef[]; quotesRef?: string; availability?: string;
+  source: Provenance;
 }
 
-interface BattleUnit {
-  card: CardData;
-  currentHp: number;
-  maxHp: number;
-  isAlive: boolean;
-  side: 'player' | 'enemy';
+interface StageDefinition {
+  stageId: string; mapId: string; battleBackgroundId: string; musicId?: string;
+  waves: WaveDefinition[];             // original-fill
+  encounterType: 'normal'|'boss'|'round'|'king';
+  rewards: RewardDefinition[];         // original-fill
+  source: Provenance;
 }
 
-interface BattleState {
+interface BattleEvent {
   turn: number;
-  units: BattleUnit[];
-  actionLog: BattleAction[];
-  phase: 'ongoing' | 'player_win' | 'enemy_win';
-}
-
-interface BattleResult {
-  winner: 'player' | 'enemy';
-  turns: number;
-  log: BattleAction[];
+  phase: 'wave-start'|'skill-check'|'attack'|'status'|'death-check'|'wave-clear'|'battle-end';
+  actorId?: string; targetId?: string; amount?: number; effectId?: string;
+  source: Provenance;
 }
 ```
 
-### 安全与性能
+## 4. 合并管线
 
-- 无网络请求，无用户数据，无安全风险
-- 卡池 ~3500 张，编队界面需分页/搜索（不一次渲染全部）
-- 战斗动画使用 Phaser Tween，避免 DOM 操作
+```
+cards.json (wiki-data)
+  + RESOURCE_INDEX.csv (direct asset index)
+  + card_id_mapping.json (89 条数字 ID)
+  → scripts/build-card-catalog.mjs
+  → src/data/cards.runtime.json
+  + reports/card-collisions.json / missing-assets.json / quotes-parse.json
+```
 
-### 回滚方案
+规则：Wiki 数值不覆盖归档路径；归档路径不覆盖 Wiki 技能/数值；名称冲突进 collisions 报告，禁止静默合并；`has_main_art=false` 进校验报告，不显示破图；`Inactive or Unreleased` 默认不进卡池（manifest 控制）。
 
-- 每个任务在 `feature/<name>` 分支开发
-- main 保持可构建可运行
-- 任何任务失败可 `git switch main` 回到稳定状态
+## 5. 战斗系统边界
+
+- `battle-config.ts` 集中全部数值常量（属性循环、克制倍率、派生公式），每条标 `original-fill` 或 `inferred`；在用户批准前不宣称原版复原。
+- `spec/v2/combat-system.md` 与 `docs/architecture-guidance/03-battle-system.md` 的属性关系描述不一致，统一以 `battle-config.ts` 为可替换配置。
+- UI 只消费 `BattleEvent[]`；`renderBattle` 内不重新计算伤害；随机判定不散落在渲染代码。
+- APK native 符号（`subParse*`、`BattleTexture::load*`、`GachaTexture::load*`）只证明架构类别，不作为公式/概率证据。
+
+## 6. 抽卡设计边界
+
+- `gacha-config.json`（概率/保底/权重，`original-fill`）与 `gacha-visuals.json`（视觉参考，`direct`/参考）分离。
+- UI 显示「离线演示配置」；动画失败仍完成结算；seed 可注入。
+
+## 7. 性能设计
+
+- 图鉴/编队/战斗单位只加载 icon；详情 lazy-load 主图/H/X。
+- BGM 单曲加载释放，不预载全部音频。
+- RotationLoader LRU 限量缓存（已存在）；大图/sheet 缓存上限。
+- Vite 分包处理 500kB chunk 警告。
+- 图片加载失败统一 fallback + `missingAssets`/`failedAssets` 诊断。
+
+## 8. 响应式画布
+
+- 设计基准 1280×760；非 16:9 窗口用设计底色/延展背景填充，不出现未经设计的黑色上下条。
+
+## 9. 安全与版权
+
+- 归档/APK 素材仅限私人离线原型；公开或商业发行前替换为自有/授权素材。
+- 生产运行时无任何外部 API 请求。
+
+## 10. 回滚方案
+
+- 短分支 + 原子 commit；main 保持可构建可运行；数据 pipeline 全部可由脚本重生成，失败即回到上一 commit。

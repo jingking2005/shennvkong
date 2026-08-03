@@ -1,190 +1,129 @@
 # 神女控 — 任务分解
 
-> 状态：待确认
-> 创建：2026-07-23
+> 状态：已确认（2026-08-03，随变更单冻结）
+> 创建：2026-07-23；重写：2026-08-03（OC-00）
 > 依赖：spec/requirements.md、spec/design.md
+> 旧 T1–T10（Phaser 方向）与 v2/tasks.md 全部作废；`game/`、`src/valkyrie/` 已删除。
 
 ---
 
-## Phase 1 收尾（当前优先）
+## 任务依赖图
 
-### T1: 全量抓取完成 + 质量检查
-
-- **说明**：等待后台爬虫完成 3500 张卡抓取，运行 quality_check.py 生成 REPORT.md
-- **验收标准**：
-  - output/cards.json 记录数 >= 3000
-  - REPORT.md 存在且成功率 > 90%
-  - pytest -q 全部通过
-- **涉及文件**：`output/`, `src/valkyrie/quality_check.py`, `REPORT.md`
-- **预估**：等待 ~6h（爬虫自动运行），检查 30min
-
-### T2: 失败项补抓
-
-- **说明**：根据 REPORT.md 中的失败记录，分析原因并补抓
-- **验收标准**：
-  - 失败页面 < 5%
-  - 缺失图片 < 10%
-  - 无重复数据
-- **涉及文件**：`output/`, `src/valkyrie/crawler.py`, `src/valkyrie/images.py`
-- **预估**：1-2h
-
-### T3: 数据清洗与标准化
-
-- **说明**：统一字段格式、验证枚举值、生成游戏可用的精简数据
-- **验收标准**：
-  - rarity 字段仅含 N/R/SR/UR/LR（含 H/G/X 前缀变体）
-  - element 字段仅含 Passion/Cool/Light/Dark/Special
-  - atk/def 为有效正整数
-  - 生成 `output/cards_clean.json`（去重、标准化后）
-- **涉及文件**：新增 `src/valkyrie/cleaner.py`, `output/cards_clean.json`
-- **预估**：1-2h
+```
+OC-00（本文件）→ OC-01 稳定性 → OC-02 数据基础设施 → OC-03 资源 manifest
+                                                    ↘ OC-04 卡牌 catalog
+                              OC-03+OC-04 → OC-05 关卡接线 → OC-06 战斗引擎
+                                            OC-07 抽卡引擎（可与 OC-05/06 并行）
+                                            OC-08 BGM/SE/剧情（依赖 OC-03）
+                                            OC-09 王国/武器（全部稳定后）
+```
 
 ---
 
-## Phase 2 游戏 MVP（Phase 1 完成后启动）
+## OC-00：规格冻结与证据登记 ✅ 已完成（2026-08-03）
 
-### T4: 初始化 Web 项目
+- **所有者**：OpenCode
+- **产出**：本三件套；变更单只读引用
+- **验收**：三件套写明 Canvas2D 路线、资源策略、来源等级、非目标和用户批准状态 ✅
 
-- **说明**：在 `game/` 子目录创建 Vite + Phaser 3 + TypeScript 项目骨架
-- **验收标准**：
-  - `cd game && npm install && npm run dev` 启动成功
-  - 浏览器打开显示 Phaser 默认场景（黑色画布 + console 无报错）
-  - TypeScript 编译无错误
-- **涉及文件**：`game/package.json`, `game/vite.config.ts`, `game/tsconfig.json`, `game/index.html`, `game/src/main.ts`
-- **预估**：30min
+## OC-01：运行稳定性与启动烟雾测试
 
-### T5: 卡牌数据适配层
+- **所有者**：OpenCode
+- **可修改文件**：`summon-hall/src/main.ts`、`src/background.ts`、`src/assets.ts`、`src/audio.ts`、测试文件
+- **禁止**：无关 UI 重设计、切换引擎
+- **任务**：
+  1. 响应式画布：16:9/宽屏/窄屏稳定布局，黑色留边改为设计底色填充
+  2. 图片/音频/字体失败统一日志 + fallback
+  3. Playwright 最小烟雾脚本：覆盖首页与主要页面切换，收集 Console Error/Warning
+- **验收**：60 秒 Console 0 Error/Warning；页面切换不白屏；失败资源可定位
+- **预估**：2-3h
 
-- **说明**：将 Phase 1 的 cards_clean.json 转换为游戏 CardData 类型，编写数据加载器
-- **验收标准**：
-  - CardData 类型定义完整（含 hp/speed 推算逻辑）
-  - 数据加载器能正确解析 3000+ 张卡
-  - 单元测试：hp 推算、speed 推算、稀有度/属性枚举验证
-- **涉及文件**：`game/src/models/Card.ts`, `game/src/data/`, `game/tests/`
-- **预估**：1h
+## OC-02：数据类型、来源与 manifest 基础设施
 
-### T6: 编队界面
+- **所有者**：OpenCode
+- **可修改文件**：新增 `src/data/types.ts`、`provenance.ts`、`asset-resolver.ts`、`catalog.ts` 及测试；`src/data.ts` 仅留兼容层
+- **禁止**：改变现有 localStorage key 语义
+- **任务**：Provenance 类型；AssetRef→URL 解析；缓存与 missingAssets 诊断；`npm run data:validate` 骨架
+- **验收**：data:validate 能报告缺失/重复/非法引用；旧页面经兼容层正常读卡
+- **预估**：2-3h
 
-- **说明**：实现卡牌浏览 + 编队选择界面（分页/搜索 + 拖拽或点击选卡）
-- **验收标准**：
-  - 显示卡牌列表（图片 + 名称 + 稀有度 + 属性）
-  - 支持按属性/稀有度筛选
-  - 可选择最多 5 张卡加入队伍
-  - 队伍满 5 张后"开始战斗"按钮可点击
-- **涉及文件**：`game/src/scenes/TeamScene.ts`, `game/src/ui/CardSprite.ts`
+## OC-03：归档资源 manifest 构建管道
+
+- **所有者**：OpenCode
+- **可修改文件**：新增 `scripts/build-archive-manifests.mjs`、`src/data/maps.json`、`battle-backgrounds.json`、`audio.json`、`battle-effects.json`、`items.json`；只向 `public/archive/` 写白名单文件
+- **禁止**：复制归档根目录；修改 `神女控2` 归档
+- **任务**：显式选择生成 manifest；地图与战斗背景分离；记录 sourceFile/URL/尺寸；`npm run data:build`
+- **验收**：地图页用 AreaMap；战斗页用 BattleBG；manifest 可复现生成
 - **预估**：2h
 
-### T7: 战斗引擎核心逻辑
+## OC-04：卡牌 catalog、形态、icon 与引文
 
-- **说明**：实现纯逻辑的回合制战斗引擎（无渲染），TDD 方式
-- **验收标准**：
-  - 速度排序正确
-  - 伤害公式正确（含属性克制 1.3/0.7 倍率）
-  - 技能概率触发正确
-  - 死亡判定正确
-  - 胜负判定正确（一方全灭）
-  - 单元测试覆盖：克制关系、技能触发、全灭判定、边界情况
-- **涉及文件**：`game/src/systems/BattleEngine.ts`, `game/src/systems/DamageCalc.ts`, `game/src/systems/SkillSystem.ts`, `game/tests/`
+- **所有者**：OpenCode
+- **可修改文件**：新增 `scripts/build-card-catalog.mjs`、`src/data/cards.runtime.json`、`card-quotes.json`、测试；`src/data.ts`、`src/card.ts` 必要接口
+- **禁止**：删除 Wiki 数据；给缺失 H/X/icon 补假路径
+- **任务**：读 RESOURCE_INDEX.csv；先接 6 张垂直切片（Fenrir / Aisha / Mage Emilie / Seir / Madeline / Sjofn）；主图/icon/H/X 用途明确；collisions/missing/quotes 报告；legacyId 迁移
+- **验收**：图鉴网格只请求 icon；详情可切换实际存在的形态；6 张样卡引文可展示；缺图不白屏
+- **预估**：3-4h
+
+## OC-05：地图、探索、出击和战斗场景接线
+
+- **所有者**：OpenCode
+- **可修改文件**：`src/logic.ts`、`src/assets.ts`、`src/main.ts` 状态接线部分、新增 `src/data/stages.json`
+- **禁止**：把文件编号当敌人/卡牌 ID；宣称原创关卡为原版恢复
+- **任务**：3 张地图关卡切片；每切片绑定确定的 battleBg/BGM/wave/奖励（全标 original-fill）；统一 stage→map→battleBg→audio 引用链
+- **验收**：地图选关进战斗；背景不混用；结束返回记录页且存档一致
+- **预估**：2-3h
+
+## OC-06：纯战斗引擎与可回放日志
+
+- **所有者**：OpenCode
+- **可修改文件**：新增 `src/systems/battle/*` 及测试；`src/logic.ts` 适配层
+- **禁止**：重新设计 UI；把推断公式命名为 original
+- **任务**：抽出伤害/速度顺序/技能判定/状态/死亡/wave/奖励事件；RNG 注入 seed；常量集中 battle-config.ts 并标来源
+- **验收**：相同 seed 事件日志完全一致；normal/boss/round/king 四类 fixture；覆盖 1/5/0 单位边界
+- **预估**：3-4h
+
+## OC-07：抽卡引擎、动画与经济边界
+
+- **所有者**：OpenCode
+- **可修改文件**：`src/gacha.ts`、新增 `src/systems/gacha/gacha-engine.ts`、`gacha-config.json`、`gacha-visuals.json` 及测试
+- **禁止**：Nubee API/支付/广告/在线抽卡；声称概率是原版
+- **验收**：seedable；概率配置独立；动画与结算解耦；刷新后 localStorage 一致；UI 显示「离线演示配置」
 - **预估**：2h
 
-### T8: 战斗场景 UI + 动画
+## OC-08：BGM、SE 与故事切片
 
-- **说明**：将 BattleEngine 的输出（actionLog）渲染为可视化战斗画面
-- **验收标准**：
-  - 双方卡牌左右对阵排列
-  - 行动时卡牌有攻击动画（Tween 位移）
-  - 受击时 HP 条减少 + 伤害数字飘出
-  - 技能触发时有文字提示
-  - 死亡卡牌灰化/消失
-  - 60fps 流畅无卡顿
-- **涉及文件**：`game/src/scenes/BattleScene.ts`, `game/src/ui/HealthBar.ts`, `game/src/ui/DamageText.ts`
+- **所有者**：OpenCode
+- **可修改文件**：`src/audio.ts`、新增 `scripts/parse-event-stories.mjs`、`src/data/stories.json`、story viewer 逻辑
+- **禁止**：把未知 speaker 臆造为角色名
+- **任务**：5 首 BGM（bgm_001/002/004/007/005）+ 4 类 SE（UI 点击/普攻/技能/胜负）按 manifest 播放；解析并展示 2 篇 DRV + 1 篇 Archwitch；阅读位置存档；异常 HTML 进报告
+- **验收**：音频按 manifest 播放；3 篇剧情可加载翻页存进度
 - **预估**：3h
 
-### T9: 敌人 AI + 关卡配置
+## OC-09：王国、武器、公会内容分层（后续）
 
-- **说明**：配置 3-5 个难度递增的敌人队伍，敌人使用相同的 BattleEngine 逻辑
-- **验收标准**：
-  - enemies.json 含 5 个关卡配置
-  - 敌人队伍从卡池中按稀有度/属性合理搭配
-  - 难度递增（ATK/DEF 逐步提升）
-  - 关卡选择界面可点击
-- **涉及文件**：`game/src/data/enemies.json`, `game/src/scenes/MenuScene.ts`
-- **预估**：1h
-
-### T10: 胜负结算 + 基础循环
-
-- **说明**：战斗结束后显示结算画面，可返回编队或进入下一关
-- **验收标准**：
-  - 胜利：显示"胜利"+ 用时回合数
-  - 失败：显示"败北"
-  - 可返回编队界面重新选卡
-  - 胜利后可挑战下一关
-- **涉及文件**：`game/src/scenes/ResultScene.ts`
-- **预估**：1h
+- **所有者**：OpenCode
+- **前置**：OC-02~OC-08 全部稳定
+- **任务**：王国建筑/武器素材目录预览 + 原创数值；不混入核心战斗切片
+- **禁止**：公会在线功能、PvP、排行榜、原版服务器接入
 
 ---
 
-## 任务依赖图（原始）
-
-```
-T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10
-                              ↗
-                    T7 可与 T6 并行
-```
-
----
-
-## 并行化调整（2026-07-23 千问3.8）
-
-> 由于 Hermes 抓取预计持续 ~10h，以下任务不再串行等待 Phase 1 完成。
-
-### 调整后依赖关系
-
-```
-Hermes 抓取（后台持续）
-    │
-    ├─→ T1 质量检查（等抓取完）
-    ├─→ T2 补抓（等 T1）
-    └─→ T3-full 完整数据清洗（等 T2）
-
-千问3.8 并行推进（不依赖完整数据）：
-    T3-schema: 标准 Schema + 校验器 + 清洗器骨架
-    T3-mock:   Mock 数据（8-12 张卡）
-    T4:        Phaser 3 项目初始化（使用 Mock）
-    T5:        数据适配层（对接 Schema）
-    T6:        编队界面
-    T7:        战斗引擎
-    T8-T10:    UI/关卡/结算
-
-Hermes 完成后：
-    T3-full → 真实数据导入 → 替换 Mock → 无需改写游戏核心
-```
-
-### 当前负责人
-
-| 任务 | 负责人 | 状态 |
-|:---|:---|:---|
-| T1 全量抓取+质检 | Hermes | IN_PROGRESS |
-| T2 补抓 | Hermes | TODO |
-| T3-full 完整清洗 | Hermes+千问 | BLOCKED（等抓取） |
-| T3-schema 标准Schema | 千问3.8 | IN_PROGRESS |
-| T3-mock Mock数据 | 千问3.8 | IN_PROGRESS |
-| T4 游戏初始化 | 千问3.8 | IN_PROGRESS |
-| T5-T10 游戏MVP | 千问3.8 | TODO |
-
-### 关键假设补充
-
-1. **卡牌多形态**：同一卡牌可能有普通/进化/觉醒/全图/缩略图，Schema 必须支持 `forms[]`
-2. **数据版本**：每条记录含 `dataVersion` 字段，后续迁移用
-3. **图片路径策略**：游戏不直接引用 `images/`（Hermes 写入目录），而是通过 `data/runtime/` 中的标准化路径
-4. **原始数据只读**：`output/` 和 `images/` 对游戏侧为只读，通过导入器转换
-
-## 文件所有权（多 Agent 场景）
+## 文件所有权
 
 | 目录/文件 | 所有者 |
 |:---|:---|
-| `src/valkyrie/` | 数字考古 Agent |
-| `output/`, `images/` | 数字考古 Agent |
-| `game/` | 游戏开发 Agent |
-| `spec/` | 共享（只增不改他人文件） |
-| `AGENTS.md` | 用户（小金先生）|
+| `summon-hall/src/**` | OpenCode |
+| `summon-hall/scripts/**` | OpenCode |
+| `spec/` | OpenCode（本变更） |
+| `AGENTS.md` | 用户（小金先生） |
+| 逆向变更单 | 只读 |
+| `/Users/VazeniF/Desktop/神女控2/` | 只读研究源 |
+
+## 每个任务的完成定义（DoD）
+
+1. `npx tsc --noEmit` 通过
+2. 相关 `npm run data:*` / `npm run test` 通过
+3. `npm run build` 通过
+4. 浏览器烟雾测试通过（涉及页面时）
+5. 证据路径写入本文件对应任务，原子 commit
