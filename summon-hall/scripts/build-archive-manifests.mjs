@@ -85,12 +85,13 @@ function write(name, items) {
     'bgm_005': ['archwitch'],
     'bgm_006': ['fantasyArchwitch'],
     'bgm_007': ['map', 'event', 'records'],
+    '02 Awakening of the Divine Realm': ['hall'], // 大厅（用户指定 OST 曲）
   };
-  const items = readdirSync(dir).filter(f => f.endsWith('.ogg')).sort().map(f => {
-    const key = f.match(/^(bgm_?\d+|bgm_loading)/)?.[1] ?? f;
+  const items = readdirSync(dir).filter(f => f.endsWith('.ogg') || f.endsWith('.m4a')).sort().map(f => {
+    const key = f.match(/^(bgm_?\d+|bgm_loading)/)?.[1] ?? f.replace(/\.(ogg|m4a)$/, '');
     return {
-      id: key.replace(/_/g, '-'),
-      title: f.replace(/\.ogg$/, ''),
+      id: key.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase(),
+      title: f.replace(/\.(ogg|m4a)$/, ''),
       asset: `/archive/bgm/${f}`,
       loop: true,
       usedBy: usedBy[key] ?? [],
@@ -101,7 +102,7 @@ function write(name, items) {
   write('audio.json', items);
 }
 
-// ── se.json（APK 启动 SE 4 个；用途映射按时长推断，标注 inferred）──
+// ── se.json（APK 启动 SE 4 个 + 归档 Audio/sound 用户指定 6 个；APK 用途按时长推断）──
 {
   const dir = join(root, 'public/archive/se');
   if (existsSync(dir)) {
@@ -111,15 +112,22 @@ function write(name, items) {
       'se_004.wav': ['attack'],     // 0.51s 短促
       'se_003.wav': ['skill'],      // 0.82s 中
       'se_001.wav': ['win-lose'],   // 3.19s 长
+      // 用户指定（Audio/sound 归档音效，真实用途）
+      'se_017.wav': ['summon-vr', 'summon-lr'],
+      'se_040.wav': ['summon-ur'],
+      'se_019.wav': ['evolve-ok'],
+      'se_043.wav': ['evolve-fail'],
+      'se_056.wav': ['witch'],
+      '2-SE07.wav': ['victory'],
     };
     const items = readdirSync(dir).filter(f => f.endsWith('.wav')).sort().map(f => ({
-      id: f.replace(/\.wav$/, '').replace(/_/g, '-'),
+      id: f.replace(/\.wav$/, '').replace(/_/g, '-').toLowerCase(),
       title: f.replace(/\.wav$/, ''),
       asset: `/archive/se/${f}`,
       loop: false,
       usedBy: inferredUse[f] ?? [],
-      mappingNote: 'APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）',
-      sourceFile: `apk assets/sound/${f}`,
+      mappingNote: inferredUse[f] ? '用户指定用途（Audio/sound 归档音效）' : 'APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）',
+      sourceFile: `Audio/sound/${f}`,
       source: { ...DIRECT, verifiedAt: today },
     }));
     write('se.json', items);

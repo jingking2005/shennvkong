@@ -288,17 +288,28 @@ export const BGM = {
   eventMap: '/archive/bgm/bgm_007 Event Map.ogg',
   archwitch: '/archive/bgm/bgm_005 Archwitch.ogg',
   fantasyArchwitch: '/archive/bgm/bgm_006 Fantasy Archwitch.ogg',
+  /** 大厅：OST 02 Awakening of the Divine Realm（用户指定大厅曲） */
+  divine: '/archive/bgm/02 Awakening of the Divine Realm.m4a',
 } as const;
 
 /**
  * SE（APK 仅解出 4 个启动用音效，无语义名；
  * 用途映射按时长推断 inferred：se_007 短→UI 点击，se_004→普攻，se_003→技能，se_001 长→胜负）
+ * 用户指定归档音效（Audio/sound/）：se_017→VR/LR 揭示、se_040→UR、se_019→合卡成功、
+ * se_043→合卡失败、se_056→遇魔女、2-SE07→战斗胜利。
  */
 export const SE = {
   uiClick: '/archive/se/se_007.wav',
   attack: '/archive/se/se_004.wav',
   skill: '/archive/se/se_003.wav',
   winLose: '/archive/se/se_001.wav',
+  summonVR: '/archive/se/se_017.wav',
+  summonUR: '/archive/se/se_040.wav',
+  summonLR: '/archive/se/se_017.wav',
+  evolveOk: '/archive/se/se_019.wav',
+  evolveFail: '/archive/se/se_043.wav',
+  witch: '/archive/se/se_056.wav',
+  victory2: '/archive/se/2-SE07.wav',
 } as const;
 export type SeKey = keyof typeof SE;
 

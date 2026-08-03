@@ -1,5 +1,20 @@
 [
   {
+    "id": "2-se07",
+    "title": "2-SE07",
+    "asset": "/archive/se/2-SE07.wav",
+    "loop": false,
+    "usedBy": [
+      "victory"
+    ],
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/2-SE07.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
     "id": "se-001",
     "title": "se_001",
     "asset": "/archive/se/se_001.wav",
@@ -7,8 +22,8 @@
     "usedBy": [
       "win-lose"
     ],
-    "mappingNote": "APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）",
-    "sourceFile": "apk assets/sound/se_001.wav",
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/se_001.wav",
     "source": {
       "level": "direct",
       "verifiedAt": "2026-08-03"
@@ -22,8 +37,8 @@
     "usedBy": [
       "skill"
     ],
-    "mappingNote": "APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）",
-    "sourceFile": "apk assets/sound/se_003.wav",
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/se_003.wav",
     "source": {
       "level": "direct",
       "verifiedAt": "2026-08-03"
@@ -37,8 +52,8 @@
     "usedBy": [
       "attack"
     ],
-    "mappingNote": "APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）",
-    "sourceFile": "apk assets/sound/se_004.wav",
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/se_004.wav",
     "source": {
       "level": "direct",
       "verifiedAt": "2026-08-03"
@@ -52,8 +67,84 @@
     "usedBy": [
       "ui-click"
     ],
-    "mappingNote": "APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）",
-    "sourceFile": "apk assets/sound/se_007.wav",
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/se_007.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "se-017",
+    "title": "se_017",
+    "asset": "/archive/se/se_017.wav",
+    "loop": false,
+    "usedBy": [
+      "summon-vr",
+      "summon-lr"
+    ],
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/se_017.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "se-019",
+    "title": "se_019",
+    "asset": "/archive/se/se_019.wav",
+    "loop": false,
+    "usedBy": [
+      "evolve-ok"
+    ],
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/se_019.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "se-040",
+    "title": "se_040",
+    "asset": "/archive/se/se_040.wav",
+    "loop": false,
+    "usedBy": [
+      "summon-ur"
+    ],
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/se_040.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "se-043",
+    "title": "se_043",
+    "asset": "/archive/se/se_043.wav",
+    "loop": false,
+    "usedBy": [
+      "evolve-fail"
+    ],
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/se_043.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "se-056",
+    "title": "se_056",
+    "asset": "/archive/se/se_056.wav",
+    "loop": false,
+    "usedBy": [
+      "witch"
+    ],
+    "mappingNote": "用户指定用途（Audio/sound 归档音效）",
+    "sourceFile": "Audio/sound/se_056.wav",
     "source": {
       "level": "direct",
       "verifiedAt": "2026-08-03"

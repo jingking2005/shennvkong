@@ -1,5 +1,19 @@
 [
   {
+    "id": "02-awakening-of-the-divine-realm",
+    "title": "02 Awakening of the Divine Realm",
+    "asset": "/archive/bgm/02 Awakening of the Divine Realm.m4a",
+    "loop": true,
+    "usedBy": [
+      "hall"
+    ],
+    "sourceFile": "Audio/stream/02 Awakening of the Divine Realm.m4a",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
     "id": "bgm-001",
     "title": "bgm_001 Main Theme",
     "asset": "/archive/bgm/bgm_001 Main Theme.ogg",

@@ -276,7 +276,7 @@ class SummonHall {
     } else if (this.page === 'team') {
       audio.play('kingdom');
     } else {
-      audio.play('main');
+      audio.play('divine'); // 大厅：Awakening of the Divine Realm
     }
   }
 
@@ -460,8 +460,9 @@ class SummonHall {
       // 点击加速爆破（参考 ducdat breakSkip）
       this.phase.t = Math.max(this.phase.t, this.summonDuration() - 0.12);
     } else if (this.phase.kind === 'reveal') {
-      // 点击跳到下一张；最后一张则进结算
+      // 点击跳到下一张；最后一张则进结算（VR 卡不可跳过）
       const pulls = this.phase.pulls;
+      if (this.isVrCard(pulls[this.phase.idx])) return;
       const next = this.phase.idx + 1;
       if (next >= pulls.length) this.phase = { kind: 'settle', pulls, t: 0 };
       else {
@@ -555,8 +556,13 @@ class SummonHall {
     audio.playSe('uiClick');
     // 全局 HUD（任意页优先）
     if (id === 'toggleMusic') { audio.toggleMute(); return; }
-    // 抽卡快速跳过：不再逐张揭示，直接展示全部结果
+    // 抽卡快速跳过：不再逐张揭示，直接展示全部结果（VR 卡不可跳过，必须完整演完动画）
     if (id === 'skipAll' && (this.phase.kind === 'reveal' || this.phase.kind === 'summon')) {
+      if (this.phase.kind === 'reveal' && this.isVrCard(this.phase.pulls[this.phase.idx])) {
+        this.flashTeamMsg('VR 出现！圣光礼花不可跳过');
+        return;
+      }
+      if (this.phase.pulls.some(p => this.isVrCard(p))) return; // 十连含 VR：全部不可跳过
       this.phase = { kind: 'settle', pulls: this.phase.pulls, t: 0 };
       return;
     }
@@ -904,6 +910,11 @@ class SummonHall {
     return pulls.reduce((a, b) => RANK[b.card.rarity] > RANK[a.card.rarity] ? b : a).card.rarity;
   }
 
+  /** VR 卡（rank ≥ 7）：抽中时圣光礼花动画不可跳过 */
+  private isVrCard(p: Pull | undefined): boolean {
+    return !!p && RANK[p.card.rarity] >= 7;
+  }
+
   private summonDuration(): number {
     if (this.phase.kind !== 'summon') return 0;
     const top = this.topRarity(this.phase.pulls);
@@ -911,12 +922,13 @@ class SummonHall {
     return ['LR', 'X', 'VR'].includes(top) ? 2.6 : top === 'UR' ? 2.0 : top === 'SR' ? 1.4 : 1.0;
   }
 
-  /** 单卡揭示时长（极品卡明显更长，模仿 ducdat 的 revealTime 分层） */
+  /** 单卡揭示时长：极品卡明显更长（VR 6s 不可跳过、LR 5s、UR 3s，可跳过） */
   private revealDur(rarity: string): number {
     const r = RANK[rarity] ?? 1;
-    if (r >= 6) return 2.4;  // X / VR
-    if (r >= 5) return 2.2;  // LR 仙神下凡 ≥2s
-    if (r >= 4) return 1.3;  // UR 紫电召唤阵 ≥1s
+    if (r >= 7) return 6.0;  // VR 圣光礼花（不可跳过）
+    if (r >= 6) return 5.0;  // X 同 LR 档
+    if (r >= 5) return 5.0;  // LR 太阳花瓣
+    if (r >= 4) return 3.0;  // UR 桃心光束
     if (r >= 3) return 0.55; // SR
     return 0.32;             // N / R
   }
@@ -952,6 +964,9 @@ class SummonHall {
     const rank = RANK[pull.card.rarity];
     this.pillarV = 1;
     this.pillarColor = col;
+    // 稀有揭示音：UR→se_040；LR/X/VR→se_017
+    if (rank >= 5) audio.playSe('summonLR');
+    else if (rank === 4) audio.playSe('summonUR');
     if (rank >= 4) {
       this.burst(col, rank >= 5 ? 80 : 40);
       this.shake = rank >= 5 ? 0.55 : 0.3;
@@ -1015,8 +1030,11 @@ class SummonHall {
         saveDB(this.db);
         if (ea.prep.success) {
           const s = ea.prep.newEvoStage;
+          audio.playSe('evolveOk');
           this.burst(s >= 10 ? '#ff9ce8' : s >= 7 ? '#ffd24d' : s >= 5 ? '#eef2fa' : '#e0a060', s >= 10 ? 120 : s >= 7 ? 80 : s >= 5 ? 60 : 40);
           if (s >= 10) { this.burst('#6fd8ff', 60); this.burst('#ffd24d', 60); }
+        } else {
+          audio.playSe('evolveFail');
         }
       }
       const endT = ea.prep.success ? 3.0 : 2.6;
@@ -1250,7 +1268,7 @@ class SummonHall {
         }
       }
       if (r.defeated) {
-        audio.playSe('winLose');
+        audio.playSe('victory2');
         b.victory = true; b.victoryT = 0;
         b.banner = `讨伐成功！积分 +${r.ptGain}`;
         b.bannerT = 0;
@@ -1327,7 +1345,7 @@ class SummonHall {
     }));
     this.shake = 0.28 + Math.min(0.4, maxRatio * 1.6) + (res.actions.some(a => a.crit) ? 0.1 : 0);
     if (res.finished) {
-      audio.playSe('winLose');
+      audio.playSe('victory2');
       if (res.playerWon) {
         b.victory = true; b.victoryT = 0;
         b.banner = 'VICTORY'; b.bannerT = 0;
@@ -1450,6 +1468,7 @@ class SummonHall {
     this.cardCount = this.db.inventory.cards.length;
     saveDB(this.db);
     if (r.event === 'witch' && r.witchRaidId) {
+      audio.playSe('witch'); // 遇魔女警示音（BGM 持续）
       const raid = this.db.raids.find(x => x.raidId === r.witchRaidId)!;
       const delay = this.marchAnim ? 280 : 700;
       setTimeout(() => {
@@ -4832,6 +4851,13 @@ class SummonHall {
     const omenEnd = highCard ? 0.18 : 0;
     const revealLocal = omenEnd > 0 ? Math.max(0, (local - omenEnd) / (1 - omenEnd)) : local;
 
+    // ── VR 专属：夜晚圣光（月亮 + 从天而降的圣光柱照亮全场 + 玻璃质感）──
+    if (rank >= 7) this.drawVrHeaven(ctx, local, revealLocal);
+    // ── LR 专属：天上太阳金光 + 光线收缩 + 气球 ──
+    else if (rank >= 5) this.drawLrSun(ctx, local, revealLocal);
+    // ── UR 专属：桃心背景 + 光束 ──
+    else if (rank === 4) this.drawUrHearts(ctx, local, revealLocal);
+
     // 光柱
     const pillar = Math.max(0, this.pillarV);
     if (pillar > 0 || (highCard && local < 0.35)) {
@@ -4879,7 +4905,8 @@ class SummonHall {
       const op = Math.sin((local / Math.max(0.01, omenEnd)) * Math.PI);
       ctx.save();
       ctx.globalAlpha = Math.max(0, op);
-      this.text(isLR ? '✦ 仙 神 下 凡 ✦' : '★ 稀有反应 ★', W / 2, H / 2 - 40, isLR ? 40 : 28, col, 'center', 'bold', true);
+      const omenTxt = rank >= 7 ? '✦ 圣 光 降 临 ✦' : isLR ? '✦ 仙 神 下 凡 ✦' : '★ 稀有反应 ★';
+      this.text(omenTxt, W / 2, H / 2 - 40, rank >= 7 ? 44 : isLR ? 40 : 28, col, 'center', 'bold', true);
       ctx.restore();
     }
 
@@ -4997,6 +5024,54 @@ class SummonHall {
         }
       }
 
+      // VR 专属：七彩礼花爆炸（卡片落定瞬间爆发）+ 持久礼花（七彩祥云般，久久不散）
+      if (rank >= 7) {
+        const burstP = revealLocal > 0.62 ? Math.min(1, (revealLocal - 0.62) / 0.18) : 0;
+        if (burstP > 0) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          // 第一轮爆发：从卡片中心向四周放射
+          for (let ring = 0; ring < 3; ring++) {
+            const rp = Math.max(0, burstP - ring * 0.12);
+            if (rp <= 0) continue;
+            const rr = 40 + rp * 300;
+            const hue0 = (this.last / 4 + ring * 60) % 360;
+            ctx.globalAlpha = (1 - rp) * 0.9;
+            ctx.lineWidth = 4 - ring;
+            ctx.strokeStyle = `hsl(${hue0},100%,70%)`;
+            ctx.beginPath(); ctx.arc(W / 2, H / 2, rr, 0, Math.PI * 2); ctx.stroke();
+            // 粒子点
+            for (let k = 0; k < 24; k++) {
+              const a = (k / 24) * Math.PI * 2 + ring;
+              const px = W / 2 + Math.cos(a) * rr, py = H / 2 + Math.sin(a) * rr;
+              ctx.fillStyle = `hsl(${(hue0 + k * 15) % 360},100%,75%)`;
+              ctx.beginPath(); ctx.arc(px, py, 3 - ring * 0.5, 0, Math.PI * 2); ctx.fill();
+            }
+          }
+          ctx.restore();
+        }
+        // 持久礼花：上升后爆散（七彩，持续飘落）
+        const fwA = Math.min(1, Math.max(0, (revealLocal - 0.3) / 0.4));
+        if (fwA > 0) {
+          const fallT = revealLocal * dur;
+          ctx.save();
+          for (let i = 0; i < 42; i++) {
+            const seed = i * 47.13;
+            const fx = (Math.sin(seed) * 0.5 + 0.5) * W;
+            const upSpeed = 90 + (i % 6) * 30;
+            const fy = H + 40 - ((fallT * upSpeed + i * 113) % (H + 120));
+            const sway = Math.sin(this.last / 260 + i * 1.3) * 30;
+            ctx.globalAlpha = (0.5 + 0.4 * Math.sin(seed * 2.3) ** 2) * fwA;
+            ctx.fillStyle = `hsl(${(seed * 57) % 360},100%,72%)`;
+            ctx.beginPath(); ctx.arc(fx + sway, fy, 2.5 + (i % 3), 0, Math.PI * 2); ctx.fill();
+            // 拖尾
+            ctx.globalAlpha *= 0.4;
+            ctx.beginPath(); ctx.arc(fx + sway, fy + 8, 2, 0, Math.PI * 2); ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
       // UR 紫电弧（前景，冷色调与 LR 区分）
       if (rank === 4 && revealLocal > 0.1 && revealLocal < 0.75) {
         ctx.save();
@@ -5058,6 +5133,194 @@ class SummonHall {
       kind: 'blue', hover: this.hover === 'skipAll', fontSize: 17,
     });
     this.buttons.push({ x: W - 176, y: H / 2 - 26, w: 156, h: 52, id: 'skipAll' });
+  }
+
+  /** VR 圣光场景：夜晚月亮 + 圣光柱照亮全场 + 七彩玻璃辉光（卡片从月亮下方缓缓升起，礼花持久） */
+  private drawVrHeaven(ctx: CanvasRenderingContext2D, local: number, rl: number): void {
+    const t = this.last / 1000;
+    // 夜晚天空（深蓝紫渐变）
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.7);
+    sky.addColorStop(0, '#05030f');
+    sky.addColorStop(0.5, '#0a0620');
+    sky.addColorStop(1, '#1a0f3a');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H * 0.7);
+    // 星星
+    ctx.save();
+    for (let i = 0; i < 60; i++) {
+      const sx = (Math.sin(i * 127.1) * 0.5 + 0.5) * W;
+      const sy = (Math.sin(i * 311.7) * 0.5 + 0.5) * H * 0.55;
+      const tw = 0.3 + 0.7 * Math.abs(Math.sin(t * 1.5 + i));
+      ctx.globalAlpha = tw * 0.8;
+      ctx.fillStyle = '#dfe8ff';
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+    // 月亮（右上）：圣光源头
+    const mx = W * 0.78, my = H * 0.16;
+    const moonG = ctx.createRadialGradient(mx, my, 0, mx, my, 90);
+    moonG.addColorStop(0, '#fffde8');
+    moonG.addColorStop(0.4, '#f8ecc8');
+    moonG.addColorStop(1, 'rgba(248,236,200,0)');
+    ctx.fillStyle = moonG;
+    ctx.beginPath(); ctx.arc(mx, my, 90, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#fff8dc';
+    ctx.beginPath(); ctx.arc(mx, my, 34, 0, Math.PI * 2); ctx.fill();
+    // 月面暗斑
+    ctx.fillStyle = 'rgba(200,180,120,0.5)';
+    ctx.beginPath(); ctx.arc(mx - 9, my - 4, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(mx + 7, my + 8, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // 圣光柱：从月亮照向卡片位置（随 rl 渐亮渐宽）
+    const coneA = Math.min(1, rl * 1.8);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const grad = ctx.createLinearGradient(mx, my, W / 2, H * 0.62);
+    grad.addColorStop(0, 'rgba(255,250,230,0.95)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = coneA;
+    ctx.beginPath();
+    ctx.moveTo(mx, my);
+    const spread = 60 + coneA * 260;
+    ctx.lineTo(W / 2 - spread, H * 0.62);
+    ctx.lineTo(W / 2 + spread, H * 0.62);
+    ctx.closePath();
+    ctx.fill();
+    // 全场圣光白雾（从下往上渐亮）
+    const fog = ctx.createLinearGradient(0, H * 0.45, 0, H);
+    fog.addColorStop(0, 'rgba(255,250,235,0)');
+    fog.addColorStop(1, `rgba(255,250,235,${(0.28 * coneA).toFixed(3)})`);
+    ctx.fillStyle = fog;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+
+    // 七彩玻璃辉光（卡片背后，呼吸闪烁）
+    const hue = (t * 30) % 360;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.25 + 0.2 * Math.sin(t * 3);
+    const glass = ctx.createRadialGradient(W / 2, H * 0.52, 0, W / 2, H * 0.52, 320);
+    for (let k = 0; k <= 6; k++) {
+      glass.addColorStop(k / 6, `hsla(${(hue + k * 60) % 360},95%,70%,${(1 - k / 6) * 0.5})`);
+    }
+    ctx.fillStyle = glass;
+    ctx.beginPath(); ctx.arc(W / 2, H * 0.52, 320, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  /** LR 太阳场景：天上太阳金光 + 光线收缩 + 两侧气球 + 花瓣 */
+  private drawLrSun(ctx: CanvasRenderingContext2D, local: number, rl: number): void {
+    const t = this.last / 1000;
+    const sx = W / 2, sy = H * 0.13;
+    // 金色天空
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.7);
+    sky.addColorStop(0, '#2a1a02');
+    sky.addColorStop(0.45, '#6b3a06');
+    sky.addColorStop(1, '#120a02');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H * 0.7);
+    // 太阳：金光闪闪（放射光线）
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const sunR = 70 + Math.sin(t * 2) * 6;
+    const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, sunR * 3.4);
+    halo.addColorStop(0, 'rgba(255,245,210,0.95)');
+    halo.addColorStop(0.35, 'rgba(255,214,120,0.5)');
+    halo.addColorStop(1, 'rgba(255,200,80,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(sx, sy, sunR * 3.4, 0, Math.PI * 2); ctx.fill();
+    // 放射光束（rl 早期展开，后期收缩）
+    const rayP = rl < 0.3 ? rl / 0.3 : Math.max(0, 1 - (rl - 0.3) / 0.7);
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2 + t * 0.1;
+      const len = sunR * (2 + rayP * 6);
+      const g2 = ctx.createLinearGradient(sx, sy, sx + Math.cos(a) * len, sy + Math.sin(a) * len);
+      g2.addColorStop(0, 'rgba(255,240,180,0.9)');
+      g2.addColorStop(1, 'rgba(255,220,120,0)');
+      ctx.strokeStyle = g2;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(sx + Math.cos(a) * sunR, sy + Math.sin(a) * sunR);
+      ctx.lineTo(sx + Math.cos(a) * len, sy + Math.sin(a) * len);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#fff8d8';
+    ctx.beginPath(); ctx.arc(sx, sy, sunR, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // 两侧气球（上升漂浮）
+    ctx.save();
+    const bA = Math.min(1, rl / 0.2);
+    for (let i = 0; i < 10; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const bx = W / 2 + side * (120 + (i % 5) * 90);
+      const floatT = (t * 46 + i * 71) % (H + 160);
+      const by = H + 60 - floatT;
+      const hues = [0, 210, 280, 30, 120];
+      const hc = hues[i % hues.length];
+      ctx.globalAlpha = bA * (0.5 + 0.3 * Math.sin(t * 2 + i));
+      ctx.fillStyle = `hsl(${hc},80%,62%)`;
+      ctx.beginPath(); ctx.ellipse(bx, by, 14, 17, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = `hsl(${hc},80%,45%)`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(bx, by + 17); ctx.lineTo(bx, by + 26); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx, by + 26); ctx.lineTo(bx - 5, by + 31); ctx.moveTo(bx, by + 26); ctx.lineTo(bx + 5, by + 31); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** UR 桃心场景：背景全是桃心 + 光束 */
+  private drawUrHearts(ctx: CanvasRenderingContext2D, local: number, rl: number): void {
+    const t = this.last / 1000;
+    const a = Math.min(1, rl / 0.15);
+    ctx.save();
+    // 桃心背景（粉紫渐变 + 浮动桃心）
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#2a0a24');
+    bg.addColorStop(0.6, '#3d0f3a');
+    bg.addColorStop(1, '#14061a');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = a * 0.85;
+    for (let i = 0; i < 26; i++) {
+      const hx = (Math.sin(i * 137.5) * 0.5 + 0.5) * W;
+      const hy = ((t * 30 + i * 83) % (H + 60)) - 30;
+      const hs = 10 + (i % 4) * 8;
+      const hue = (330 + (i % 3) * 20 + Math.sin(t + i) * 15) % 360;
+      ctx.fillStyle = `hsla(${hue},85%,72%,${0.5 + 0.3 * Math.sin(t * 2 + i)})`;
+      ctx.save();
+      ctx.translate(hx, hy);
+      ctx.rotate(Math.sin(t + i) * 0.15);
+      this.heartPath(ctx, 0, 0, hs);
+      ctx.fill();
+      ctx.restore();
+    }
+    // 光束（斜向两侧，rl 渐亮）
+    ctx.globalCompositeOperation = 'lighter';
+    for (const dir of [-1, 1]) {
+      const g = ctx.createLinearGradient(W / 2, H * 0.3, W / 2 + dir * W, H);
+      g.addColorStop(0, `rgba(255,190,240,${(0.5 * a).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(255,190,240,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(W / 2 - dir * 60, H * 0.25);
+      ctx.lineTo(W / 2 + dir * (W * 0.45), H * 0.75);
+      ctx.lineTo(W / 2 + dir * (W * 0.6), H * 0.8);
+      ctx.lineTo(W / 2 + dir * 120, H * 0.6);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /** 桃心路径 */
+  private heartPath(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
+    ctx.beginPath();
+    ctx.moveTo(x, y + s * 0.8);
+    ctx.bezierCurveTo(x - s, y - s * 0.2, x - s * 0.5, y - s, x, y - s * 0.3);
+    ctx.bezierCurveTo(x + s * 0.5, y - s, x + s, y - s * 0.2, x, y + s * 0.8);
+    ctx.closePath();
   }
 
   private renderSettle(): void {
