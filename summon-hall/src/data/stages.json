@@ -1,0 +1,102 @@
+[
+  {
+    "stageId": "r1-s1",
+    "mapId": "areamap-001",
+    "battleBackgroundId": "battlebg-001",
+    "musicId": "bgm-004",
+    "encounterType": "normal",
+    "waves": [],
+    "rewards": [{ "kind": "gold", "amount": 500, "source": { "level": "original-fill" } }],
+    "source": { "level": "original-fill", "sourceNote": "离线演示关卡；数值为原创填充" }
+  },
+  {
+    "stageId": "r1-s2",
+    "mapId": "areamap-001",
+    "battleBackgroundId": "battlebg-002",
+    "musicId": "bgm-004",
+    "encounterType": "normal",
+    "waves": [],
+    "rewards": [{ "kind": "gold", "amount": 800, "source": { "level": "original-fill" } }],
+    "source": { "level": "original-fill", "sourceNote": "离线演示关卡；数值为原创填充" }
+  },
+  {
+    "stageId": "r1-s3",
+    "mapId": "areamap-001",
+    "battleBackgroundId": "battlebg-003",
+    "musicId": "bgm-004",
+    "encounterType": "normal",
+    "waves": [],
+    "rewards": [{ "kind": "gold", "amount": 1200, "source": { "level": "original-fill" } }],
+    "source": { "level": "original-fill", "sourceNote": "离线演示关卡；数值为原创填充" }
+  },
+  {
+    "stageId": "r1-s4",
+    "mapId": "areamap-001",
+    "battleBackgroundId": "battlebg-004",
+    "musicId": "bgm-004",
+    "encounterType": "boss",
+    "waves": [],
+    "rewards": [{ "kind": "gold", "amount": 2000, "source": { "level": "original-fill" } }],
+    "source": { "level": "original-fill", "sourceNote": "离线演示关卡；数值为原创填充" }
+  },
+  {
+    "stageId": "r1-s5",
+    "mapId": "areamap-001",
+    "battleBackgroundId": "battlebg-005",
+    "musicId": "bgm-004",
+    "encounterType": "boss",
+    "waves": [],
+    "rewards": [{ "kind": "gold", "amount": 3000, "source": { "level": "original-fill" } }],
+    "source": { "level": "original-fill", "sourceNote": "离线演示关卡；数值为原创填充" }
+  },
+  {
+    "stageId": "r2-s1",
+    "mapId": "areamap-002-008",
+    "battleBackgroundId": "battlebg-006",
+    "musicId": "bgm-004",
+    "encounterType": "round",
+    "waves": [],
+    "rewards": [{ "kind": "gold", "amount": 4500, "source": { "level": "original-fill" } }],
+    "source": { "level": "original-fill", "sourceNote": "离线演示关卡；数值为原创填充" }
+  },
+  {
+    "stageId": "r2-s2",
+    "mapId": "areamap-002-008",
+    "battleBackgroundId": "battlebg-007",
+    "musicId": "bgm-004",
+    "encounterType": "round",
+    "waves": [],
+    "rewards": [{ "kind": "gold", "amount": 6000, "source": { "level": "original-fill" } }],
+    "source": { "level": "original-fill", "sourceNote": "离线演示关卡；数值为原创填充" }
+  },
+  {
+    "stageId": "r2-s3",
+    "mapId": "areamap-002-008",
+    "battleBackgroundId": "battlebg-008",
+    "musicId": "bgm-004",
+    "encounterType": "king",
+    "waves": [],
+    "rewards": [{ "kind": "gold", "amount": 9000, "source": { "level": "original-fill" } }],
+    "source": { "level": "original-fill", "sourceNote": "离线演示关卡；数值为原创填充" }
+  },
+  {
+    "stageId": "_raid-normal",
+    "mapId": "areamap-101",
+    "battleBackgroundId": "battlebg-032",
+    "musicId": "bgm-004",
+    "encounterType": "boss",
+    "waves": [],
+    "rewards": [],
+    "source": { "level": "original-fill", "sourceNote": "讨伐战（魔女）视觉绑定；数值为原创填充" }
+  },
+  {
+    "stageId": "_raid-archwitch",
+    "mapId": "areamap-101",
+    "battleBackgroundId": "battlebg-064",
+    "musicId": "bgm-005",
+    "encounterType": "king",
+    "waves": [],
+    "rewards": [],
+    "source": { "level": "original-fill", "sourceNote": "讨伐战（大魔女）视觉绑定；数值为原创填充" }
+  }
+]

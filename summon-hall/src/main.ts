@@ -16,9 +16,10 @@ import {
   type Combatant, type ExploreResult, type SkillFx,
   type ChestReward,
 } from './logic';
-import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST, EVENT_MAP_BGS, NAVI_SPRITES, naviSprite, naviName, RotationLoader } from './assets';
+import { eventMapBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST, EVENT_MAP_BGS, NAVI_SPRITES, naviSprite, naviName, RotationLoader } from './assets';
 import { runtimeByLegacyId, quotesFor } from './data/runtime-catalog';
 import { formOf, resolveImage } from './data/asset-resolver';
+import { stageVisual } from './data/stages-runtime';
 import { audio } from './audio';
 import {
   drawBattleCard, drawHpBar, drawSkillStar, drawCircleButton, drawSkillConfirm,
@@ -190,8 +191,6 @@ class SummonHall {
   private rechargeToastT = 0;
   /** 活动地图背景轮换下标 */
   private eventMapIndex = 0;
-  /** 战斗背景下标（按关卡推进） */
-  private battleBgIndex = 0;
   /** 战绩列表滚动 */
   private recordsScroll = 0;
   private recordsToast = '';
@@ -586,7 +585,6 @@ class SummonHall {
       const unlocked = idx === 0 || this.db.stages[idx - 1]?.firstClear === true;
       if (!unlocked) return;
       this.activeStage = s;
-      this.battleBgIndex = (this.battleBgIndex + 1) % 64;
       this.page = 'sortie';
       this.syncBgm();
       return;
@@ -1338,12 +1336,20 @@ class SummonHall {
     this.bg.render(ctx);
 
     // 活动地图 / 出击 / 战斗 / 战绩：叠加归档场景背景（召唤页仍用神殿）
-    if (this.page === 'event' || this.page === 'map' || this.page === 'records') {
+    if (this.page === 'event' || this.page === 'records') {
       drawCover(ctx, loadAssetImage(eventMapBg(this.eventMapIndex)), W, H, 1);
       ctx.fillStyle = 'rgba(6,4,16,0.28)';
       ctx.fillRect(0, 0, W, H);
+    } else if (this.page === 'map') {
+      // 地图页：当前关卡的确定 AreaMap（manifest 绑定，非隐式轮换）
+      drawCover(ctx, loadAssetImage(stageVisual(this.activeStage.stageId).mapAsset), W, H, 1);
+      ctx.fillStyle = 'rgba(6,4,16,0.28)';
+      ctx.fillRect(0, 0, W, H);
     } else if (this.page === 'sortie' || this.page === 'battle') {
-      drawCover(ctx, loadAssetImage(battleBg(this.battleBgIndex)), W, H, 1);
+      // 出击/战斗：当前关卡（或讨伐战）的确定 BattleBG
+      const raidKey = this.battle?.raid ? (this.battle.raid.archWitch ? '_raid-archwitch' : '_raid-normal') : null;
+      const vis = stageVisual(raidKey ?? this.activeStage.stageId);
+      drawCover(ctx, loadAssetImage(vis.battleBgAsset), W, H, 1);
       ctx.fillStyle = this.page === 'battle' ? 'rgba(20,6,24,0.35)' : 'rgba(12,6,20,0.32)';
       ctx.fillRect(0, 0, W, H);
     }
