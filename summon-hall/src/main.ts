@@ -14,7 +14,7 @@ import {
   claimRaidReward, claimAllRaidRewards, tickBattlePt, tickEnergy, openChest,
   ownedToCombatant, leaderAtkBonus, canClaimLogin, claimDailyLogin, LOGIN_REWARDS,
   type Combatant, type ExploreResult, type SkillFx,
-  type ChestReward,
+  type ChestReward, type ChestQuality, mulberry32,
 } from './logic';
 import { eventMapBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST, EVENT_MAP_BGS, NAVI_SPRITES, naviSprite, naviName, RotationLoader } from './assets';
 import { runtimeByLegacyId, quotesFor } from './data/runtime-catalog';
@@ -104,7 +104,7 @@ interface TeamSlot { card: Card; hp: number; maxHp: number; lv: number; exp: num
 
 /** 宝箱阶段（战斗胜利奖励） */
 interface ChestState {
-  quality: 'bronze' | 'silver' | 'gold';
+  quality: ChestQuality;
   phase: 'closed' | 'opening' | 'revealed';
   reward: ChestReward | null;
   t: number;          // 阶段计时
@@ -1133,9 +1133,11 @@ class SummonHall {
         b.victory = true; b.victoryT = 0;
         b.banner = `讨伐成功！积分 +${r.ptGain}`;
         b.bannerT = 0;
-        // 宝箱：大魔女→金，普通魔女→银
+        // 宝箱：大魔女→钻石（30% 升级稀有极品），普通魔女→黄金
+        const arch = b.raid.archWitch;
+        const upLegend = arch && mulberry32(b.seed++)() < 0.3;
         b.chest = {
-          quality: b.raid.archWitch ? 'gold' : 'silver',
+          quality: arch ? (upLegend ? 'legend' : 'diamond') : 'gold',
           phase: 'closed', reward: null, t: 0, revealIdx: 0,
         };
         this.giveVictoryExp();
@@ -1182,8 +1184,8 @@ class SummonHall {
       if (res.playerWon) {
         b.victory = true; b.victoryT = 0;
         b.banner = 'VICTORY'; b.bannerT = 0;
-        // 普通遭遇战：铜宝箱
-        b.chest = { quality: 'bronze', phase: 'closed', reward: null, t: 0, revealIdx: 0 };
+        // 普通遭遇战：白银宝箱
+        b.chest = { quality: 'silver', phase: 'closed', reward: null, t: 0, revealIdx: 0 };
         this.giveVictoryExp();
       } else {
         b.defeated = true;
@@ -3215,8 +3217,8 @@ class SummonHall {
   private renderChest(c: ChestState): void {
     const ctx = this.ctx;
     const t = this.last / 1000;
-    const qName = { bronze: '青铜宝箱', silver: '白银宝箱', gold: '黄金宝箱' }[c.quality];
-    const qColor = { bronze: '#c88a50', silver: '#c8d4e8', gold: '#ffd24d' }[c.quality];
+    const qName = { silver: '白银宝箱', gold: '黄金宝箱', diamond: '钻石宝箱', legend: '稀有极品宝箱' }[c.quality];
+    const qColor = { silver: '#c8d4e8', gold: '#ffd24d', diamond: '#6fd8ff', legend: '#ff5cf0' }[c.quality];
 
     if (c.phase === 'closed') {
       // 卡包图：呼吸光效 + 点击提示

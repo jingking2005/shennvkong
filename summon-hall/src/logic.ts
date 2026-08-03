@@ -469,8 +469,10 @@ export function UseEnhancePotion(db: DB, targetInst: string): EnhanceResult {
 
 // ─────────────────────────── 宝箱（战斗胜利奖励） ───────────────────────────
 
+export type ChestQuality = 'silver' | 'gold' | 'diamond' | 'legend';
+
 export interface ChestReward {
-  quality: 'bronze' | 'silver' | 'gold';
+  quality: ChestQuality;
   cards: { cardId: string; rarity: string }[];
   gold: number;
   gems: number;
@@ -478,21 +480,23 @@ export interface ChestReward {
 }
 
 /**
- * openChest：开启宝箱，抽出 3 张卡入库
- * - bronze（普通遭遇战）：N 55% / R 35% / SR 10%
- * - silver（普通魔女讨伐）：R 45% / SR 42% / UR 13%
- * - gold（大魔女讨伐）：SR 45% / UR 40% / LR 15%（保底 SR+）
- * 另附金币/宝石/药水；金宝箱必掉药水
+ * openChest：开启宝箱，抽出 3 张卡入库（original-fill 概率）
+ * - silver（遭遇战）：R 45% / SR 42% / UR 13%
+ * - gold（普通魔女讨伐）：SR 45% / UR 40% / LR 15%
+ * - diamond（大魔女讨伐）：SR 25% / UR 45% / LR 26% / X 4%
+ * - legend（稀有极品·大魔女小概率升级）：UR 35% / LR 45% / X 15% / VR 5%
+ * 另附金币/宝石/药水；金及以上必掉药水
  */
 export function openChest(
-  db: DB, quality: 'bronze' | 'silver' | 'gold',
+  db: DB, quality: ChestQuality,
   pickCard: (r: string) => Card | undefined, seed: number,
 ): ChestReward {
   const rng = mulberry32(seed);
-  const pools: Record<string, [string, number][]> = {
-    bronze: [['N', 55], ['R', 35], ['SR', 10]],
+  const pools: Record<ChestQuality, [string, number][]> = {
     silver: [['R', 45], ['SR', 42], ['UR', 13]],
     gold: [['SR', 45], ['UR', 40], ['LR', 15]],
+    diamond: [['SR', 25], ['UR', 45], ['LR', 26], ['X', 4]],
+    legend: [['UR', 35], ['LR', 45], ['X', 15], ['VR', 5]],
   };
   const pool = pools[quality];
   const roll = (): string => {
@@ -508,13 +512,16 @@ export function openChest(
     db.inventory.cards.push(makeOwnedCard(c.id, 1 + (RARITY_TIER[r as keyof typeof RARITY_TIER] || 1) * 2));
     cards.push({ cardId: c.id, rarity: r });
   }
-  const gold = quality === 'gold' ? 8000 + Math.floor(rng() * 12000)
-    : quality === 'silver' ? 3000 + Math.floor(rng() * 5000)
-    : 800 + Math.floor(rng() * 2000);
-  const gems = quality === 'gold' ? 80 + Math.floor(rng() * 120)
-    : quality === 'silver' ? 20 + Math.floor(rng() * 40)
-    : Math.floor(rng() * 15);
-  const potions = quality === 'gold' ? 2 : quality === 'silver' && rng() < 0.5 ? 1 : 0;
+  const gold = quality === 'legend' ? 30000 + Math.floor(rng() * 30000)
+    : quality === 'diamond' ? 15000 + Math.floor(rng() * 15000)
+    : quality === 'gold' ? 8000 + Math.floor(rng() * 12000)
+    : 3000 + Math.floor(rng() * 5000);
+  const gems = quality === 'legend' ? 300 + Math.floor(rng() * 300)
+    : quality === 'diamond' ? 150 + Math.floor(rng() * 150)
+    : quality === 'gold' ? 80 + Math.floor(rng() * 120)
+    : 20 + Math.floor(rng() * 40);
+  const potions = quality === 'legend' ? 5 : quality === 'diamond' ? 3
+    : quality === 'gold' ? 2 : rng() < 0.5 ? 1 : 0;
   db.user.gold += gold;
   db.user.gems += gems;
   if (potions > 0) db.inventory.materials.upgradePotion = (db.inventory.materials.upgradePotion || 0) + potions;
