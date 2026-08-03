@@ -1,0 +1,198 @@
+[
+  {
+    "effectId": "eff-arrow1",
+    "asset": "/archive/battle-effects/eff_arrow1.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_arrow1.png",
+    "width": 256,
+    "height": 256,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-butterfly",
+    "asset": "/archive/battle-effects/eff_butterfly.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_butterfly.png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-crystal",
+    "asset": "/archive/battle-effects/eff_crystal.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_crystal.png",
+    "width": 256,
+    "height": 256,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-crystal-v2",
+    "asset": "/archive/battle-effects/eff_crystal_v2.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_crystal_v2.png",
+    "width": 256,
+    "height": 256,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-crystal-v3",
+    "asset": "/archive/battle-effects/eff_crystal_v3.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_crystal_v3.png",
+    "width": 256,
+    "height": 256,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-kaminari-01",
+    "asset": "/archive/battle-effects/eff_kaminari_01.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_kaminari_01.png",
+    "width": 512,
+    "height": 512,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-kira",
+    "asset": "/archive/battle-effects/eff_kira.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_kira.png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-kumo",
+    "asset": "/archive/battle-effects/eff_kumo.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_kumo.png",
+    "width": 256,
+    "height": 256,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-light01",
+    "asset": "/archive/battle-effects/eff_light01.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_light01.png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-light02",
+    "asset": "/archive/battle-effects/eff_light02.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_light02.png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-light03",
+    "asset": "/archive/battle-effects/eff_light03.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_light03.png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-sun",
+    "asset": "/archive/battle-effects/eff_sun.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_sun.png",
+    "width": 512,
+    "height": 256,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-torch01",
+    "asset": "/archive/battle-effects/eff_torch01.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_torch01.png",
+    "width": 256,
+    "height": 256,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  },
+  {
+    "effectId": "eff-torch02",
+    "asset": "/archive/battle-effects/eff_torch02.png",
+    "trigger": "manual",
+    "durationMs": 600,
+    "sourceFile": "Battle/Effects/eff_torch02.png",
+    "width": 256,
+    "height": 256,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03",
+      "sourceNote": "trigger/durationMs 为 original-fill"
+    }
+  }
+]

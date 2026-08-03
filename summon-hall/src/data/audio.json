@@ -1,0 +1,319 @@
+[
+  {
+    "id": "bgm-001",
+    "title": "bgm_001 Main Theme",
+    "asset": "/archive/bgm/bgm_001 Main Theme.ogg",
+    "loop": true,
+    "usedBy": [
+      "hall"
+    ],
+    "sourceFile": "Audio/stream/bgm_001 Main Theme.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-002",
+    "title": "bgm_002 Kingdom",
+    "asset": "/archive/bgm/bgm_002 Kingdom.ogg",
+    "loop": true,
+    "usedBy": [
+      "kingdom",
+      "team"
+    ],
+    "sourceFile": "Audio/stream/bgm_002 Kingdom.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-003",
+    "title": "bgm_003 Campaign",
+    "asset": "/archive/bgm/bgm_003 Campaign.ogg",
+    "loop": true,
+    "usedBy": [
+      "sortie"
+    ],
+    "sourceFile": "Audio/stream/bgm_003 Campaign.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-004",
+    "title": "bgm_004 Battle",
+    "asset": "/archive/bgm/bgm_004 Battle.ogg",
+    "loop": true,
+    "usedBy": [
+      "battle"
+    ],
+    "sourceFile": "Audio/stream/bgm_004 Battle.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-005",
+    "title": "bgm_005 Archwitch",
+    "asset": "/archive/bgm/bgm_005 Archwitch.ogg",
+    "loop": true,
+    "usedBy": [
+      "archwitch"
+    ],
+    "sourceFile": "Audio/stream/bgm_005 Archwitch.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-006",
+    "title": "bgm_006 Fantasy Archwitch",
+    "asset": "/archive/bgm/bgm_006 Fantasy Archwitch.ogg",
+    "loop": true,
+    "usedBy": [
+      "fantasyArchwitch"
+    ],
+    "sourceFile": "Audio/stream/bgm_006 Fantasy Archwitch.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-007",
+    "title": "bgm_007 Event Map",
+    "asset": "/archive/bgm/bgm_007 Event Map.ogg",
+    "loop": true,
+    "usedBy": [
+      "map",
+      "event",
+      "records"
+    ],
+    "sourceFile": "Audio/stream/bgm_007 Event Map.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-008",
+    "title": "bgm_008 Witch Gate",
+    "asset": "/archive/bgm/bgm_008 Witch Gate.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_008 Witch Gate.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-009",
+    "title": "bgm_009 Alliance",
+    "asset": "/archive/bgm/bgm_009 Alliance.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_009 Alliance.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-010",
+    "title": "bgm_010 Alliance Battle",
+    "asset": "/archive/bgm/bgm_010 Alliance Battle.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_010 Alliance Battle.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-011",
+    "title": "bgm_011 Elemental Hall Chance",
+    "asset": "/archive/bgm/bgm_011 Elemental Hall Chance.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_011 Elemental Hall Chance.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-012",
+    "title": "bgm_012 Alliance Battle Fever",
+    "asset": "/archive/bgm/bgm_012 Alliance Battle Fever.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_012 Alliance Battle Fever.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-013",
+    "title": "bgm_013 Tower",
+    "asset": "/archive/bgm/bgm_013 Tower.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_013 Tower.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-014",
+    "title": "bgm_014 Rune Time",
+    "asset": "/archive/bgm/bgm_014 Rune Time.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_014 Rune Time.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-016",
+    "title": "bgm_016 Loading",
+    "asset": "/archive/bgm/bgm_016 Loading.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_016 Loading.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-017",
+    "title": "bgm_017 Rune Time Archwitch",
+    "asset": "/archive/bgm/bgm_017 Rune Time Archwitch.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_017 Rune Time Archwitch.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-018",
+    "title": "bgm_018 Rune Boss",
+    "asset": "/archive/bgm/bgm_018 Rune Boss.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_018 Rune Boss.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-019",
+    "title": "bgm_019 Rune Boss Battle",
+    "asset": "/archive/bgm/bgm_019 Rune Boss Battle.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_019 Rune Boss Battle.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-020",
+    "title": "bgm_020 Voyage",
+    "asset": "/archive/bgm/bgm_020 Voyage.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_020 Voyage.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-021",
+    "title": "bgm_021 Voyage Map",
+    "asset": "/archive/bgm/bgm_021 Voyage Map.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_021 Voyage Map.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-022",
+    "title": "bgm_022 Voyage Battle",
+    "asset": "/archive/bgm/bgm_022 Voyage Battle.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_022 Voyage Battle.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-023",
+    "title": "bgm_023 Voyage Boss",
+    "asset": "/archive/bgm/bgm_023 Voyage Boss.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_023 Voyage Boss.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-024",
+    "title": "bgm_024 Soul Weapon",
+    "asset": "/archive/bgm/bgm_024 Soul Weapon.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_024 Soul Weapon.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-025",
+    "title": "bgm_025 Lord Archwitch",
+    "asset": "/archive/bgm/bgm_025 Lord Archwitch.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_025 Lord Archwitch.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "bgm-loading",
+    "title": "bgm_loading",
+    "asset": "/archive/bgm/bgm_loading.ogg",
+    "loop": true,
+    "usedBy": [],
+    "sourceFile": "Audio/stream/bgm_loading.ogg",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  }
+]

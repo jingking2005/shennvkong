@@ -1,0 +1,816 @@
+[
+  {
+    "id": "navi_100",
+    "asset": "/archive/navi/navi_100.png",
+    "sourceFile": "Navi-Sprites/navi_100.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_101",
+    "asset": "/archive/navi/navi_101.png",
+    "sourceFile": "Navi-Sprites/navi_101.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_102",
+    "asset": "/archive/navi/navi_102.png",
+    "sourceFile": "Navi-Sprites/navi_102.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_103",
+    "asset": "/archive/navi/navi_103.png",
+    "sourceFile": "Navi-Sprites/navi_103.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_105",
+    "asset": "/archive/navi/navi_105.png",
+    "sourceFile": "Navi-Sprites/navi_105.png",
+    "width": 410,
+    "height": 820,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_106",
+    "asset": "/archive/navi/navi_106.png",
+    "sourceFile": "Navi-Sprites/navi_106.png",
+    "width": 410,
+    "height": 820,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_107",
+    "asset": "/archive/navi/navi_107.png",
+    "sourceFile": "Navi-Sprites/navi_107.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_108",
+    "asset": "/archive/navi/navi_108.png",
+    "sourceFile": "Navi-Sprites/navi_108.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_109",
+    "asset": "/archive/navi/navi_109.png",
+    "sourceFile": "Navi-Sprites/navi_109.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_110",
+    "asset": "/archive/navi/navi_110.png",
+    "sourceFile": "Navi-Sprites/navi_110.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_20",
+    "asset": "/archive/navi/navi_20.png",
+    "sourceFile": "Navi-Sprites/navi_20.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_21",
+    "asset": "/archive/navi/navi_21.png",
+    "sourceFile": "Navi-Sprites/navi_21.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_40",
+    "asset": "/archive/navi/navi_40.png",
+    "sourceFile": "Navi-Sprites/navi_40.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_41",
+    "asset": "/archive/navi/navi_41.png",
+    "sourceFile": "Navi-Sprites/navi_41.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_42",
+    "asset": "/archive/navi/navi_42.png",
+    "sourceFile": "Navi-Sprites/navi_42.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_43",
+    "asset": "/archive/navi/navi_43.png",
+    "sourceFile": "Navi-Sprites/navi_43.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_44",
+    "asset": "/archive/navi/navi_44.png",
+    "sourceFile": "Navi-Sprites/navi_44.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_46",
+    "asset": "/archive/navi/navi_46.png",
+    "sourceFile": "Navi-Sprites/navi_46.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_47",
+    "asset": "/archive/navi/navi_47.png",
+    "sourceFile": "Navi-Sprites/navi_47.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_48",
+    "asset": "/archive/navi/navi_48.png",
+    "sourceFile": "Navi-Sprites/navi_48.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_49",
+    "asset": "/archive/navi/navi_49.png",
+    "sourceFile": "Navi-Sprites/navi_49.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_50",
+    "asset": "/archive/navi/navi_50.png",
+    "sourceFile": "Navi-Sprites/navi_50.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_51",
+    "asset": "/archive/navi/navi_51.png",
+    "sourceFile": "Navi-Sprites/navi_51.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_52",
+    "asset": "/archive/navi/navi_52.png",
+    "sourceFile": "Navi-Sprites/navi_52.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_54",
+    "asset": "/archive/navi/navi_54.png",
+    "sourceFile": "Navi-Sprites/navi_54.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_55",
+    "asset": "/archive/navi/navi_55.png",
+    "sourceFile": "Navi-Sprites/navi_55.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_56",
+    "asset": "/archive/navi/navi_56.png",
+    "sourceFile": "Navi-Sprites/navi_56.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_57",
+    "asset": "/archive/navi/navi_57.png",
+    "sourceFile": "Navi-Sprites/navi_57.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_58",
+    "asset": "/archive/navi/navi_58.png",
+    "sourceFile": "Navi-Sprites/navi_58.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_60",
+    "asset": "/archive/navi/navi_60.png",
+    "sourceFile": "Navi-Sprites/navi_60.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_62",
+    "asset": "/archive/navi/navi_62.png",
+    "sourceFile": "Navi-Sprites/navi_62.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_63",
+    "asset": "/archive/navi/navi_63.png",
+    "sourceFile": "Navi-Sprites/navi_63.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_64",
+    "asset": "/archive/navi/navi_64.png",
+    "sourceFile": "Navi-Sprites/navi_64.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_65",
+    "asset": "/archive/navi/navi_65.png",
+    "sourceFile": "Navi-Sprites/navi_65.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_67",
+    "asset": "/archive/navi/navi_67.png",
+    "sourceFile": "Navi-Sprites/navi_67.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_69",
+    "asset": "/archive/navi/navi_69.png",
+    "sourceFile": "Navi-Sprites/navi_69.png",
+    "width": 1024,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_72",
+    "asset": "/archive/navi/navi_72.png",
+    "sourceFile": "Navi-Sprites/navi_72.png",
+    "width": 1024,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_74",
+    "asset": "/archive/navi/navi_74.png",
+    "sourceFile": "Navi-Sprites/navi_74.png",
+    "width": 1024,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_76",
+    "asset": "/archive/navi/navi_76.png",
+    "sourceFile": "Navi-Sprites/navi_76.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_78",
+    "asset": "/archive/navi/navi_78.png",
+    "sourceFile": "Navi-Sprites/navi_78.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_79",
+    "asset": "/archive/navi/navi_79.png",
+    "sourceFile": "Navi-Sprites/navi_79.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_80",
+    "asset": "/archive/navi/navi_80.png",
+    "sourceFile": "Navi-Sprites/navi_80.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_81",
+    "asset": "/archive/navi/navi_81.png",
+    "sourceFile": "Navi-Sprites/navi_81.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_82",
+    "asset": "/archive/navi/navi_82.png",
+    "sourceFile": "Navi-Sprites/navi_82.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_86",
+    "asset": "/archive/navi/navi_86.png",
+    "sourceFile": "Navi-Sprites/navi_86.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_87",
+    "asset": "/archive/navi/navi_87.png",
+    "sourceFile": "Navi-Sprites/navi_87.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_88",
+    "asset": "/archive/navi/navi_88.png",
+    "sourceFile": "Navi-Sprites/navi_88.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_90",
+    "asset": "/archive/navi/navi_90.png",
+    "sourceFile": "Navi-Sprites/navi_90.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_91",
+    "asset": "/archive/navi/navi_91.png",
+    "sourceFile": "Navi-Sprites/navi_91.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_92",
+    "asset": "/archive/navi/navi_92.png",
+    "sourceFile": "Navi-Sprites/navi_92.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_94",
+    "asset": "/archive/navi/navi_94.png",
+    "sourceFile": "Navi-Sprites/navi_94.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_95",
+    "asset": "/archive/navi/navi_95.png",
+    "sourceFile": "Navi-Sprites/navi_95.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_97",
+    "asset": "/archive/navi/navi_97.png",
+    "sourceFile": "Navi-Sprites/navi_97.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_99",
+    "asset": "/archive/navi/navi_99.png",
+    "sourceFile": "Navi-Sprites/navi_99.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_Alchemist",
+    "asset": "/archive/navi/navi_Alchemist.png",
+    "sourceFile": "Navi-Sprites/navi_Alchemist.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_Calamity_2",
+    "asset": "/archive/navi/navi_Calamity_2.png",
+    "sourceFile": "Navi-Sprites/navi_Calamity_2.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_Itsuki",
+    "asset": "/archive/navi/navi_Itsuki.png",
+    "sourceFile": "Navi-Sprites/navi_Itsuki.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_Oracle",
+    "asset": "/archive/navi/navi_Oracle.png",
+    "sourceFile": "Navi-Sprites/navi_Oracle.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_apricot",
+    "asset": "/archive/navi/navi_apricot.png",
+    "sourceFile": "Navi-Sprites/navi_apricot.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_cairn",
+    "asset": "/archive/navi/navi_cairn.png",
+    "sourceFile": "Navi-Sprites/navi_cairn.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_demis",
+    "asset": "/archive/navi/navi_demis.png",
+    "sourceFile": "Navi-Sprites/navi_demis.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_desastre",
+    "asset": "/archive/navi/navi_desastre.png",
+    "sourceFile": "Navi-Sprites/navi_desastre.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_ebony",
+    "asset": "/archive/navi/navi_ebony.png",
+    "sourceFile": "Navi-Sprites/navi_ebony.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_hades_2",
+    "asset": "/archive/navi/navi_hades_2.png",
+    "sourceFile": "Navi-Sprites/navi_hades_2.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_jigan",
+    "asset": "/archive/navi/navi_jigan.png",
+    "sourceFile": "Navi-Sprites/navi_jigan.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_jodie2",
+    "asset": "/archive/navi/navi_jodie2.png",
+    "sourceFile": "Navi-Sprites/navi_jodie2.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_mia2_h",
+    "asset": "/archive/navi/navi_mia2_h.png",
+    "sourceFile": "Navi-Sprites/navi_mia2_h.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_mia_h",
+    "asset": "/archive/navi/navi_mia_h.png",
+    "sourceFile": "Navi-Sprites/navi_mia_h.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_prikat",
+    "asset": "/archive/navi/navi_prikat.png",
+    "sourceFile": "Navi-Sprites/navi_prikat.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_primila",
+    "asset": "/archive/navi/navi_primila.png",
+    "sourceFile": "Navi-Sprites/navi_primila.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_sumire",
+    "asset": "/archive/navi/navi_sumire.png",
+    "sourceFile": "Navi-Sprites/navi_sumire.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_typhon",
+    "asset": "/archive/navi/navi_typhon.png",
+    "sourceFile": "Navi-Sprites/navi_typhon.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_wisteria",
+    "asset": "/archive/navi/navi_wisteria.png",
+    "sourceFile": "Navi-Sprites/navi_wisteria.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "navi_zelzarl",
+    "asset": "/archive/navi/navi_zelzarl.png",
+    "sourceFile": "Navi-Sprites/navi_zelzarl.png",
+    "width": 512,
+    "height": 1024,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  }
+]

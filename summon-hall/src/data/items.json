@@ -1,0 +1,205 @@
+[
+  {
+    "id": "card-bag-r",
+    "title": "Card Bag (R)",
+    "asset": "/archive/items/Card Bag (R).png",
+    "usedBy": [
+      "chest-bronze"
+    ],
+    "sourceFile": "Items/**/Card Bag (R).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "card-bag-sr",
+    "title": "Card Bag (SR)",
+    "asset": "/archive/items/Card Bag (SR).png",
+    "usedBy": [
+      "chest-silver"
+    ],
+    "sourceFile": "Items/**/Card Bag (SR).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "card-bag-ur",
+    "title": "Card Bag (UR)",
+    "asset": "/archive/items/Card Bag (UR).png",
+    "usedBy": [
+      "chest-gold"
+    ],
+    "sourceFile": "Items/**/Card Bag (UR).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "miracle-drop-login-bonus",
+    "title": "Miracle Drop (Login Bonus)",
+    "asset": "/archive/items/Miracle Drop (Login Bonus).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Miracle Drop (Login Bonus).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "miracle-drop-voyage",
+    "title": "Miracle Drop (Voyage)",
+    "asset": "/archive/items/Miracle Drop (Voyage).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Miracle Drop (Voyage).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "miracle-drop-plus-limited-time",
+    "title": "Miracle Drop＋(Limited-Time)",
+    "asset": "/archive/items/Miracle Drop＋(Limited-Time).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Miracle Drop＋(Limited-Time).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "miracle-drop-plus-voyage",
+    "title": "Miracle Drop＋(Voyage)",
+    "asset": "/archive/items/Miracle Drop＋(Voyage).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Miracle Drop＋(Voyage).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "mysterious-drop-login-bonus",
+    "title": "Mysterious Drop (Login Bonus)",
+    "asset": "/archive/items/Mysterious Drop (Login Bonus).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Mysterious Drop (Login Bonus).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "mysterious-drop-soul-weapon",
+    "title": "Mysterious Drop (Soul Weapon)",
+    "asset": "/archive/items/Mysterious Drop (Soul Weapon).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Mysterious Drop (Soul Weapon).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "mysterious-drop-plus-soul-weapon",
+    "title": "Mysterious Drop＋ (Soul Weapon)",
+    "asset": "/archive/items/Mysterious Drop＋ (Soul Weapon).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Mysterious Drop＋ (Soul Weapon).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "spirit-drop-login-bonus",
+    "title": "Spirit Drop (Login Bonus)",
+    "asset": "/archive/items/Spirit Drop (Login Bonus).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Spirit Drop (Login Bonus).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "spirit-drop-tower",
+    "title": "Spirit Drop (Tower)",
+    "asset": "/archive/items/Spirit Drop (Tower).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Spirit Drop (Tower).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "spirit-drop-plus-tower",
+    "title": "Spirit Drop＋ (Tower)",
+    "asset": "/archive/items/Spirit Drop＋ (Tower).png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Spirit Drop＋ (Tower).png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "upgrade-potion-plus",
+    "title": "Upgrade Potion+",
+    "asset": "/archive/items/Upgrade Potion+.png",
+    "usedBy": [],
+    "sourceFile": "Items/**/Upgrade Potion+.png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "upgrade-potion",
+    "title": "Upgrade Potion",
+    "asset": "/archive/items/Upgrade Potion.png",
+    "usedBy": [
+      "enhance-potion"
+    ],
+    "sourceFile": "Items/**/Upgrade Potion.png",
+    "width": 128,
+    "height": 128,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  }
+]

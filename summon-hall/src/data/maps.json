@@ -1,0 +1,1731 @@
+[
+  {
+    "mapId": "areamap-001",
+    "title": "Celestial Realm Campaign 1",
+    "asset": "/archive/map/AreaMap_001.Celestial Realm Campaign 1.png",
+    "sourceFile": "Battle/Map/AreaMap_001.Celestial Realm Campaign 1.png",
+    "isEventMap": true,
+    "width": 960,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-003",
+    "title": "Utopian Illusion.Utopian Illusion",
+    "asset": "/archive/map/AreaMap_002_003.Utopian Illusion.Utopian Illusion.png",
+    "sourceFile": "Battle/Map/AreaMap_002_003.Utopian Illusion.Utopian Illusion.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-004",
+    "title": "Find Miss Academy.World Of the Gods Academy",
+    "asset": "/archive/map/AreaMap_002_004.Find Miss Academy.World Of the Gods Academy.png",
+    "sourceFile": "Battle/Map/AreaMap_002_004.Find Miss Academy.World Of the Gods Academy.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-005",
+    "title": "Enchanted Forest Storyteller.The Fairy Kingdom",
+    "asset": "/archive/map/AreaMap_002_005.Enchanted Forest Storyteller.The Fairy Kingdom.png",
+    "sourceFile": "Battle/Map/AreaMap_002_005.Enchanted Forest Storyteller.The Fairy Kingdom.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-006",
+    "title": "World of the Gods Resort.World of the Gods Resort",
+    "asset": "/archive/map/AreaMap_002_006.World of the Gods Resort.World of the Gods Resort.png",
+    "sourceFile": "Battle/Map/AreaMap_002_006.World of the Gods Resort.World of the Gods Resort.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-007",
+    "title": "Spacetime Archwitches.Realm between Space and Time",
+    "asset": "/archive/map/AreaMap_002_007.Spacetime Archwitches.Realm between Space and Time.png",
+    "sourceFile": "Battle/Map/AreaMap_002_007.Spacetime Archwitches.Realm between Space and Time.png",
+    "isEventMap": true,
+    "width": 960,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-008",
+    "title": "Gods of the Starry Skies.Heaven Galaxy",
+    "asset": "/archive/map/AreaMap_002_008.Gods of the Starry Skies.Heaven Galaxy.png",
+    "sourceFile": "Battle/Map/AreaMap_002_008.Gods of the Starry Skies.Heaven Galaxy.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-009",
+    "title": "Maidens in Love.Maidens Garden",
+    "asset": "/archive/map/AreaMap_002_009.Maidens in Love.Maidens Garden.png",
+    "sourceFile": "Battle/Map/AreaMap_002_009.Maidens in Love.Maidens Garden.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-010",
+    "title": "Get Back the Halloween Cookies.Halloween Land",
+    "asset": "/archive/map/AreaMap_002_010.Get Back the Halloween Cookies.Halloween Land.png",
+    "sourceFile": "Battle/Map/AreaMap_002_010.Get Back the Halloween Cookies.Halloween Land.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-011",
+    "title": "WotG Casino.WotG Casino",
+    "asset": "/archive/map/AreaMap_002_011.WotG Casino.WotG Casino.png",
+    "sourceFile": "Battle/Map/AreaMap_002_011.WotG Casino.WotG Casino.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-013",
+    "title": "Celestial Realm on Earth.Xmas Town",
+    "asset": "/archive/map/AreaMap_002_013.Celestial Realm on Earth.Xmas Town.png",
+    "sourceFile": "Battle/Map/AreaMap_002_013.Celestial Realm on Earth.Xmas Town.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-014",
+    "title": "A Celestial Realm Xmas.Xmas Town Too",
+    "asset": "/archive/map/AreaMap_002_014.A Celestial Realm Xmas.Xmas Town Too.png",
+    "sourceFile": "Battle/Map/AreaMap_002_014.A Celestial Realm Xmas.Xmas Town Too.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-015",
+    "title": "A Celestial Realm New Year.Shrine of the Gods",
+    "asset": "/archive/map/AreaMap_002_015.A Celestial Realm New Year.Shrine of the Gods.png",
+    "sourceFile": "Battle/Map/AreaMap_002_015.A Celestial Realm New Year.Shrine of the Gods.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-016",
+    "title": "A Valkyrie Valentine.Sweetland",
+    "asset": "/archive/map/AreaMap_002_016.A Valkyrie Valentine.Sweetland.png",
+    "sourceFile": "Battle/Map/AreaMap_002_016.A Valkyrie Valentine.Sweetland.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-017",
+    "title": "Doll Festival Rumble.Peachland",
+    "asset": "/archive/map/AreaMap_002_017.Doll Festival Rumble.Peachland.png",
+    "sourceFile": "Battle/Map/AreaMap_002_017.Doll Festival Rumble.Peachland.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-018",
+    "title": "Celestial Jubilee.Dawn of the Gods",
+    "asset": "/archive/map/AreaMap_002_018.Celestial Jubilee.Dawn of the Gods.png",
+    "sourceFile": "Battle/Map/AreaMap_002_018.Celestial Jubilee.Dawn of the Gods.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-019",
+    "title": "Maid in Heaven.Maid Manor",
+    "asset": "/archive/map/AreaMap_002_019.Maid in Heaven.Maid Manor.png",
+    "sourceFile": "Battle/Map/AreaMap_002_019.Maid in Heaven.Maid Manor.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-020",
+    "title": "School of Valkyries.Celestial Academy",
+    "asset": "/archive/map/AreaMap_002_020.School of Valkyries.Celestial Academy.png",
+    "sourceFile": "Battle/Map/AreaMap_002_020.School of Valkyries.Celestial Academy.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-021",
+    "title": ".Beginners Dungeon",
+    "asset": "/archive/map/AreaMap_002_021..Beginners Dungeon.png",
+    "sourceFile": "Battle/Map/AreaMap_002_021..Beginners Dungeon.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-022",
+    "title": "Cybercity.Cybercity",
+    "asset": "/archive/map/AreaMap_002_022.Cybercity.Cybercity.png",
+    "sourceFile": "Battle/Map/AreaMap_002_022.Cybercity.Cybercity.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-023",
+    "title": "Dark Alice and the Bewildering Wood.Old Woodland Road",
+    "asset": "/archive/map/AreaMap_002_023.Dark Alice and the Bewildering Wood.Old Woodland Road.png",
+    "sourceFile": "Battle/Map/AreaMap_002_023.Dark Alice and the Bewildering Wood.Old Woodland Road.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-024",
+    "title": "A Circus Darkly.Circus Grounds",
+    "asset": "/archive/map/AreaMap_002_024.A Circus Darkly.Circus Grounds.png",
+    "sourceFile": "Battle/Map/AreaMap_002_024.A Circus Darkly.Circus Grounds.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-025",
+    "title": "The Three Steps of Love.Lovers Paradise",
+    "asset": "/archive/map/AreaMap_002_025.The Three Steps of Love.Lovers Paradise.png",
+    "sourceFile": "Battle/Map/AreaMap_002_025.The Three Steps of Love.Lovers Paradise.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-026",
+    "title": "Terror Town.Terror Town",
+    "asset": "/archive/map/AreaMap_002_026.Terror Town.Terror Town.png",
+    "sourceFile": "Battle/Map/AreaMap_002_026.Terror Town.Terror Town.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-027",
+    "title": "Dreamy Destination.Bewitching Beaches",
+    "asset": "/archive/map/AreaMap_002_027.Dreamy Destination.Bewitching Beaches.png",
+    "sourceFile": "Battle/Map/AreaMap_002_027.Dreamy Destination.Bewitching Beaches.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-028",
+    "title": "Celestial Fireworks.Festiville",
+    "asset": "/archive/map/AreaMap_002_028.Celestial Fireworks.Festiville.png",
+    "sourceFile": "Battle/Map/AreaMap_002_028.Celestial Fireworks.Festiville.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-029",
+    "title": "Sacred Beasts of the Forest.Roots of the Godtree",
+    "asset": "/archive/map/AreaMap_002_029.Sacred Beasts of the Forest.Roots of the Godtree.png",
+    "sourceFile": "Battle/Map/AreaMap_002_029.Sacred Beasts of the Forest.Roots of the Godtree.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-030",
+    "title": "Celestial Treasure.Secret Ruins",
+    "asset": "/archive/map/AreaMap_002_030.Celestial Treasure.Secret Ruins.png",
+    "sourceFile": "Battle/Map/AreaMap_002_030.Celestial Treasure.Secret Ruins.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-031",
+    "title": "Galactic Journey.Astral Nexus",
+    "asset": "/archive/map/AreaMap_002_031.Galactic Journey.Astral Nexus.png",
+    "sourceFile": "Battle/Map/AreaMap_002_031.Galactic Journey.Astral Nexus.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-032",
+    "title": "A Celestial Saga.Field of Glory",
+    "asset": "/archive/map/AreaMap_002_032.A Celestial Saga.Field of Glory.png",
+    "sourceFile": "Battle/Map/AreaMap_002_032.A Celestial Saga.Field of Glory.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-033",
+    "title": "Pirates of the Sky.Islands in the Sky",
+    "asset": "/archive/map/AreaMap_002_033.Pirates of the Sky.Islands in the Sky.png",
+    "sourceFile": "Battle/Map/AreaMap_002_033.Pirates of the Sky.Islands in the Sky.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-034",
+    "title": "A Happy Halloween.Halloween Castle",
+    "asset": "/archive/map/AreaMap_002_034.A Happy Halloween.Halloween Castle.png",
+    "sourceFile": "Battle/Map/AreaMap_002_034.A Happy Halloween.Halloween Castle.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-035",
+    "title": "Sengoku in Autumn.Crimson Gardens",
+    "asset": "/archive/map/AreaMap_002_035.Sengoku in Autumn.Crimson Gardens.png",
+    "sourceFile": "Battle/Map/AreaMap_002_035.Sengoku in Autumn.Crimson Gardens.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-036",
+    "title": "Our Ladies of Solace.Phantasmal Spa",
+    "asset": "/archive/map/AreaMap_002_036.Our Ladies of Solace.Phantasmal Spa.png",
+    "sourceFile": "Battle/Map/AreaMap_002_036.Our Ladies of Solace.Phantasmal Spa.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-037",
+    "title": "Valkyrie Kingdom.Kingdom Streets",
+    "asset": "/archive/map/AreaMap_002_037.Valkyrie Kingdom.Kingdom Streets.png",
+    "sourceFile": "Battle/Map/AreaMap_002_037.Valkyrie Kingdom.Kingdom Streets.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-038",
+    "title": "Secret Santa.Christmas Village",
+    "asset": "/archive/map/AreaMap_002_038.Secret Santa.Christmas Village.png",
+    "sourceFile": "Battle/Map/AreaMap_002_038.Secret Santa.Christmas Village.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-039",
+    "title": "The Four Guardians.Altars of the Four",
+    "asset": "/archive/map/AreaMap_002_039.The Four Guardians.Altars of the Four.png",
+    "sourceFile": "Battle/Map/AreaMap_002_039.The Four Guardians.Altars of the Four.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-040",
+    "title": "Celestial Cat-astrophe.Catgirl Clinic",
+    "asset": "/archive/map/AreaMap_002_040.Celestial Cat-astrophe.Catgirl Clinic.png",
+    "sourceFile": "Battle/Map/AreaMap_002_040.Celestial Cat-astrophe.Catgirl Clinic.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-041",
+    "title": "Witch Gates Galore.Land of Ruin",
+    "asset": "/archive/map/AreaMap_002_041.Witch Gates Galore.Land of Ruin.png",
+    "sourceFile": "Battle/Map/AreaMap_002_041.Witch Gates Galore.Land of Ruin.png",
+    "isEventMap": true,
+    "width": 960,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-042",
+    "title": "Chocolate Wars.Battlefield of Love",
+    "asset": "/archive/map/AreaMap_002_042.Chocolate Wars.Battlefield of Love.png",
+    "sourceFile": "Battle/Map/AreaMap_002_042.Chocolate Wars.Battlefield of Love.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-043",
+    "title": "Celestial Drinking Party.Party Venue",
+    "asset": "/archive/map/AreaMap_002_043.Celestial Drinking Party.Party Venue.png",
+    "sourceFile": "Battle/Map/AreaMap_002_043.Celestial Drinking Party.Party Venue.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-044",
+    "title": "Maidens and Magic Weapons.Alfheim",
+    "asset": "/archive/map/AreaMap_002_044.Maidens and Magic Weapons.Alfheim.png",
+    "sourceFile": "Battle/Map/AreaMap_002_044.Maidens and Magic Weapons.Alfheim.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-045",
+    "title": "Celestial Jubilee II.Return of the Gods",
+    "asset": "/archive/map/AreaMap_002_045.Celestial Jubilee II.Return of the Gods.png",
+    "sourceFile": "Battle/Map/AreaMap_002_045.Celestial Jubilee II.Return of the Gods.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-046",
+    "title": "Victoria the Vampire Princess.Vampire Manor",
+    "asset": "/archive/map/AreaMap_002_046.Victoria the Vampire Princess.Vampire Manor.png",
+    "sourceFile": "Battle/Map/AreaMap_002_046.Victoria the Vampire Princess.Vampire Manor.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-047",
+    "title": "Celestial Battle Royal.BATTLE STAGE",
+    "asset": "/archive/map/AreaMap_002_047.Celestial Battle Royal.BATTLE STAGE.png",
+    "sourceFile": "Battle/Map/AreaMap_002_047.Celestial Battle Royal.BATTLE STAGE.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-048",
+    "title": "Celestial Pilgrimage: Training.Training Grounds",
+    "asset": "/archive/map/AreaMap_002_048.Celestial Pilgrimage: Training.Training Grounds.png",
+    "sourceFile": "Battle/Map/AreaMap_002_048.Celestial Pilgrimage: Training.Training Grounds.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-049",
+    "title": "Celestial Pilgrimage: The Final Battle.The Road to Battle",
+    "asset": "/archive/map/AreaMap_002_049.Celestial Pilgrimage: The Final Battle.The Road to Battle.png",
+    "sourceFile": "Battle/Map/AreaMap_002_049.Celestial Pilgrimage: The Final Battle.The Road to Battle.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-050",
+    "title": "Celestial Studio Tour.Celestial Studios",
+    "asset": "/archive/map/AreaMap_002_050.Celestial Studio Tour.Celestial Studios.png",
+    "sourceFile": "Battle/Map/AreaMap_002_050.Celestial Studio Tour.Celestial Studios.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-051",
+    "title": "Celestial Railway.Cosmic Passage",
+    "asset": "/archive/map/AreaMap_002_051.Celestial Railway.Cosmic Passage.png",
+    "sourceFile": "Battle/Map/AreaMap_002_051.Celestial Railway.Cosmic Passage.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-052",
+    "title": ".Castle Thunder",
+    "asset": "/archive/map/AreaMap_002_052..Castle Thunder.png",
+    "sourceFile": "Battle/Map/AreaMap_002_052..Castle Thunder.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-053",
+    "title": "Celestial Grand Prix.Valkyrie Raceway",
+    "asset": "/archive/map/AreaMap_002_053.Celestial Grand Prix.Valkyrie Raceway.png",
+    "sourceFile": "Battle/Map/AreaMap_002_053.Celestial Grand Prix.Valkyrie Raceway.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-054",
+    "title": "The Oracles Day Off.Celestial Oasis",
+    "asset": "/archive/map/AreaMap_002_054.The Oracles Day Off.Celestial Oasis.png",
+    "sourceFile": "Battle/Map/AreaMap_002_054.The Oracles Day Off.Celestial Oasis.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-055",
+    "title": "The Stolen Grimoire.Mount Brimstone",
+    "asset": "/archive/map/AreaMap_002_055.The Stolen Grimoire.Mount Brimstone.png",
+    "sourceFile": "Battle/Map/AreaMap_002_055.The Stolen Grimoire.Mount Brimstone.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-056",
+    "title": "The Fairies New Wings.Feywood",
+    "asset": "/archive/map/AreaMap_002_056.The Fairies New Wings.Feywood.png",
+    "sourceFile": "Battle/Map/AreaMap_002_056.The Fairies New Wings.Feywood.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-057",
+    "title": "The Alchemist and the Magic Spell.To Castle Diabolis",
+    "asset": "/archive/map/AreaMap_002_057.The Alchemist and the Magic Spell.To Castle Diabolis.png",
+    "sourceFile": "Battle/Map/AreaMap_002_057.The Alchemist and the Magic Spell.To Castle Diabolis.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-058",
+    "title": ".Beginners Dungeon",
+    "asset": "/archive/map/AreaMap_002_058..Beginners Dungeon.png",
+    "sourceFile": "Battle/Map/AreaMap_002_058..Beginners Dungeon.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-059",
+    "title": "The Outskirts of Town.Mystery District",
+    "asset": "/archive/map/AreaMap_002_059.The Outskirts of Town.Mystery District.png",
+    "sourceFile": "Battle/Map/AreaMap_002_059.The Outskirts of Town.Mystery District.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-060",
+    "title": ".Hamlet of Secrets",
+    "asset": "/archive/map/AreaMap_002_060..Hamlet of Secrets.png",
+    "sourceFile": "Battle/Map/AreaMap_002_060..Hamlet of Secrets.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-061",
+    "title": "Halloween Night.Halloween Parade",
+    "asset": "/archive/map/AreaMap_002_061.Halloween Night.Halloween Parade.png",
+    "sourceFile": "Battle/Map/AreaMap_002_061.Halloween Night.Halloween Parade.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-062",
+    "title": "Cyberwars.Neo City",
+    "asset": "/archive/map/AreaMap_002_062.Cyberwars.Neo City.png",
+    "sourceFile": "Battle/Map/AreaMap_002_062.Cyberwars.Neo City.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-063",
+    "title": "The Watcher in the Sky.The Floating Isles",
+    "asset": "/archive/map/AreaMap_002_063.The Watcher in the Sky.The Floating Isles.png",
+    "sourceFile": "Battle/Map/AreaMap_002_063.The Watcher in the Sky.The Floating Isles.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-064",
+    "title": "The Celestial Slayer.Uruk",
+    "asset": "/archive/map/AreaMap_002_064.The Celestial Slayer.Uruk.png",
+    "sourceFile": "Battle/Map/AreaMap_002_064.The Celestial Slayer.Uruk.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-065",
+    "title": "A Celestial Adventure.Christmas Town",
+    "asset": "/archive/map/AreaMap_002_065.A Celestial Adventure.Christmas Town.png",
+    "sourceFile": "Battle/Map/AreaMap_002_065.A Celestial Adventure.Christmas Town.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-066",
+    "title": "A Celestial Shrine Visit.Divine Light Shrine",
+    "asset": "/archive/map/AreaMap_002_066.A Celestial Shrine Visit.Divine Light Shrine.png",
+    "sourceFile": "Battle/Map/AreaMap_002_066.A Celestial Shrine Visit.Divine Light Shrine.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-067",
+    "title": "Sisterhood of Thieves.Kingdom Imperiled",
+    "asset": "/archive/map/AreaMap_002_067.Sisterhood of Thieves.Kingdom Imperiled.png",
+    "sourceFile": "Battle/Map/AreaMap_002_067.Sisterhood of Thieves.Kingdom Imperiled.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-068",
+    "title": "Valentines Day Grand Prix.Valentine Venue",
+    "asset": "/archive/map/AreaMap_002_068.Valentines Day Grand Prix.Valentine Venue.png",
+    "sourceFile": "Battle/Map/AreaMap_002_068.Valentines Day Grand Prix.Valentine Venue.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-069",
+    "title": "Desert Dreams.City in the Sand",
+    "asset": "/archive/map/AreaMap_002_069.Desert Dreams.City in the Sand.png",
+    "sourceFile": "Battle/Map/AreaMap_002_069.Desert Dreams.City in the Sand.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-070",
+    "title": "The Tyrant.The Realm of Dong Zhuo",
+    "asset": "/archive/map/AreaMap_002_070.The Tyrant.The Realm of Dong Zhuo.png",
+    "sourceFile": "Battle/Map/AreaMap_002_070.The Tyrant.The Realm of Dong Zhuo.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-071",
+    "title": "Celestial Jubilee III.Carnival Grounds",
+    "asset": "/archive/map/AreaMap_002_071.Celestial Jubilee III.Carnival Grounds.png",
+    "sourceFile": "Battle/Map/AreaMap_002_071.Celestial Jubilee III.Carnival Grounds.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-072",
+    "title": "Princess in Peril.Gloomwood",
+    "asset": "/archive/map/AreaMap_002_072.Princess in Peril.Gloomwood.png",
+    "sourceFile": "Battle/Map/AreaMap_002_072.Princess in Peril.Gloomwood.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-073",
+    "title": "Academy Battle.Celestial Academy 16",
+    "asset": "/archive/map/AreaMap_002_073.Academy Battle.Celestial Academy 16.png",
+    "sourceFile": "Battle/Map/AreaMap_002_073.Academy Battle.Celestial Academy 16.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-074",
+    "title": "Valkyrie Wars.Hell Star",
+    "asset": "/archive/map/AreaMap_002_074.Valkyrie Wars.Hell Star.png",
+    "sourceFile": "Battle/Map/AreaMap_002_074.Valkyrie Wars.Hell Star.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-075",
+    "title": "War Goddess Comeback.Land of Neutrality",
+    "asset": "/archive/map/AreaMap_002_075.War Goddess Comeback.Land of Neutrality.png",
+    "sourceFile": "Battle/Map/AreaMap_002_075.War Goddess Comeback.Land of Neutrality.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-076",
+    "title": "The Stolas Sisters.Clock Tower of Owl Woods",
+    "asset": "/archive/map/AreaMap_002_076.The Stolas Sisters.Clock Tower of Owl Woods.png",
+    "sourceFile": "Battle/Map/AreaMap_002_076.The Stolas Sisters.Clock Tower of Owl Woods.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-077",
+    "title": "Rhapsody of the Dark Princess.Ballroom Palace",
+    "asset": "/archive/map/AreaMap_002_077.Rhapsody of the Dark Princess.Ballroom Palace.png",
+    "sourceFile": "Battle/Map/AreaMap_002_077.Rhapsody of the Dark Princess.Ballroom Palace.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-078",
+    "title": "Follow Your Dreams: Idols Live.Starlight Theater",
+    "asset": "/archive/map/AreaMap_002_078.Follow Your Dreams: Idols Live.Starlight Theater.png",
+    "sourceFile": "Battle/Map/AreaMap_002_078.Follow Your Dreams: Idols Live.Starlight Theater.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-079",
+    "title": "A Celestial Vacation.Poseidon Beach",
+    "asset": "/archive/map/AreaMap_002_079.A Celestial Vacation.Poseidon Beach.png",
+    "sourceFile": "Battle/Map/AreaMap_002_079.A Celestial Vacation.Poseidon Beach.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-080",
+    "title": "Ice Wolves and Summer Snow.Isles of Summer Snow",
+    "asset": "/archive/map/AreaMap_002_080.Ice Wolves and Summer Snow.Isles of Summer Snow.png",
+    "sourceFile": "Battle/Map/AreaMap_002_080.Ice Wolves and Summer Snow.Isles of Summer Snow.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-081",
+    "title": "A Haunting Mystery.Mansion on the Edge of Town",
+    "asset": "/archive/map/AreaMap_002_081.A Haunting Mystery.Mansion on the Edge of Town.png",
+    "sourceFile": "Battle/Map/AreaMap_002_081.A Haunting Mystery.Mansion on the Edge of Town.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-082",
+    "title": "Moonlight Rumble.Lunar Party Hall",
+    "asset": "/archive/map/AreaMap_002_082.Moonlight Rumble.Lunar Party Hall.png",
+    "sourceFile": "Battle/Map/AreaMap_002_082.Moonlight Rumble.Lunar Party Hall.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-083",
+    "title": "Bounty Hunt.Wanted List",
+    "asset": "/archive/map/AreaMap_002_083.Bounty Hunt.Wanted List.png",
+    "sourceFile": "Battle/Map/AreaMap_002_083.Bounty Hunt.Wanted List.png",
+    "isEventMap": true,
+    "width": 845,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-084",
+    "title": "Summer Ends With a Bang.Celestial Fireworks Festival",
+    "asset": "/archive/map/AreaMap_002_084.Summer Ends With a Bang.Celestial Fireworks Festival.png",
+    "sourceFile": "Battle/Map/AreaMap_002_084.Summer Ends With a Bang.Celestial Fireworks Festival.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-085",
+    "title": "The Temple in the Sand.Breidablik Temple",
+    "asset": "/archive/map/AreaMap_002_085.The Temple in the Sand.Breidablik Temple.png",
+    "sourceFile": "Battle/Map/AreaMap_002_085.The Temple in the Sand.Breidablik Temple.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-086",
+    "title": "Halloween Confessions Can Wait.Halloweenland",
+    "asset": "/archive/map/AreaMap_002_086.Halloween Confessions Can Wait.Halloweenland.png",
+    "sourceFile": "Battle/Map/AreaMap_002_086.Halloween Confessions Can Wait.Halloweenland.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-087",
+    "title": "Bounty Hunt in Progress.Wanted List",
+    "asset": "/archive/map/AreaMap_002_087.Bounty Hunt in Progress.Wanted List.png",
+    "sourceFile": "Battle/Map/AreaMap_002_087.Bounty Hunt in Progress.Wanted List.png",
+    "isEventMap": true,
+    "width": 845,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-088",
+    "title": "A Dark and Dreary Autumn.Wrath of the Storm Goddess",
+    "asset": "/archive/map/AreaMap_002_088.A Dark and Dreary Autumn.Wrath of the Storm Goddess.png",
+    "sourceFile": "Battle/Map/AreaMap_002_088.A Dark and Dreary Autumn.Wrath of the Storm Goddess.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-089",
+    "title": "Invaders.Bewitched Palace",
+    "asset": "/archive/map/AreaMap_002_089.Invaders.Bewitched Palace.png",
+    "sourceFile": "Battle/Map/AreaMap_002_089.Invaders.Bewitched Palace.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-090",
+    "title": "Relenas Challenge.Open Gate",
+    "asset": "/archive/map/AreaMap_002_090.Relenas Challenge.Open Gate.png",
+    "sourceFile": "Battle/Map/AreaMap_002_090.Relenas Challenge.Open Gate.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-091",
+    "title": "The Immortal Queens Request.Forest of the Wondrous Spring",
+    "asset": "/archive/map/AreaMap_002_091.The Immortal Queens Request.Forest of the Wondrous Spring.png",
+    "sourceFile": "Battle/Map/AreaMap_002_091.The Immortal Queens Request.Forest of the Wondrous Spring.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-092",
+    "title": "Holy Night No One at the Gate.Destination: Christmas Tree",
+    "asset": "/archive/map/AreaMap_002_092.Holy Night No One at the Gate.Destination: Christmas Tree.png",
+    "sourceFile": "Battle/Map/AreaMap_002_092.Holy Night No One at the Gate.Destination: Christmas Tree.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-093",
+    "title": "Relenas 2nd Challenge.Open Gate",
+    "asset": "/archive/map/AreaMap_002_093.Relenas 2nd Challenge.Open Gate.png",
+    "sourceFile": "Battle/Map/AreaMap_002_093.Relenas 2nd Challenge.Open Gate.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-094",
+    "title": "New Years Fun and Games.Playground of the Gods",
+    "asset": "/archive/map/AreaMap_002_094.New Years Fun and Games.Playground of the Gods.png",
+    "sourceFile": "Battle/Map/AreaMap_002_094.New Years Fun and Games.Playground of the Gods.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-095",
+    "title": "Sallys Dress Dilemma.The Dance Plaza",
+    "asset": "/archive/map/AreaMap_002_095.Sallys Dress Dilemma.The Dance Plaza.png",
+    "sourceFile": "Battle/Map/AreaMap_002_095.Sallys Dress Dilemma.The Dance Plaza.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-096",
+    "title": "Relenas 3rd Challenge.Open Gate",
+    "asset": "/archive/map/AreaMap_002_096.Relenas 3rd Challenge.Open Gate.png",
+    "sourceFile": "Battle/Map/AreaMap_002_096.Relenas 3rd Challenge.Open Gate.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-097",
+    "title": "Valentines Day Chocolate Hunt.Cacao Road",
+    "asset": "/archive/map/AreaMap_002_097.Valentines Day Chocolate Hunt.Cacao Road.png",
+    "sourceFile": "Battle/Map/AreaMap_002_097.Valentines Day Chocolate Hunt.Cacao Road.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-098",
+    "title": "A Dancers Depression.Carnival Festival",
+    "asset": "/archive/map/AreaMap_002_098.A Dancers Depression.Carnival Festival.png",
+    "sourceFile": "Battle/Map/AreaMap_002_098.A Dancers Depression.Carnival Festival.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-099",
+    "title": "Relena Training Event.Open Gate",
+    "asset": "/archive/map/AreaMap_002_099.Relena Training Event.Open Gate.png",
+    "sourceFile": "Battle/Map/AreaMap_002_099.Relena Training Event.Open Gate.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-100",
+    "title": "Visitors from on High.The Citadel in the Sky",
+    "asset": "/archive/map/AreaMap_002_100.Visitors from on High.The Citadel in the Sky.png",
+    "sourceFile": "Battle/Map/AreaMap_002_100.Visitors from on High.The Citadel in the Sky.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-101",
+    "title": "The Rarest of Stones.Celestite Mine",
+    "asset": "/archive/map/AreaMap_002_101.The Rarest of Stones.Celestite Mine.png",
+    "sourceFile": "Battle/Map/AreaMap_002_101.The Rarest of Stones.Celestite Mine.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-102",
+    "title": "Whitecloths Great Awakening.Open Gate",
+    "asset": "/archive/map/AreaMap_002_102.Whitecloths Great Awakening.Open Gate.png",
+    "sourceFile": "Battle/Map/AreaMap_002_102.Whitecloths Great Awakening.Open Gate.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-103",
+    "title": "Celestial Jubilee IV.Fourth Annual Jubilee",
+    "asset": "/archive/map/AreaMap_002_103.Celestial Jubilee IV.Fourth Annual Jubilee.png",
+    "sourceFile": "Battle/Map/AreaMap_002_103.Celestial Jubilee IV.Fourth Annual Jubilee.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-104",
+    "title": "The Day The Music Almost Died.Lunes Mansion",
+    "asset": "/archive/map/AreaMap_002_104.The Day The Music Almost Died.Lunes Mansion.png",
+    "sourceFile": "Battle/Map/AreaMap_002_104.The Day The Music Almost Died.Lunes Mansion.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-105",
+    "title": "The Banisher of Disease.The Pass of Zhong Kui",
+    "asset": "/archive/map/AreaMap_002_105.The Banisher of Disease.The Pass of Zhong Kui.png",
+    "sourceFile": "Battle/Map/AreaMap_002_105.The Banisher of Disease.The Pass of Zhong Kui.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-106",
+    "title": "In the Dungeon Depths.Daedaluss Labyrinth",
+    "asset": "/archive/map/AreaMap_002_106.In the Dungeon Depths.Daedaluss Labyrinth.png",
+    "sourceFile": "Battle/Map/AreaMap_002_106.In the Dungeon Depths.Daedaluss Labyrinth.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-107",
+    "title": "Grimoire Quest.Leirias Library",
+    "asset": "/archive/map/AreaMap_002_107.Grimoire Quest.Leirias Library.png",
+    "sourceFile": "Battle/Map/AreaMap_002_107.Grimoire Quest.Leirias Library.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-108",
+    "title": "The Perfect Temptation.Kingdom in Chaos",
+    "asset": "/archive/map/AreaMap_002_108.The Perfect Temptation.Kingdom in Chaos.png",
+    "sourceFile": "Battle/Map/AreaMap_002_108.The Perfect Temptation.Kingdom in Chaos.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-109",
+    "title": "The Blundering Sun Goddess.Summertime Beach",
+    "asset": "/archive/map/AreaMap_002_109.The Blundering Sun Goddess.Summertime Beach.png",
+    "sourceFile": "Battle/Map/AreaMap_002_109.The Blundering Sun Goddess.Summertime Beach.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-110",
+    "title": "An Interstellar Journey.The Interstellar Line",
+    "asset": "/archive/map/AreaMap_002_110.An Interstellar Journey.The Interstellar Line.png",
+    "sourceFile": "Battle/Map/AreaMap_002_110.An Interstellar Journey.The Interstellar Line.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-111",
+    "title": "Her First Test.The Road to Success",
+    "asset": "/archive/map/AreaMap_002_111.Her First Test.The Road to Success.png",
+    "sourceFile": "Battle/Map/AreaMap_002_111.Her First Test.The Road to Success.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-112",
+    "title": "A New Gateway.Elis, City of the Infernal Realm",
+    "asset": "/archive/map/AreaMap_002_112.A New Gateway.Elis, City of the Infernal Realm.png",
+    "sourceFile": "Battle/Map/AreaMap_002_112.A New Gateway.Elis, City of the Infernal Realm.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-113",
+    "title": "Pumpkin Panic.Pumpkin Kingdom",
+    "asset": "/archive/map/AreaMap_002_113.Pumpkin Panic.Pumpkin Kingdom.png",
+    "sourceFile": "Battle/Map/AreaMap_002_113.Pumpkin Panic.Pumpkin Kingdom.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-114",
+    "title": "The Spring of the Goddess Krene.The Spring of the Goddess Krene",
+    "asset": "/archive/map/AreaMap_002_114.The Spring of the Goddess Krene.The Spring of the Goddess Krene.png",
+    "sourceFile": "Battle/Map/AreaMap_002_114.The Spring of the Goddess Krene.The Spring of the Goddess Krene.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-115",
+    "title": "The Stolas Sisters Strike Again.Owl Woods Winter",
+    "asset": "/archive/map/AreaMap_002_115.The Stolas Sisters Strike Again.Owl Woods Winter.png",
+    "sourceFile": "Battle/Map/AreaMap_002_115.The Stolas Sisters Strike Again.Owl Woods Winter.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-116",
+    "title": "In Search of the Wondrous Cacao.Forest of the Wondrous Cacao",
+    "asset": "/archive/map/AreaMap_002_116.In Search of the Wondrous Cacao.Forest of the Wondrous Cacao.png",
+    "sourceFile": "Battle/Map/AreaMap_002_116.In Search of the Wondrous Cacao.Forest of the Wondrous Cacao.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-117",
+    "title": "The Brilliant Invader.Sun Ces Battlefield",
+    "asset": "/archive/map/AreaMap_002_117.The Brilliant Invader.Sun Ces Battlefield.png",
+    "sourceFile": "Battle/Map/AreaMap_002_117.The Brilliant Invader.Sun Ces Battlefield.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-118",
+    "title": "Labs Are Meant for Exploding.Mount Megahardite",
+    "asset": "/archive/map/AreaMap_002_118.Labs Are Meant for Exploding.Mount Megahardite.png",
+    "sourceFile": "Battle/Map/AreaMap_002_118.Labs Are Meant for Exploding.Mount Megahardite.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-119",
+    "title": "The Slimefolks Treasure Amended.The Road to Slime Village",
+    "asset": "/archive/map/AreaMap_002_119.The Slimefolks Treasure Amended.The Road to Slime Village.png",
+    "sourceFile": "Battle/Map/AreaMap_002_119.The Slimefolks Treasure Amended.The Road to Slime Village.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-120",
+    "title": "The Demon Minister Juggernaut.Mount Hephaestus",
+    "asset": "/archive/map/AreaMap_002_120.The Demon Minister Juggernaut.Mount Hephaestus.png",
+    "sourceFile": "Battle/Map/AreaMap_002_120.The Demon Minister Juggernaut.Mount Hephaestus.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-121",
+    "title": "Beyond the Spacetime Gate.Spacetime Islands",
+    "asset": "/archive/map/AreaMap_002_121.Beyond the Spacetime Gate.Spacetime Islands.png",
+    "sourceFile": "Battle/Map/AreaMap_002_121.Beyond the Spacetime Gate.Spacetime Islands.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-122",
+    "title": "The Mermaids of Summer.Mermaid Beach",
+    "asset": "/archive/map/AreaMap_002_122.The Mermaids of Summer.Mermaid Beach.png",
+    "sourceFile": "Battle/Map/AreaMap_002_122.The Mermaids of Summer.Mermaid Beach.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-123",
+    "title": "Awakening Rage.Thrymheim",
+    "asset": "/archive/map/AreaMap_002_123.Awakening Rage.Thrymheim.png",
+    "sourceFile": "Battle/Map/AreaMap_002_123.Awakening Rage.Thrymheim.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-124",
+    "title": "The Evil Beyond the Walls.The Abandoned Castle",
+    "asset": "/archive/map/AreaMap_002_124.The Evil Beyond the Walls.The Abandoned Castle.png",
+    "sourceFile": "Battle/Map/AreaMap_002_124.The Evil Beyond the Walls.The Abandoned Castle.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-125",
+    "title": "The Stolas Sisters: Never Say Die.Autumn Owl Forest",
+    "asset": "/archive/map/AreaMap_002_125.The Stolas Sisters: Never Say Die.Autumn Owl Forest.png",
+    "sourceFile": "Battle/Map/AreaMap_002_125.The Stolas Sisters: Never Say Die.Autumn Owl Forest.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-126",
+    "title": "The Lure of the Sea Bottom.Sea Shrine",
+    "asset": "/archive/map/AreaMap_002_126.The Lure of the Sea Bottom.Sea Shrine.png",
+    "sourceFile": "Battle/Map/AreaMap_002_126.The Lure of the Sea Bottom.Sea Shrine.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-127",
+    "title": "The Accursed Queen.Googo, Town of Demons",
+    "asset": "/archive/map/AreaMap_002_127.The Accursed Queen.Googo, Town of Demons.png",
+    "sourceFile": "Battle/Map/AreaMap_002_127.The Accursed Queen.Googo, Town of Demons.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-128",
+    "title": "The Valentines Day Caper.Kingdom Sweet Kingdom",
+    "asset": "/archive/map/AreaMap_002_128.The Valentines Day Caper.Kingdom Sweet Kingdom.png",
+    "sourceFile": "Battle/Map/AreaMap_002_128.The Valentines Day Caper.Kingdom Sweet Kingdom.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-129",
+    "title": "Battle Maiden Training Ground.Battle Maiden Training Ground",
+    "asset": "/archive/map/AreaMap_002_129.Battle Maiden Training Ground.Battle Maiden Training Ground.png",
+    "sourceFile": "Battle/Map/AreaMap_002_129.Battle Maiden Training Ground.Battle Maiden Training Ground.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-130",
+    "title": "Battle Maiden Training Ground.Battle Maiden Training Ground",
+    "asset": "/archive/map/AreaMap_002_130.Battle Maiden Training Ground.Battle Maiden Training Ground.png",
+    "sourceFile": "Battle/Map/AreaMap_002_130.Battle Maiden Training Ground.Battle Maiden Training Ground.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-002-78",
+    "title": "Celestial Academy 16",
+    "asset": "/archive/map/AreaMap_002_78.Celestial Academy 16.png",
+    "sourceFile": "Battle/Map/AreaMap_002_78.Celestial Academy 16.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-003",
+    "title": "Celestial Realm Campaign 2",
+    "asset": "/archive/map/AreaMap_003.Celestial Realm Campaign 2.png",
+    "sourceFile": "Battle/Map/AreaMap_003.Celestial Realm Campaign 2.png",
+    "isEventMap": true,
+    "width": 960,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-004",
+    "title": "Beginners Dungeon",
+    "asset": "/archive/map/AreaMap_004.Beginners Dungeon.png",
+    "sourceFile": "Battle/Map/AreaMap_004.Beginners Dungeon.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-006",
+    "title": "Celestial Academy 16",
+    "asset": "/archive/map/AreaMap_006.Celestial Academy 16.png",
+    "sourceFile": "Battle/Map/AreaMap_006.Celestial Academy 16.png",
+    "isEventMap": true,
+    "width": 852,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "mapId": "areamap-101",
+    "title": "Eldrich Gates - original game map",
+    "asset": "/archive/map/AreaMap_101.Eldrich Gates - original game map.png",
+    "sourceFile": "Battle/Map/AreaMap_101.Eldrich Gates - original game map.png",
+    "isEventMap": true,
+    "width": 568,
+    "height": 320,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  }
+]

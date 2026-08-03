@@ -1,0 +1,2178 @@
+[
+  {
+    "battleBgId": "battlebg-001",
+    "asset": "/archive/battle-bg/BattleBG_001.png",
+    "sourceFile": "Battle/Background/BattleBG_001.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-002",
+    "asset": "/archive/battle-bg/BattleBG_002.png",
+    "sourceFile": "Battle/Background/BattleBG_002.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-003",
+    "asset": "/archive/battle-bg/BattleBG_003.png",
+    "sourceFile": "Battle/Background/BattleBG_003.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-004",
+    "asset": "/archive/battle-bg/BattleBG_004.png",
+    "sourceFile": "Battle/Background/BattleBG_004.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-005",
+    "asset": "/archive/battle-bg/BattleBG_005.png",
+    "sourceFile": "Battle/Background/BattleBG_005.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-006",
+    "asset": "/archive/battle-bg/BattleBG_006.png",
+    "sourceFile": "Battle/Background/BattleBG_006.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-007",
+    "asset": "/archive/battle-bg/BattleBG_007.png",
+    "sourceFile": "Battle/Background/BattleBG_007.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-008",
+    "asset": "/archive/battle-bg/BattleBG_008.png",
+    "sourceFile": "Battle/Background/BattleBG_008.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-009",
+    "asset": "/archive/battle-bg/BattleBG_009.png",
+    "sourceFile": "Battle/Background/BattleBG_009.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-010",
+    "asset": "/archive/battle-bg/BattleBG_010.png",
+    "sourceFile": "Battle/Background/BattleBG_010.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-012",
+    "asset": "/archive/battle-bg/BattleBG_012.png",
+    "sourceFile": "Battle/Background/BattleBG_012.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-014",
+    "asset": "/archive/battle-bg/BattleBG_014.png",
+    "sourceFile": "Battle/Background/BattleBG_014.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-015",
+    "asset": "/archive/battle-bg/BattleBG_015.png",
+    "sourceFile": "Battle/Background/BattleBG_015.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 554,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-016",
+    "asset": "/archive/battle-bg/BattleBG_016.png",
+    "sourceFile": "Battle/Background/BattleBG_016.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-017",
+    "asset": "/archive/battle-bg/BattleBG_017.png",
+    "sourceFile": "Battle/Background/BattleBG_017.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-018",
+    "asset": "/archive/battle-bg/BattleBG_018.png",
+    "sourceFile": "Battle/Background/BattleBG_018.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-019",
+    "asset": "/archive/battle-bg/BattleBG_019.png",
+    "sourceFile": "Battle/Background/BattleBG_019.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-020",
+    "asset": "/archive/battle-bg/BattleBG_020.png",
+    "sourceFile": "Battle/Background/BattleBG_020.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-021",
+    "asset": "/archive/battle-bg/BattleBG_021.png",
+    "sourceFile": "Battle/Background/BattleBG_021.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-022",
+    "asset": "/archive/battle-bg/BattleBG_022.png",
+    "sourceFile": "Battle/Background/BattleBG_022.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-023",
+    "asset": "/archive/battle-bg/BattleBG_023.png",
+    "sourceFile": "Battle/Background/BattleBG_023.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-027",
+    "asset": "/archive/battle-bg/BattleBG_027.png",
+    "sourceFile": "Battle/Background/BattleBG_027.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-028",
+    "asset": "/archive/battle-bg/BattleBG_028.png",
+    "sourceFile": "Battle/Background/BattleBG_028.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-029",
+    "asset": "/archive/battle-bg/BattleBG_029.png",
+    "sourceFile": "Battle/Background/BattleBG_029.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-030",
+    "asset": "/archive/battle-bg/BattleBG_030.png",
+    "sourceFile": "Battle/Background/BattleBG_030.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-031",
+    "asset": "/archive/battle-bg/BattleBG_031.png",
+    "sourceFile": "Battle/Background/BattleBG_031.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-032",
+    "asset": "/archive/battle-bg/BattleBG_032.png",
+    "sourceFile": "Battle/Background/BattleBG_032.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-033",
+    "asset": "/archive/battle-bg/BattleBG_033.png",
+    "sourceFile": "Battle/Background/BattleBG_033.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-034",
+    "asset": "/archive/battle-bg/BattleBG_034.png",
+    "sourceFile": "Battle/Background/BattleBG_034.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-035",
+    "asset": "/archive/battle-bg/BattleBG_035.png",
+    "sourceFile": "Battle/Background/BattleBG_035.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-036",
+    "asset": "/archive/battle-bg/BattleBG_036.png",
+    "sourceFile": "Battle/Background/BattleBG_036.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-037",
+    "asset": "/archive/battle-bg/BattleBG_037.png",
+    "sourceFile": "Battle/Background/BattleBG_037.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-038",
+    "asset": "/archive/battle-bg/BattleBG_038.png",
+    "sourceFile": "Battle/Background/BattleBG_038.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-039",
+    "asset": "/archive/battle-bg/BattleBG_039.png",
+    "sourceFile": "Battle/Background/BattleBG_039.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-040",
+    "asset": "/archive/battle-bg/BattleBG_040.png",
+    "sourceFile": "Battle/Background/BattleBG_040.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-041",
+    "asset": "/archive/battle-bg/BattleBG_041.png",
+    "sourceFile": "Battle/Background/BattleBG_041.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-042",
+    "asset": "/archive/battle-bg/BattleBG_042.png",
+    "sourceFile": "Battle/Background/BattleBG_042.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-045",
+    "asset": "/archive/battle-bg/BattleBG_045.png",
+    "sourceFile": "Battle/Background/BattleBG_045.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-046",
+    "asset": "/archive/battle-bg/BattleBG_046.png",
+    "sourceFile": "Battle/Background/BattleBG_046.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-047",
+    "asset": "/archive/battle-bg/BattleBG_047.png",
+    "sourceFile": "Battle/Background/BattleBG_047.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-048",
+    "asset": "/archive/battle-bg/BattleBG_048.png",
+    "sourceFile": "Battle/Background/BattleBG_048.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-049",
+    "asset": "/archive/battle-bg/BattleBG_049.png",
+    "sourceFile": "Battle/Background/BattleBG_049.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-050",
+    "asset": "/archive/battle-bg/BattleBG_050.png",
+    "sourceFile": "Battle/Background/BattleBG_050.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-051",
+    "asset": "/archive/battle-bg/BattleBG_051.png",
+    "sourceFile": "Battle/Background/BattleBG_051.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-052",
+    "asset": "/archive/battle-bg/BattleBG_052.png",
+    "sourceFile": "Battle/Background/BattleBG_052.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-053",
+    "asset": "/archive/battle-bg/BattleBG_053.png",
+    "sourceFile": "Battle/Background/BattleBG_053.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-054",
+    "asset": "/archive/battle-bg/BattleBG_054.png",
+    "sourceFile": "Battle/Background/BattleBG_054.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-055",
+    "asset": "/archive/battle-bg/BattleBG_055.png",
+    "sourceFile": "Battle/Background/BattleBG_055.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-056",
+    "asset": "/archive/battle-bg/BattleBG_056.png",
+    "sourceFile": "Battle/Background/BattleBG_056.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-057",
+    "asset": "/archive/battle-bg/BattleBG_057.png",
+    "sourceFile": "Battle/Background/BattleBG_057.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-058",
+    "asset": "/archive/battle-bg/BattleBG_058.png",
+    "sourceFile": "Battle/Background/BattleBG_058.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-059",
+    "asset": "/archive/battle-bg/BattleBG_059.png",
+    "sourceFile": "Battle/Background/BattleBG_059.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-060",
+    "asset": "/archive/battle-bg/BattleBG_060.png",
+    "sourceFile": "Battle/Background/BattleBG_060.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-061",
+    "asset": "/archive/battle-bg/BattleBG_061.png",
+    "sourceFile": "Battle/Background/BattleBG_061.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-062",
+    "asset": "/archive/battle-bg/BattleBG_062.png",
+    "sourceFile": "Battle/Background/BattleBG_062.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-063",
+    "asset": "/archive/battle-bg/BattleBG_063.png",
+    "sourceFile": "Battle/Background/BattleBG_063.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-064",
+    "asset": "/archive/battle-bg/BattleBG_064.png",
+    "sourceFile": "Battle/Background/BattleBG_064.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-065",
+    "asset": "/archive/battle-bg/BattleBG_065.png",
+    "sourceFile": "Battle/Background/BattleBG_065.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-066",
+    "asset": "/archive/battle-bg/BattleBG_066.png",
+    "sourceFile": "Battle/Background/BattleBG_066.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-067",
+    "asset": "/archive/battle-bg/BattleBG_067.png",
+    "sourceFile": "Battle/Background/BattleBG_067.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-068",
+    "asset": "/archive/battle-bg/BattleBG_068.png",
+    "sourceFile": "Battle/Background/BattleBG_068.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-069",
+    "asset": "/archive/battle-bg/BattleBG_069.png",
+    "sourceFile": "Battle/Background/BattleBG_069.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-070",
+    "asset": "/archive/battle-bg/BattleBG_070.png",
+    "sourceFile": "Battle/Background/BattleBG_070.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-071",
+    "asset": "/archive/battle-bg/BattleBG_071.png",
+    "sourceFile": "Battle/Background/BattleBG_071.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-072",
+    "asset": "/archive/battle-bg/BattleBG_072.png",
+    "sourceFile": "Battle/Background/BattleBG_072.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-073",
+    "asset": "/archive/battle-bg/BattleBG_073.png",
+    "sourceFile": "Battle/Background/BattleBG_073.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-074",
+    "asset": "/archive/battle-bg/BattleBG_074.png",
+    "sourceFile": "Battle/Background/BattleBG_074.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-075",
+    "asset": "/archive/battle-bg/BattleBG_075.png",
+    "sourceFile": "Battle/Background/BattleBG_075.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-076",
+    "asset": "/archive/battle-bg/BattleBG_076.png",
+    "sourceFile": "Battle/Background/BattleBG_076.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-077",
+    "asset": "/archive/battle-bg/BattleBG_077.png",
+    "sourceFile": "Battle/Background/BattleBG_077.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-078",
+    "asset": "/archive/battle-bg/BattleBG_078.png",
+    "sourceFile": "Battle/Background/BattleBG_078.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-079",
+    "asset": "/archive/battle-bg/BattleBG_079.png",
+    "sourceFile": "Battle/Background/BattleBG_079.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-080",
+    "asset": "/archive/battle-bg/BattleBG_080.png",
+    "sourceFile": "Battle/Background/BattleBG_080.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-081",
+    "asset": "/archive/battle-bg/BattleBG_081.png",
+    "sourceFile": "Battle/Background/BattleBG_081.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-082",
+    "asset": "/archive/battle-bg/BattleBG_082.png",
+    "sourceFile": "Battle/Background/BattleBG_082.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-083",
+    "asset": "/archive/battle-bg/BattleBG_083.png",
+    "sourceFile": "Battle/Background/BattleBG_083.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-084",
+    "asset": "/archive/battle-bg/BattleBG_084.png",
+    "sourceFile": "Battle/Background/BattleBG_084.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-085",
+    "asset": "/archive/battle-bg/BattleBG_085.png",
+    "sourceFile": "Battle/Background/BattleBG_085.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-086",
+    "asset": "/archive/battle-bg/BattleBG_086.png",
+    "sourceFile": "Battle/Background/BattleBG_086.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-087",
+    "asset": "/archive/battle-bg/BattleBG_087.png",
+    "sourceFile": "Battle/Background/BattleBG_087.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-088",
+    "asset": "/archive/battle-bg/BattleBG_088.png",
+    "sourceFile": "Battle/Background/BattleBG_088.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-089",
+    "asset": "/archive/battle-bg/BattleBG_089.png",
+    "sourceFile": "Battle/Background/BattleBG_089.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-090",
+    "asset": "/archive/battle-bg/BattleBG_090.png",
+    "sourceFile": "Battle/Background/BattleBG_090.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-091",
+    "asset": "/archive/battle-bg/BattleBG_091.png",
+    "sourceFile": "Battle/Background/BattleBG_091.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-092",
+    "asset": "/archive/battle-bg/BattleBG_092.png",
+    "sourceFile": "Battle/Background/BattleBG_092.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-093",
+    "asset": "/archive/battle-bg/BattleBG_093.png",
+    "sourceFile": "Battle/Background/BattleBG_093.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-094",
+    "asset": "/archive/battle-bg/BattleBG_094.png",
+    "sourceFile": "Battle/Background/BattleBG_094.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-095",
+    "asset": "/archive/battle-bg/BattleBG_095.png",
+    "sourceFile": "Battle/Background/BattleBG_095.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-096",
+    "asset": "/archive/battle-bg/BattleBG_096.png",
+    "sourceFile": "Battle/Background/BattleBG_096.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-097",
+    "asset": "/archive/battle-bg/BattleBG_097.png",
+    "sourceFile": "Battle/Background/BattleBG_097.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-098",
+    "asset": "/archive/battle-bg/BattleBG_098.png",
+    "sourceFile": "Battle/Background/BattleBG_098.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-099",
+    "asset": "/archive/battle-bg/BattleBG_099.png",
+    "sourceFile": "Battle/Background/BattleBG_099.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-100",
+    "asset": "/archive/battle-bg/BattleBG_100.png",
+    "sourceFile": "Battle/Background/BattleBG_100.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-101",
+    "asset": "/archive/battle-bg/BattleBG_101.png",
+    "sourceFile": "Battle/Background/BattleBG_101.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 965,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-102",
+    "asset": "/archive/battle-bg/BattleBG_102.png",
+    "sourceFile": "Battle/Background/BattleBG_102.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-103",
+    "asset": "/archive/battle-bg/BattleBG_103.png",
+    "sourceFile": "Battle/Background/BattleBG_103.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-104",
+    "asset": "/archive/battle-bg/BattleBG_104.png",
+    "sourceFile": "Battle/Background/BattleBG_104.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-105",
+    "asset": "/archive/battle-bg/BattleBG_105.png",
+    "sourceFile": "Battle/Background/BattleBG_105.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-106",
+    "asset": "/archive/battle-bg/BattleBG_106.png",
+    "sourceFile": "Battle/Background/BattleBG_106.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-107",
+    "asset": "/archive/battle-bg/BattleBG_107.png",
+    "sourceFile": "Battle/Background/BattleBG_107.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-108",
+    "asset": "/archive/battle-bg/BattleBG_108.png",
+    "sourceFile": "Battle/Background/BattleBG_108.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-109",
+    "asset": "/archive/battle-bg/BattleBG_109.png",
+    "sourceFile": "Battle/Background/BattleBG_109.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-110",
+    "asset": "/archive/battle-bg/BattleBG_110.png",
+    "sourceFile": "Battle/Background/BattleBG_110.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-111",
+    "asset": "/archive/battle-bg/BattleBG_111.png",
+    "sourceFile": "Battle/Background/BattleBG_111.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-112",
+    "asset": "/archive/battle-bg/BattleBG_112.png",
+    "sourceFile": "Battle/Background/BattleBG_112.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 965,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-113",
+    "asset": "/archive/battle-bg/BattleBG_113.png",
+    "sourceFile": "Battle/Background/BattleBG_113.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-114",
+    "asset": "/archive/battle-bg/BattleBG_114.png",
+    "sourceFile": "Battle/Background/BattleBG_114.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-116",
+    "asset": "/archive/battle-bg/BattleBG_116.png",
+    "sourceFile": "Battle/Background/BattleBG_116.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-117",
+    "asset": "/archive/battle-bg/BattleBG_117.png",
+    "sourceFile": "Battle/Background/BattleBG_117.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-118",
+    "asset": "/archive/battle-bg/BattleBG_118.png",
+    "sourceFile": "Battle/Background/BattleBG_118.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-119",
+    "asset": "/archive/battle-bg/BattleBG_119.png",
+    "sourceFile": "Battle/Background/BattleBG_119.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-120",
+    "asset": "/archive/battle-bg/BattleBG_120.png",
+    "sourceFile": "Battle/Background/BattleBG_120.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-121",
+    "asset": "/archive/battle-bg/BattleBG_121.png",
+    "sourceFile": "Battle/Background/BattleBG_121.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-122",
+    "asset": "/archive/battle-bg/BattleBG_122.png",
+    "sourceFile": "Battle/Background/BattleBG_122.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-123",
+    "asset": "/archive/battle-bg/BattleBG_123.png",
+    "sourceFile": "Battle/Background/BattleBG_123.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-500",
+    "asset": "/archive/battle-bg/BattleBG_500.png",
+    "sourceFile": "Battle/Background/BattleBG_500.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-501",
+    "asset": "/archive/battle-bg/BattleBG_501.png",
+    "sourceFile": "Battle/Background/BattleBG_501.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-502",
+    "asset": "/archive/battle-bg/BattleBG_502.png",
+    "sourceFile": "Battle/Background/BattleBG_502.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-503",
+    "asset": "/archive/battle-bg/BattleBG_503.png",
+    "sourceFile": "Battle/Background/BattleBG_503.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-600",
+    "asset": "/archive/battle-bg/BattleBG_600.png",
+    "sourceFile": "Battle/Background/BattleBG_600.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-601",
+    "asset": "/archive/battle-bg/BattleBG_601.png",
+    "sourceFile": "Battle/Background/BattleBG_601.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-602",
+    "asset": "/archive/battle-bg/BattleBG_602.png",
+    "sourceFile": "Battle/Background/BattleBG_602.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-603",
+    "asset": "/archive/battle-bg/BattleBG_603.png",
+    "sourceFile": "Battle/Background/BattleBG_603.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-610",
+    "asset": "/archive/battle-bg/BattleBG_610.png",
+    "sourceFile": "Battle/Background/BattleBG_610.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-611",
+    "asset": "/archive/battle-bg/BattleBG_611.png",
+    "sourceFile": "Battle/Background/BattleBG_611.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-612",
+    "asset": "/archive/battle-bg/BattleBG_612.png",
+    "sourceFile": "Battle/Background/BattleBG_612.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-613",
+    "asset": "/archive/battle-bg/BattleBG_613.png",
+    "sourceFile": "Battle/Background/BattleBG_613.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "battleBgId": "battlebg-620",
+    "asset": "/archive/battle-bg/BattleBG_620.png",
+    "sourceFile": "Battle/Background/BattleBG_620.png",
+    "modes": [
+      "normal",
+      "boss",
+      "round",
+      "king"
+    ],
+    "width": 966,
+    "height": 544,
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  }
+]

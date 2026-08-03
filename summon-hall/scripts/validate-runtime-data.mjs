@@ -37,7 +37,7 @@ function checkIdUnique(items, idField, label) {
 
 function checkAssetUrl(url, label) {
   if (typeof url !== 'string' || !url) { err(`${label}: 空 asset URL`); return; }
-  if (url.includes('..')) { err(`${label}: 路径穿越 "${url}"`); return; }
+  if (url.split('/').includes('..')) { err(`${label}: 路径穿越 "${url}"`); return; }
   if (!url.startsWith('/')) { err(`${label}: 非根相对路径 "${url}"`); return; }
   if (!existsSync(join(root, 'public', url))) err(`${label}: 文件不存在 "${url}"`);
 }
@@ -69,6 +69,7 @@ const manifestIdField = {
   'audio.json': 'id',
   'battle-effects.json': 'effectId',
   'items.json': 'id',
+  'navi.json': 'id',
 };
 const manifests = {};
 if (existsSync(dataDir)) {

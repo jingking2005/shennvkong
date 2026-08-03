@@ -47,7 +47,7 @@ OC-00（本文件）→ OC-01 稳定性 → OC-02 数据基础设施 → OC-03 �
 - **验收**：data:validate 能报告缺失/重复/非法引用；旧页面经兼容层正常读卡
 - **预估**：2-3h
 
-## OC-03：归档资源 manifest 构建管道
+## OC-03：归档资源 manifest 构建管道 ✅ 已完成（2026-08-03）
 
 - **所有者**：OpenCode
 - **可修改文件**：新增 `scripts/build-archive-manifests.mjs`、`src/data/maps.json`、`battle-backgrounds.json`、`audio.json`、`battle-effects.json`、`items.json`；只向 `public/archive/` 写白名单文件
