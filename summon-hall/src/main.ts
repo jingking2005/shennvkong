@@ -171,6 +171,9 @@ class SummonHall {
   private ownedCards: Card[] = [];    // 抽到的卡（组队用）
   // ── 队伍页状态 ──
   private invScroll = 0;              // 库存滚动
+  private invMaxScroll = 0;           // 库存滚动上限（渲染时更新，滚轮用）
+  private scrollDrag: { y0: number; s0: number; trackH: number; max: number } | null = null;
+  private thumbRect: { x: number; y: number; w: number; h: number; trackH: number } | null = null;
   private invFilter: string = 'ALL';  // 稀有度筛选
   private teamSelSlot = -1;           // 选中出击槽（-1 无）
   private drag: { instId: string; fromSlot: number; sx: number; sy: number; x: number; y: number; started: boolean } | null = null;
@@ -217,9 +220,17 @@ class SummonHall {
     this.canvas.addEventListener('pointerdown', e => this.onDown(e));
     this.canvas.addEventListener('pointerup', e => this.onUp(e));
     this.canvas.addEventListener('wheel', e => {
-      if (this.page !== 'records') return;
-      e.preventDefault();
-      this.recordsScroll = Math.max(0, this.recordsScroll + e.deltaY * 0.6);
+      if (this.page === 'records') {
+        e.preventDefault();
+        this.recordsScroll = Math.max(0, this.recordsScroll + e.deltaY * 0.6);
+        return;
+      }
+      // 仓库 / 队伍编成：滚轮上下滚动库存网格
+      if (this.page === 'inventory' || this.page === 'team') {
+        e.preventDefault();
+        this.invScroll = Math.max(0, Math.min(this.invMaxScroll,
+          this.invScroll + Math.sign(e.deltaY)));
+      }
     }, { passive: false });
 
     this.bg.resize(W, H);
@@ -371,6 +382,12 @@ class SummonHall {
 
   private onMove(e: PointerEvent): void {
     const p = this.toGame(e);
+    if (this.scrollDrag) {
+      const d = this.scrollDrag;
+      this.invScroll = Math.max(0, Math.min(d.max,
+        Math.round(d.s0 + ((p.y - d.y0) / d.trackH) * d.max)));
+      return;
+    }
     if (this.drag) {
       this.drag.x = p.x; this.drag.y = p.y;
       if (!this.drag.started && Math.hypot(p.x - this.drag.sx, p.y - this.drag.sy) > 10) this.drag.started = true;
@@ -386,6 +403,14 @@ class SummonHall {
   private onDown(e: PointerEvent): void {
     audio.unlock();
     const p = this.toGame(e);
+    // 滚动条滑块拖拽
+    if (this.thumbRect && (this.page === 'inventory' || this.page === 'team')) {
+      const t = this.thumbRect;
+      if (p.x >= t.x - 6 && p.x <= t.x + t.w + 6 && p.y >= t.y - 6 && p.y <= t.y + t.h + 6) {
+        this.scrollDrag = { y0: p.y, s0: this.invScroll, trackH: t.trackH, max: this.invMaxScroll };
+        return;
+      }
+    }
     // 编队页：库存卡/队伍槽按下 → 进入拖动候选，点击判定延迟到 pointerup
     if (this.page === 'team' && !this.enhanceMode && !this.evolveMode) {
       for (let i = this.buttons.length - 1; i >= 0; i--) {
@@ -429,6 +454,7 @@ class SummonHall {
   }
 
   private onUp(e: PointerEvent): void {
+    if (this.scrollDrag) { this.scrollDrag = null; return; }
     const d = this.drag;
     if (!d) return;
     this.drag = null;
@@ -442,6 +468,26 @@ class SummonHall {
     const slotIdx = this.teamSlotAt(p.x, p.y);
     if (slotIdx < 0) return;
     this.dropOnSlot(d.instId, d.fromSlot, slotIdx);
+  }
+
+  /** 可视滚动条：轨道 + 可拖拽滑块（仓库/队伍共用 invScroll） */
+  private drawScrollbar(trackX: number, trackY: number, trackH: number, rowsVisible: number): void {
+    const max = this.invMaxScroll;
+    if (max <= 0) { this.thumbRect = null; return; }
+    const ctx = this.ctx, w = 14;
+    this.rr(trackX, trackY, w, trackH, 7);
+    ctx.fillStyle = 'rgba(20,16,32,0.85)'; ctx.fill();
+    ctx.strokeStyle = '#c8b28555'; ctx.lineWidth = 1;
+    this.rr(trackX, trackY, w, trackH, 7); ctx.stroke();
+    const thumbH = Math.max(36, trackH * (rowsVisible / (rowsVisible + max)));
+    const thumbY = trackY + (trackH - thumbH) * (this.invScroll / max);
+    const g = ctx.createLinearGradient(trackX, thumbY, trackX + w, thumbY);
+    g.addColorStop(0, '#8b7ff0'); g.addColorStop(0.5, '#d8ccff'); g.addColorStop(1, '#8b7ff0');
+    this.rr(trackX + 2, thumbY, w - 4, thumbH, 5);
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = '#ffffff88'; ctx.lineWidth = 1;
+    this.rr(trackX + 2, thumbY, w - 4, thumbH, 5); ctx.stroke();
+    this.thumbRect = { x: trackX + 2, y: thumbY, w: w - 4, h: thumbH, trackH: trackH - thumbH };
   }
 
   /** 队伍槽命中检测（与 renderTeam 布局一致） */
@@ -2368,6 +2414,7 @@ class SummonHall {
     const gridX = 52, gridY = 300;
     const rowsVisible = 3;
     const maxScroll = Math.max(0, Math.ceil(filtered.length / cols) - rowsVisible);
+    this.invMaxScroll = maxScroll;
     this.invScroll = Math.min(this.invScroll, maxScroll);
     const start = this.invScroll * cols;
     const visible = filtered.slice(start, start + cols * rowsVisible);
@@ -2395,10 +2442,13 @@ class SummonHall {
 
     // 滚动 / 批量出售悬浮
     if (maxScroll > 0) {
+      this.drawScrollbar(gridX + cols * (icw + igx) + 6, gridY, rowsVisible * (ich + igy) - igy, rowsVisible);
       glassButton(ctx, gridX + 1020, gridY + 30, 140, 40, '▲ 上', { kind: 'gray', hover: this.hover === 'invpUp', fontSize: 14 });
       glassButton(ctx, gridX + 1020, gridY + 200, 140, 40, '▼ 下', { kind: 'gray', hover: this.hover === 'invpDown', fontSize: 14 });
       this.buttons.push({ x: gridX + 1020, y: gridY + 30, w: 140, h: 40, id: 'invpUp' });
       this.buttons.push({ x: gridX + 1020, y: gridY + 200, w: 140, h: 40, id: 'invpDown' });
+    } else {
+      this.thumbRect = null;
     }
     if (this.invSelling) {
       glassButton(ctx, W / 2 - 260, gridY + 3 * (ich + igy) + 8, 520, 46, `批量出售所选 ${this.invSel.size} 张`, {
@@ -2643,6 +2693,7 @@ class SummonHall {
     const gridX = 50, gridY = 384;
     const rowsVisible = 2;
     const maxScroll = Math.max(0, Math.ceil(filtered.length / cols) - rowsVisible);
+    this.invMaxScroll = maxScroll;
     this.invScroll = Math.min(this.invScroll, maxScroll);
     const start = this.invScroll * cols;
     const visible = filtered.slice(start, start + cols * rowsVisible);
@@ -2671,12 +2722,15 @@ class SummonHall {
       this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `inv:${o.instId}` });
     });
 
-    // 滚动按钮
+    // 滚动按钮 + 可视滚动条
     if (maxScroll > 0) {
+      this.drawScrollbar(gridX + cols * (icw + igx) + 6, gridY, rowsVisible * (ich + igy) - igy, rowsVisible);
       glassButton(ctx, W - 130, gridY + 20, 90, 40, '▲ 上', { kind: 'gray', hover: this.hover === 'invUp', fontSize: 14 });
       glassButton(ctx, W - 130, gridY + 140, 90, 40, '▼ 下', { kind: 'gray', hover: this.hover === 'invDown', fontSize: 14 });
       this.buttons.push({ x: W - 130, y: gridY + 20, w: 90, h: 40, id: 'invUp' });
       this.buttons.push({ x: W - 130, y: gridY + 140, w: 90, h: 40, id: 'invDown' });
+    } else {
+      this.thumbRect = null;
     }
 
     // 反馈消息
