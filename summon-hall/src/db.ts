@@ -151,12 +151,16 @@ export interface DB {
   eventPoint: EventPoint;
 }
 
-/** 关卡定义模板（顺序即解锁顺序） */
+/** 关卡定义模板（顺序即解锁顺序；enemyPower 由弱到强，是魔女数值的基准线） */
 const STAGE_DEFS: { regionId: string; stageId: string; name: string; energyCost: number; enemyPower: number }[] = [
   { regionId: 'r1', stageId: 'r1-s1', name: '战斗少女的修练场', energyCost: 10, enemyPower: 8000 },
   { regionId: 'r1', stageId: 'r1-s2', name: '神界地图 2', energyCost: 10, enemyPower: 15000 },
   { regionId: 'r1', stageId: 'r1-s3', name: '圣炎回廊', energyCost: 15, enemyPower: 32000 },
   { regionId: 'r1', stageId: 'r1-s4', name: '苍雷王座', energyCost: 20, enemyPower: 60000 },
+  { regionId: 'r1', stageId: 'r1-s5', name: '暗渊之门', energyCost: 25, enemyPower: 95000 },
+  { regionId: 'r2', stageId: 'r2-s1', name: '时空间隙', energyCost: 30, enemyPower: 140000 },
+  { regionId: 'r2', stageId: 'r2-s2', name: '星天回廊', energyCost: 35, enemyPower: 200000 },
+  { regionId: 'r2', stageId: 'r2-s3', name: '诸神黄昏', energyCost: 40, enemyPower: 300000 },
 ];
 
 /** 体力数值平衡：上限 120（3min/点 → 约 6 小时回满），出战一趟扣 10 */

@@ -588,23 +588,42 @@ class SummonHall {
     // 战斗
     if (this.page === 'battle' && this.battle) {
       const b = this.battle;
-      // ── 战斗 UI 状态机（截图复刻版：遭遇→主界面→技能确认→胜利）──
+      // ── 战斗 UI 状态机（遭遇→主界面→技能确认→胜利）──
       if (id === 'batStart') { this.battlePhase = 'fighting'; return; }
-      if (id === 'batAutoEnc') { this.battlePhase = 'victory'; return; }
+      if (id === 'batAutoEnc') { this.battlePhase = 'fighting'; b.auto = true; b.autoTimer = 0; return; }
       if (id.startsWith('star:')) {
         this.skillStarIdx = parseInt(id.slice(5), 10);
         this.battlePhase = 'skillConfirm';
         return;
       }
       if (id === 'skillCancel') { this.battlePhase = 'fighting'; this.skillStarIdx = -1; return; }
-      if (id === 'skillGo') { this.battlePhase = 'victory'; this.skillStarIdx = -1; return; }
+      if (id === 'skillGo') {
+        // 发动技能 = 手动打一轮（技能按概率触发，FX 由 runTurn 施放）
+        this.battlePhase = 'fighting';
+        this.skillStarIdx = -1;
+        this.runTurn();
+        return;
+      }
       if (id === 'victoryOk2') {
+        // 讨伐胜利：当场发放击杀奖励并标记已领
+        if (b.raid?.defeated && !b.raid.claimed) {
+          const gold = b.raid.archWitch ? 50000 : 12000;
+          const gems = b.raid.archWitch ? 500 : 300;
+          const tix = b.raid.archWitch ? 3 : 1;
+          this.db.user.gold += gold;
+          this.db.user.gems += gems;
+          this.db.user.tickets.fate = (this.db.user.tickets.fate || 0) + tix;
+          b.raid.claimed = true;
+          this.jewels = this.db.user.gems;
+          this.flashTeamMsg(`讨伐奖励：金币+${gold.toLocaleString()} 宝石+${gems} 券+${tix}`);
+        }
+        saveDB(this.db);
         this.page = this.activeStage.progress >= 1 ? 'map' : 'sortie';
         this.battle = null; this.syncBgm();
         return;
       }
       if (id === 'batRetreat') { this.page = 'sortie'; this.battle = null; this.syncBgm(); return; }
-      if (id === 'batAuto') { this.battlePhase = 'victory'; return; }
+      if (id === 'batAuto') { b.auto = !b.auto; b.autoTimer = 0; return; }
       if (id === 'batStatus') { return; }
       if (id === 'retreat') { this.page = 'sortie'; this.battle = null; this.syncBgm(); return; }
       if (id === 'bAuto') { b.auto = !b.auto; b.autoTimer = 0; return; }
@@ -901,7 +920,11 @@ class SummonHall {
           c.revealIdx = Math.min(total, Math.floor(c.t / 0.3) + 1);
         }
       }
-      if (b.victory) b.victoryT += dt;
+      if (b.victory) {
+        b.victoryT += dt;
+        // 胜利后 1.2s 进入结算界面（留出最后一击的特效/飘字时间）
+        if (b.victoryT >= 1.2 && this.battlePhase !== 'victory') this.battlePhase = 'victory';
+      }
       // AP 随时间恢复（讨伐体力）
       tickBattlePt(this.db);
       // Auto 自动回合
@@ -1006,8 +1029,14 @@ class SummonHall {
     } else {
       const boss = cardsByRarity('LR')[1] ?? cardsByRarity('UR')[0];
       preloadImage(boss).catch(() => {});
+      // 动态平衡：按当前队伍战力生成（约 6 回合、每击 ~16% 单卡 HP）
+      const teamDpt = team.reduce((s, c) => s + c.atk * (1 + c.procChance * (c.skillMult - 1)), 0);
+      const avgHp = team.reduce((s, c) => s + c.hpMax, 0) / Math.max(1, team.length);
+      const bossHp = Math.floor(teamDpt * 6 * (0.9 + Math.random() * 0.2));
       enemies = [{
-        instId: 'boss', card: boss, lv: 50, atk: 4000, hp: 80000, hpMax: 80000,
+        instId: 'boss', card: boss, lv: 50,
+        atk: Math.floor(avgHp * 0.16 * (0.9 + Math.random() * 0.2)),
+        hp: bossHp, hpMax: bossHp,
         def: 800, speed: 100, element: 'dark', skillName: '暗之冲击',
         procChance: 0.4, skillMult: 2.5, skillFx: 'arcane', isLeader: false,
       }];
@@ -1056,6 +1085,27 @@ class SummonHall {
           t: 0, dur: 0.7 + Math.random() * 0.25, delay: i * 0.09,
           color: FX_COLOR[s.skillFx], hitT: 0.72, boom: [], player: true,
         });
+      }
+      // 魔女反击：向我方被击中的卡施放暗影弹 + 伤害飘字
+      if (r.counter) {
+        const ci = b.team.findIndex(c => c.instId === r.counter!.targetInstId);
+        if (ci >= 0) {
+          const tx = this.teamSlotX(ci);
+          this.spawnFx({
+            kind: 'shadow', sx: W / 2, sy: 130, tx, ty: H - 220,
+            t: 0, dur: 0.6, delay: 0.35,
+            color: '#c05ce8', hitT: 0.72, boom: [], player: false,
+          });
+          b.dmgFloat.push({ x: tx, y: H - 320, v: String(r.counter.dmg), t: 0.3, color: '#ff8c8c' });
+          this.shake = Math.max(this.shake, 0.3);
+        }
+        // 团灭判定
+        if (b.team.every(c => c.hp <= 0)) {
+          b.defeated = true;
+          b.auto = false;
+          b.banner = '队伍全灭……撤退重整旗鼓';
+          b.bannerT = 0;
+        }
       }
       if (r.defeated) {
         b.victory = true; b.victoryT = 0;
@@ -1767,8 +1817,9 @@ class SummonHall {
     const ctx = this.ctx;
     this.buttons = [];
     // 顶部标题（行动力由全局 HUD 统一显示）
+    const regionLabel = this.activeStage.regionId === 'r2' ? '神界地图 3' : '神界地图 2';
     this.pill(W / 2 - 200, 64, 400, 44, '#0d0a16', '#c8b285');
-    this.text('神界地图 2 · 战斗少女的修练场', W / 2, 87, 18, '#ffe9a8', 'center', 'bold');
+    this.text(`${regionLabel} · ${this.activeStage.name}`, W / 2, 87, 18, '#ffe9a8', 'center', 'bold');
     this.pill(20, 64, 130, 36, '#0d0a16', '#c8b285');
     this.text('挑战次数 21/21', 85, 83, 12, '#e8d5a8', 'center', 'bold');
 
@@ -2752,6 +2803,22 @@ class SummonHall {
     this.buttons.push({ x: BAT.retreat.cx - BAT.retreat.r, y: BAT.retreat.cy - BAT.retreat.r, w: BAT.retreat.r * 2, h: BAT.retreat.r * 2, id: 'batRetreat' });
     drawCircleButton(ctx, BAT.auto.cx, BAT.auto.cy, BAT.auto.r, '自动', this.hover === 'batAuto');
     this.buttons.push({ x: BAT.auto.cx - BAT.auto.r, y: BAT.auto.cy - BAT.auto.r, w: BAT.auto.r * 2, h: BAT.auto.r * 2, id: 'batAuto' });
+
+    // ── 技能特效 + 伤害飘字（此前只更新未绘制，战斗看不到光影）──
+    this.renderFx();
+    for (const d of b.dmgFloat) {
+      const a = Math.max(0, 1 - d.t);
+      const dy = d.t * 70;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.font = 'bold 30px system-ui, "PingFang SC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.strokeText(d.v, d.x, d.y - dy);
+      ctx.fillStyle = d.color;
+      ctx.fillText(d.v, d.x, d.y - dy);
+      ctx.restore();
+    }
   }
 
   /** 探索框架数据（进度条/行动力/资源栏） */

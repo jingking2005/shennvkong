@@ -26,20 +26,22 @@ export const BANNERS: Banner[] = [
   {
     id: 'fate', name: '命运之门', sub: '常驻 · 全稀有度', accent: '#8b7ff0',
     costSingle: 300, costTen: 3000,
+    // 常驻池：以 N/R/SR 为主体，UR 难出、LR/X/VR 极稀有（50 抽保底 UR）
     pool: [
-      { rarity: 'N', weight: 38 }, { rarity: 'R', weight: 34 },
-      { rarity: 'SR', weight: 18 }, { rarity: 'UR', weight: 7.5 },
-      { rarity: 'LR', weight: 2.0 }, { rarity: 'X', weight: 0.45 },
-      { rarity: 'VR', weight: 0.05 },
+      { rarity: 'N', weight: 40 }, { rarity: 'R', weight: 36 },
+      { rarity: 'SR', weight: 17 }, { rarity: 'UR', weight: 5.5 },
+      { rarity: 'LR', weight: 1.3 }, { rarity: 'X', weight: 0.18 },
+      { rarity: 'VR', weight: 0.02 },
     ],
     softPity: 'SR', hardPity: { rarity: 'UR', threshold: 50 },
   },
   {
     id: 'legend', name: '金色传说', sub: 'UR↑ · LR/X 限定', accent: '#e8b23b',
     costSingle: 500, costTen: 5000,
+    // 高级池：SR 起步、UR 为主力、LR 可见（30 抽保底 LR）
     pool: [
-      { rarity: 'SR', weight: 40 }, { rarity: 'UR', weight: 34 },
-      { rarity: 'LR', weight: 18 }, { rarity: 'X', weight: 6.5 },
+      { rarity: 'SR', weight: 45 }, { rarity: 'UR', weight: 33 },
+      { rarity: 'LR', weight: 15 }, { rarity: 'X', weight: 5.5 },
       { rarity: 'VR', weight: 1.5 },
     ],
     softPity: 'UR', hardPity: { rarity: 'LR', threshold: 30 },
@@ -47,10 +49,11 @@ export const BANNERS: Banner[] = [
   {
     id: 'oracle', name: '神谕召唤', sub: '限时 · X/VR UP', accent: '#ff6ea8',
     costSingle: 600, costTen: 6000,
+    // 限时池：R 起步、X/VR 概率高于其他池（40 抽保底 X）
     pool: [
-      { rarity: 'R', weight: 30 }, { rarity: 'SR', weight: 35 },
-      { rarity: 'UR', weight: 22 }, { rarity: 'LR', weight: 9 },
-      { rarity: 'X', weight: 3.2 }, { rarity: 'VR', weight: 0.8 },
+      { rarity: 'R', weight: 30 }, { rarity: 'SR', weight: 36 },
+      { rarity: 'UR', weight: 23 }, { rarity: 'LR', weight: 8 },
+      { rarity: 'X', weight: 2.5 }, { rarity: 'VR', weight: 0.5 },
     ],
     softPity: 'SR', hardPity: { rarity: 'X', threshold: 40 },
     // X / VR 各指定 3 张 UP（前三种固定代表性卡，样例；若指定卡在 SUMMON_CARDS 中不存在则自动退化为全稀有度池）
@@ -59,10 +62,10 @@ export const BANNERS: Banner[] = [
   {
     id: 'friend', name: '友情召唤', sub: '友情点 · 日常', accent: '#6fce9a',
     costSingle: 100, costTen: 1000,
+    // 友情池：日常狗粮池，最高仅到 UR（微量），不出 LR/X/VR
     pool: [
-      { rarity: 'N', weight: 55 }, { rarity: 'R', weight: 32 },
-      { rarity: 'SR', weight: 10 }, { rarity: 'UR', weight: 2.5 },
-      { rarity: 'LR', weight: 0.5 },
+      { rarity: 'N', weight: 60 }, { rarity: 'R', weight: 32 },
+      { rarity: 'SR', weight: 7.6 }, { rarity: 'UR', weight: 0.4 },
     ],
     softPity: 'R',
   },

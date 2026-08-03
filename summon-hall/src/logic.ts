@@ -311,15 +311,23 @@ export function spawnWitch(
 ): string {
   const level = 80 + Math.floor(db.eventPoint.raidKills * 0.8 + rng() * 120);
   const arch = forceArch || rng() < 0.08;
-  // HP 平衡：我方全队一回合约 1.5万~3万输出
-  // 普通魔女 12万~27万 → 约 6~15 回合；大魔女 32万~68万 → 约 15~35 回合
-  const hpMax = Math.floor((arch ? 8 : 3) * 10000 + level * (arch ? 3000 : 1200));
+  // ── HP 平衡：关卡基础难度（由弱到强）与队伍动态适配取高 ──
+  // 目标战斗长度：普通魔女约 6 轮输出、大魔女约 14 轮
+  const dpt = estimateTeamDPT(db);
+  const avgHp = estimateTeamHP(db);
+  const hpMax = Math.floor(
+    Math.max(stage.enemyPower * (arch ? 4 : 1.5), dpt * (arch ? 14 : 6)) * (0.9 + rng() * 0.2),
+  );
+  // ── 攻击平衡：普通魔女每击约打掉单卡 16% HP、大魔女 30%（有威胁但不秒杀）──
+  const attack = Math.floor(
+    Math.max(stage.enemyPower * 0.12, avgHp * (arch ? 0.30 : 0.16)) * (0.9 + rng() * 0.2),
+  );
   const raid: WitchRaidBoss = {
     raidId: newInstId(),
     bossCardId,
     name: arch ? '超·幻想魔女' : '幻想魔女',
     level, hp: hpMax, hpMax,
-    attack: Math.floor(2500 + level * 40 * (arch ? 1.8 : 1)),
+    attack,
     archWitch: arch,
     discoveredBy: db.user.name,
     expiresAt: Date.now() + (arch ? 30 : 120) * 60 * 1000,
@@ -327,6 +335,32 @@ export function spawnWitch(
   };
   db.raids.push(raid);
   return raid.raidId;
+}
+
+// ─────────────────────────── 队伍战力估算（敌人动态平衡用）───────────────────────────
+
+/** 估算队伍每回合期望总输出（库存最强 5 张，含技能期望倍率；×1.45 补偿元素克制/队长/暴击） */
+export function estimateTeamDPT(db: DB): number {
+  const pows = db.inventory.cards
+    .map(o => {
+      const c = ownedToCombatant(o);
+      return c ? c.atk * (1 + c.procChance * (c.skillMult - 1)) : 0;
+    })
+    .sort((a, b) => b - a);
+  return Math.max(3000, pows.slice(0, 5).reduce((s, v) => s + v, 0) * 1.45);
+}
+
+/** 估算队伍平均单卡 HP（库存最强 5 张） */
+export function estimateTeamHP(db: DB): number {
+  const hps = db.inventory.cards
+    .map(o => {
+      const c = ownedToCombatant(o);
+      return c ? c.hpMax : 0;
+    })
+    .sort((a, b) => b - a)
+    .slice(0, 5);
+  if (!hps.length) return 10000;
+  return Math.max(6000, hps.reduce((s, v) => s + v, 0) / hps.length);
 }
 
 // ─────────────────────────── 进化 ───────────────────────────
@@ -603,9 +637,10 @@ export function runBattleTurn(
 export function raidAttack(db: DB, raid: WitchRaidBoss, team: Combatant[], seed: number): {
   dmg: number; defeated: boolean; ptGain: number; outOfAp: boolean;
   skills: { actorInstId: string; skillFx: SkillFx; skillName: string }[];
+  counter: { targetInstId: string; dmg: number } | null;
 } {
   const rng = mulberry32(seed);
-  if (db.user.battlePt <= 0) return { dmg: 0, defeated: false, ptGain: 0, outOfAp: true, skills: [] };
+  if (db.user.battlePt <= 0) return { dmg: 0, defeated: false, ptGain: 0, outOfAp: true, skills: [], counter: null };
   db.user.battlePt -= 1;
   const leaderBonus = leaderAtkBonus(team);
   let dmg = 0;
@@ -627,7 +662,19 @@ export function raidAttack(db: DB, raid: WitchRaidBoss, team: Combatant[], seed:
     ptGain += raid.archWitch ? 500 : 100; // 击杀奖
   }
   db.eventPoint.points += ptGain;
-  return { dmg, defeated: raid.defeated, ptGain, outOfAp: false, skills };
+
+  // ── 魔女反击：随机打一张存活的我方卡（讨伐战不再是零风险木桩）──
+  let counter: { targetInstId: string; dmg: number } | null = null;
+  if (!raid.defeated) {
+    const alive = team.filter(c => c.hp > 0);
+    if (alive.length > 0) {
+      const target = alive[Math.floor(rng() * alive.length)];
+      const cdmg = Math.max(1, Math.floor((raid.attack - target.def * 0.5) * (0.85 + rng() * 0.3)));
+      target.hp = Math.max(0, target.hp - cdmg);
+      counter = { targetInstId: target.instId, dmg: cdmg };
+    }
+  }
+  return { dmg, defeated: raid.defeated, ptGain, outOfAp: false, skills, counter };
 }
 
 /** 战绩：领取已讨伐魔女的奖励 */
