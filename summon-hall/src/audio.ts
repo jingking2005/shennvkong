@@ -2,7 +2,7 @@
  * 全局 BGM：开关状态持久化，各场景可切换曲目。
  */
 
-import { BGM, type BgmKey } from './assets';
+import { BGM, SE, type BgmKey, type SeKey } from './assets';
 import { reportAssetFailure } from './diag';
 
 const LS_MUTE = 'summonHall_bgmMuted';
@@ -52,6 +52,15 @@ export class AudioManager {
     }
     this.applyVolume();
     if (!this.muted && this.unlocked) void this.el.play().catch(() => {});
+  }
+
+  /** SE 一次性播放（独立 Audio 元素，不打断 BGM；跟随静音/音量设置） */
+  playSe(key: SeKey): void {
+    if (this.muted || !this.unlocked) return;
+    const el = new Audio(SE[key]);
+    el.volume = this.volume;
+    el.onerror = () => reportAssetFailure('audio', SE[key]);
+    void el.play().catch(() => {});
   }
 
   private applyVolume(): void {

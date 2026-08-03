@@ -101,6 +101,31 @@ function write(name, items) {
   write('audio.json', items);
 }
 
+// ── se.json（APK 启动 SE 4 个；用途映射按时长推断，标注 inferred）──
+{
+  const dir = join(root, 'public/archive/se');
+  if (existsSync(dir)) {
+    // APK 仅解出 4 个启动用 SE；文件无语义名，按播放时长推断用途（provenance 不冒充原版映射）
+    const inferredUse = {
+      'se_007.wav': ['ui-click'],   // 0.46s 短促
+      'se_004.wav': ['attack'],     // 0.51s 短促
+      'se_003.wav': ['skill'],      // 0.82s 中
+      'se_001.wav': ['win-lose'],   // 3.19s 长
+    };
+    const items = readdirSync(dir).filter(f => f.endsWith('.wav')).sort().map(f => ({
+      id: f.replace(/\.wav$/, '').replace(/_/g, '-'),
+      title: f.replace(/\.wav$/, ''),
+      asset: `/archive/se/${f}`,
+      loop: false,
+      usedBy: inferredUse[f] ?? [],
+      mappingNote: 'APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）',
+      sourceFile: `apk assets/sound/${f}`,
+      source: { ...DIRECT, verifiedAt: today },
+    }));
+    write('se.json', items);
+  }
+}
+
 // ── items.json（强化道具/卡包/掉落物）──
 {
   const dir = join(root, 'public/archive/items');

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "se-001",
+    "title": "se_001",
+    "asset": "/archive/se/se_001.wav",
+    "loop": false,
+    "usedBy": [
+      "win-lose"
+    ],
+    "mappingNote": "APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）",
+    "sourceFile": "apk assets/sound/se_001.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "se-003",
+    "title": "se_003",
+    "asset": "/archive/se/se_003.wav",
+    "loop": false,
+    "usedBy": [
+      "skill"
+    ],
+    "mappingNote": "APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）",
+    "sourceFile": "apk assets/sound/se_003.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "se-004",
+    "title": "se_004",
+    "asset": "/archive/se/se_004.wav",
+    "loop": false,
+    "usedBy": [
+      "attack"
+    ],
+    "mappingNote": "APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）",
+    "sourceFile": "apk assets/sound/se_004.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  },
+  {
+    "id": "se-007",
+    "title": "se_007",
+    "asset": "/archive/se/se_007.wav",
+    "loop": false,
+    "usedBy": [
+      "ui-click"
+    ],
+    "mappingNote": "APK 原始文件无语义名，usedBy 为按时长推断的用途映射（inferred）",
+    "sourceFile": "apk assets/sound/se_007.wav",
+    "source": {
+      "level": "direct",
+      "verifiedAt": "2026-08-03"
+    }
+  }
+]

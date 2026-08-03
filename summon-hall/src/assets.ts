@@ -290,6 +290,18 @@ export const BGM = {
   fantasyArchwitch: '/archive/bgm/bgm_006 Fantasy Archwitch.ogg',
 } as const;
 
+/**
+ * SE（APK 仅解出 4 个启动用音效，无语义名；
+ * 用途映射按时长推断 inferred：se_007 短→UI 点击，se_004→普攻，se_003→技能，se_001 长→胜负）
+ */
+export const SE = {
+  uiClick: '/archive/se/se_007.wav',
+  attack: '/archive/se/se_004.wav',
+  skill: '/archive/se/se_003.wav',
+  winLose: '/archive/se/se_001.wav',
+} as const;
+export type SeKey = keyof typeof SE;
+
 /** 看板娘立绘（归档 Navi-Sprites 全量 74 张；知名向导角色在前，轮播优先） */
 export const NAVI_SPRITES: string[] = [
   '/archive/navi/navi_Oracle.png',

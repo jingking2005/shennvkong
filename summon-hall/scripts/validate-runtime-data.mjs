@@ -67,6 +67,7 @@ const manifestIdField = {
   'maps.json': 'mapId',
   'battle-backgrounds.json': 'battleBgId',
   'audio.json': 'id',
+  'se.json': 'id',
   'battle-effects.json': 'effectId',
   'items.json': 'id',
   'navi.json': 'id',
