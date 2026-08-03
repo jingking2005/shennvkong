@@ -28,6 +28,24 @@ import { BAT, ENCOUNTER, EXPLORE, COLORS } from './battle-ui/layout';
 const W = 1280;
 const H = 760;
 
+/** 看板娘台词（随立绘轮播切换） */
+const NAVI_LINES = [
+  '欢迎来到圣域，主人！今天也要一起努力哦♪',
+  '召唤之门已经开启，要去迎接新的神女吗？',
+  '每日签到有奖励，别忘了领取俸禄！',
+  '体力会随时间恢复，月卡还能加速哦。',
+  '进军深处有强大的魔女等着你……做好准备！',
+  '队伍搭配很重要，元素相克能打出更高伤害！',
+  '首充每档都有双倍宝石，只有一次机会哦。',
+  '卡牌可以通过合成强化，变强后再来挑战吧！',
+  '讨伐魔女奖励丰厚，但她会反击，小心应对！',
+  '传说卡池里沉睡着 LR 级的稀有神女……',
+  '今天的运势不错，说不定能抽到 UR 呢！',
+  '主人，累了就休息一下，我会一直在这里等你。',
+  '圣域的和平，就靠主人和神女们了！',
+  '商店新到了回复药水，远征前记得补给。',
+];
+
 type Phase =
   | { kind: 'hall' }
   | { kind: 'confirm'; ten: boolean; ticket: boolean; t: number } // 确认弹窗
@@ -3369,6 +3387,10 @@ class SummonHall {
     ctx.lineWidth = 2;
     this.rr(x, y, w, h, 14); ctx.stroke();
 
+    // 台词气泡（随立绘轮换，淡入淡出同步）
+    const line = NAVI_LINES[(fade > 0.5 ? nidx : idx) % NAVI_LINES.length];
+    this.speechBubble(x + 14, y + 12, w - 28, line);
+
     // 名牌
     const name = naviName(naviSprite(fade > 0.5 ? nidx : idx));
     this.text('─ 今日向导 ─', x + w / 2, y + h - 46, 11, '#cfc4a8', 'center');
@@ -3377,6 +3399,34 @@ class SummonHall {
 
   private imgOf(card: Card): HTMLImageElement | null {
     return getImage(card);
+  }
+
+  /** 看板娘台词气泡：圆角白底 + 小尾巴，自动换行 */
+  private speechBubble(x: number, y: number, w: number, line: string): void {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.font = '12px system-ui, "PingFang SC", sans-serif';
+    const lines: string[] = [];
+    let cur = '';
+    for (const ch of line) {
+      if (cur && ctx.measureText(cur + ch).width > w - 22) { lines.push(cur); cur = ch; }
+      else cur += ch;
+    }
+    if (cur) lines.push(cur);
+    const lh = 17, bh = lines.length * lh + 14;
+    ctx.fillStyle = 'rgba(255,250,236,0.92)';
+    this.rr(x, y, w, bh, 9); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2 - 7, y + bh - 1);
+    ctx.lineTo(x + w / 2 + 7, y + bh - 1);
+    ctx.lineTo(x + w / 2, y + bh + 9);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(140,105,55,0.55)'; ctx.lineWidth = 1;
+    this.rr(x, y, w, bh, 9); ctx.stroke();
+    ctx.fillStyle = '#4a3a20';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    lines.forEach((l, i) => ctx.fillText(l, x + w / 2, y + 7 + i * lh));
+    ctx.restore();
   }
 
   private pill(x: number, y: number, w: number, h: number, fill: string, stroke: string): void {
