@@ -7,33 +7,18 @@
 import type { Card, Rarity } from './data';
 import { getCard, cardsByRarity, RARITY_RANK } from './data';
 import type { DB, OwnedCard, Stage, WitchRaidBoss } from './db';
-import { elementalMultiplier, newInstId, makeOwnedCard, RARITY_TIER } from './db';
+import { newInstId, makeOwnedCard, RARITY_TIER } from './db';
+import type { Combatant, SkillFx } from './systems/battle/battle-engine';
+import { BATTLE_CONFIG } from './systems/battle/battle-config';
 
-// ─────────────────────────── Seeded RNG ───────────────────────────
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+// ─────────────────────────── Seeded RNG（单一来源：systems/battle/rng）───────────────────────────
+export { mulberry32 } from './systems/battle/rng';
 
-// ─────────────────────────── 技能特效类型 ───────────────────────────
-
-/** 10 种技能特效：按元素 + 稀有度分配给每张卡 */
-export type SkillFx =
-  | 'fire'      // 火焰爆裂：火球拖尾 → 命中爆炸
-  | 'ice'       // 冰霜新星：冰晶弹道 → 命中冰爆
-  | 'thunder'   // 雷霆万钧：闪电劈下
-  | 'holy'      // 圣光审判：金色光柱
-  | 'shadow'    // 暗影侵蚀：紫黑暗球 → 紫色爆发
-  | 'meteor'    // 陨石天降：弧形陨石 → 大爆炸
-  | 'wind'      // 疾风龙卷：青色旋风
-  | 'star'      // 星辰爆发：彩色星芒四射
-  | 'heal'      // 生命之光：绿色治疗光柱
-  | 'arcane';   // 奥术飞弹：蓝紫魔法弹
+// ─────────────────────────── 战斗引擎（OC-06 已抽至 systems/battle）───────────────────────────
+export type { Combatant, SkillFx, BattleAction, BattleTurnResult } from './systems/battle/battle-engine';
+export { runBattleTurn, raidAttack } from './systems/battle/battle-engine';
+export { elementalMultiplier } from './systems/battle/damage-calc';
+import { mulberry32 } from './systems/battle/rng';
 
 /** 10 种特效对应的技能名（skillName 缺失/物品名时使用） */
 export const FX_NAMES: Record<SkillFx, string> = {
@@ -59,30 +44,16 @@ export function assignSkillFx(element: string, rarity: string): SkillFx {
   return heavy ? 'meteor' : 'fire';
 }
 
-// ─────────────────────────── 有效属性（含进化加成）───────────────────────────
-export interface Combatant {
-  instId: string;
-  card: Card;
-  lv: number;
-  atk: number;
-  hp: number;
-  hpMax: number;
-  def: number;
-  speed: number;
-  element: string;
-  skillName: string;
-  procChance: number;   // 技能触发率 0..1
-  skillMult: number;    // 技能倍率
-  skillFx: SkillFx;     // 技能特效
-  isLeader: boolean;
-}
-
+// ─────────────────────────── 有效属性（含进化加成；常数来自 battle-config）───────────────────────────
 export function ownedToCombatant(o: OwnedCard, isLeader = false): Combatant | null {
   const card = getCard(o.cardId);
   if (!card) return null;
-  const lvScale = 1 + (o.lv - 1) * 0.06;
+  const C = BATTLE_CONFIG;
+  const lvScale = 1 + (o.lv - 1) * C.lvScalePerLv.value;
   const atk = Math.floor(card.stats.attack * lvScale) + o.atkBonus;
-  const hpMax = Math.floor((card.stats.soldiers * 100 + card.stats.defense * 10 + 5000) * lvScale) + o.hpBonus;
+  const hpMax = Math.floor(
+    (card.stats.soldiers * C.hpSoldiersMult.value + card.stats.defense * C.hpDefenseMult.value + C.hpBase.value) * lvScale,
+  ) + o.hpBonus;
   const tier = RARITY_RANK[card.rarity];
   const fx = assignSkillFx(card.element, card.rarity);
   return {
@@ -92,8 +63,8 @@ export function ownedToCombatant(o: OwnedCard, isLeader = false): Combatant | nu
     element: card.element,
     // 物品名/空技能名 → 用特效名（wiki 技能多为物品名，观赏性差）
     skillName: card.skillName && card.skillName.length <= 16 ? card.skillName : FX_NAMES[fx],
-    procChance: Math.min(0.85, 0.25 + tier * 0.08), // 稀有度越高触发率越高
-    skillMult: 2.2 + tier * 0.4,
+    procChance: Math.min(C.procMax.value, C.procBase.value + tier * C.procPerTier.value),
+    skillMult: C.skillMultBase.value + tier * C.skillMultPerTier.value,
     skillFx: fx,
     isLeader,
   };
@@ -548,133 +519,6 @@ export function openChest(
   db.user.gems += gems;
   if (potions > 0) db.inventory.materials.upgradePotion = (db.inventory.materials.upgradePotion || 0) + potions;
   return { quality, cards, gold, gems, potions };
-}
-
-export interface BattleAction {
-  actorInstId: string;
-  actorName: string;
-  targetIndex: number;
-  damage: number;
-  crit: boolean;
-  skillUsed: boolean;
-  skillName?: string;
-  skillFx?: SkillFx;
-  elementMult: number;
-  heal?: number;
-}
-
-export interface BattleTurnResult {
-  actions: BattleAction[];
-  playerAlive: number;
-  enemyAlive: number;
-  finished: boolean;
-  playerWon: boolean;
-}
-
-/**
- * BattleEngine：回合制 / 半自动
- * - 行动顺序按 Speed 降序
- * - 每张卡按 procChance 触发技能（高倍率），否则普攻
- * - 伤害 = atk × skillMult × elementMult × (1 ± crit) - 目标 def 减免
- * - 克制系数 20%~50%
- */
-export function runBattleTurn(
-  team: Combatant[],
-  enemies: Combatant[],
-  seed: number,
-  leaderBonus = 1.0,
-): BattleTurnResult {
-  const rng = mulberry32(seed);
-  const actions: BattleAction[] = [];
-
-  const all = [
-    ...team.filter(c => c.hp > 0).map(c => ({ c, side: 'player' as const })),
-    ...enemies.filter(c => c.hp > 0).map(c => ({ c, side: 'enemy' as const })),
-  ].sort((x, y) => y.c.speed - x.c.speed);
-
-  for (const { c, side } of all) {
-    if (c.hp <= 0) continue;
-    const foes = side === 'player' ? enemies : team;
-    const aliveFoes = foes.filter(f => f.hp > 0);
-    if (aliveFoes.length === 0) break;
-    const target = aliveFoes[Math.floor(rng() * aliveFoes.length)];
-    const targetIndex = foes.indexOf(target);
-
-    const useSkill = rng() < c.procChance;
-    const mult = useSkill ? c.skillMult : 1.0;
-    const em = elementalMultiplier(c.element, target.element);
-    const crit = rng() < c.card.stats.critRate / 100;
-    const critMult = crit ? 1 + c.card.stats.critDamage / 100 : 1;
-    const sideBonus = side === 'player' ? leaderBonus : 1;
-
-    let dmg = c.atk * mult * em * critMult * sideBonus;
-    dmg = Math.max(1, dmg - target.def * 0.5);
-    dmg = Math.floor(dmg * (0.9 + rng() * 0.2));
-
-    target.hp = Math.max(0, target.hp - dmg);
-
-    actions.push({
-      actorInstId: c.instId, actorName: c.card.name,
-      targetIndex, damage: dmg, crit, skillUsed: useSkill,
-      skillName: useSkill ? c.skillName : undefined,
-      skillFx: useSkill ? c.skillFx : undefined,
-      elementMult: em,
-    });
-  }
-
-  const playerAlive = team.filter(c => c.hp > 0).length;
-  const enemyAlive = enemies.filter(c => c.hp > 0).length;
-  return {
-    actions,
-    playerAlive,
-    enemyAlive,
-    finished: playerAlive === 0 || enemyAlive === 0,
-    playerWon: enemyAlive === 0 && playerAlive > 0,
-  };
-}
-
-/** 讨伐魔女：对 Raid Boss 造成一段伤害并记贡献 */
-export function raidAttack(db: DB, raid: WitchRaidBoss, team: Combatant[], seed: number): {
-  dmg: number; defeated: boolean; ptGain: number; outOfAp: boolean;
-  skills: { actorInstId: string; skillFx: SkillFx; skillName: string }[];
-  counter: { targetInstId: string; dmg: number } | null;
-} {
-  const rng = mulberry32(seed);
-  if (db.user.battlePt <= 0) return { dmg: 0, defeated: false, ptGain: 0, outOfAp: true, skills: [], counter: null };
-  db.user.battlePt -= 1;
-  const leaderBonus = leaderAtkBonus(team);
-  let dmg = 0;
-  const skills: { actorInstId: string; skillFx: SkillFx; skillName: string }[] = [];
-  for (const c of team) {
-    if (c.hp <= 0) continue;
-    const useSkill = rng() < c.procChance;
-    const mult = useSkill ? c.skillMult : 1.0;
-    const em = elementalMultiplier(c.element, 'dark');
-    dmg += Math.floor(c.atk * mult * em * leaderBonus * (0.9 + rng() * 0.2));
-    if (useSkill) skills.push({ actorInstId: c.instId, skillFx: c.skillFx, skillName: c.skillName || '技能' });
-  }
-  raid.hp = Math.max(0, raid.hp - dmg);
-  raid.damageLog[db.user.uid] = (raid.damageLog[db.user.uid] || 0) + dmg;
-  let ptGain = Math.floor(dmg / 100);
-  if (raid.hp <= 0 && !raid.defeated) {
-    raid.defeated = true;
-    db.eventPoint.raidKills += 1;
-    ptGain += raid.archWitch ? 500 : 100; // 击杀奖
-  }
-  db.eventPoint.points += ptGain;
-
-  // ── 魔女反击：随机打一张存活的我方卡（讨伐战不再是零风险木桩）──
-  let counter: { targetInstId: string; dmg: number } | null = null;
-  if (!raid.defeated) {
-    const alive = team.filter(c => c.hp > 0);
-    if (alive.length > 0) {
-      const target = alive[Math.floor(rng() * alive.length)];
-      const cdmg = Math.max(1, Math.floor((raid.attack - target.def * 0.5) * (0.85 + rng() * 0.3)));
-      target.hp = Math.max(0, target.hp - cdmg);
-      counter = { targetInstId: target.instId, dmg: cdmg };
-    }
-  }
-  return { dmg, defeated: raid.defeated, ptGain, outOfAp: false, skills, counter };
 }
 
 /** 战绩：领取已讨伐魔女的奖励 */

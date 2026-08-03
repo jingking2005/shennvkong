@@ -16,23 +16,8 @@ export const RARITY_TIER: Record<Rarity, number> = {
   N: 1, R: 2, SR: 3, UR: 4, LR: 5, X: 6, VR: 7,
 };
 
-/** 元素克制系数（0.8 / 1.0 / 1.5，落在 20%~50% 区间要求内） */
-export function elementalMultiplier(atk: string, def: string): number {
-  const a = norm(atk), d = norm(def);
-  if (a === d) return 1.0;
-  // 光 ↔ 暗 互克
-  if ((a === 'light' && d === 'dark') || (a === 'dark' && d === 'light')) return 1.5;
-  // 火(passion) ↔ 水/树(cool) 互克
-  if ((a === 'passion' && d === 'cool') || (a === 'cool' && d === 'passion')) return 1.4;
-  return 1.0;
-}
-function norm(e: string): Element {
-  const s = (e || '').toLowerCase();
-  if (s.includes('light') || s.includes('光')) return 'light';
-  if (s.includes('dark') || s.includes('暗')) return 'dark';
-  if (s.includes('cool') || s.includes('水') || s.includes('tree') || s.includes('树')) return 'cool';
-  return 'passion';
-}
+/** 元素克制系数：单一来源为 systems/battle/damage-calc（常数在 battle-config.ts） */
+export { elementalMultiplier } from './systems/battle/damage-calc';
 
 // ─────────────────────────── Schema ───────────────────────────
 
