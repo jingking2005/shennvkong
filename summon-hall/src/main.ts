@@ -75,7 +75,7 @@ const FX_COLOR: Record<SkillFx, string> = {
 };
 
 /** 顶层页面 */
-type Page = 'summon' | 'event' | 'map' | 'sortie' | 'battle' | 'team' | 'records' | 'inventory';
+type Page = 'summon' | 'event' | 'map' | 'sortie' | 'battle' | 'team' | 'records' | 'inventory' | 'shop';
 
 /** 队伍槽位 */
 interface TeamSlot { card: Card; hp: number; maxHp: number; lv: number; exp: number; }
@@ -462,17 +462,7 @@ class SummonHall {
   private activate(id: string): void {
     // 全局 HUD（任意页优先）
     if (id === 'toggleMusic') { audio.toggleMute(); return; }
-    if (id === 'openRecharge') {
-      const now = performance.now();
-      if (now - this.lastRechargeTap < 400) {
-        this.showRecharge = true;
-        this.rechargeToastT = 0;
-      } else {
-        this.lastRechargeTap = now;
-        this.rechargeToastT = 1.4;
-      }
-      return;
-    }
+    if (id === 'openRecharge') { this.page = 'shop'; this.syncBgm(); return; }
     if (id === 'closeRecharge') { this.showRecharge = false; return; }
     if (id.startsWith('recharge:')) {
       if (id === 'recharge:noop') return;
@@ -481,6 +471,11 @@ class SummonHall {
     }
     if (this.showRecharge) return; // 弹窗打开时屏蔽下层
 
+    // 商店购买
+    if (id.startsWith('shopBuy:') && this.page === 'shop') {
+      this.shopBuy(id.slice(8));
+      return;
+    }
     // 底部导航
     if (id.startsWith('nav:')) {
       const p = id.slice(4) as Page;
@@ -703,7 +698,7 @@ class SummonHall {
       this.phase = { kind: 'confirm', ten: false, ticket: true, t: 0 };
       return;
     }
-    if (id === 'exchange') { this.jewels += 3000; } // 占位：券交换
+    if (id === 'exchange') { this.page = 'shop'; this.syncBgm(); return; } // 进入商店（原为 +3000 占位）
   }
 
   // ============ 抽卡流程 ============
@@ -1269,6 +1264,7 @@ class SummonHall {
     else if (this.page === 'battle') this.renderBattle();
     else if (this.page === 'team') this.renderTeam();
     else if (this.page === 'inventory') this.renderInventory();
+    else if (this.page === 'shop') this.renderShop();
     else if (this.page === 'records') this.renderRecords();
 
     // 底部导航（战斗 / 出击 / 结算时隐藏，复刻截图全屏画面）
@@ -1386,17 +1382,11 @@ class SummonHall {
     glassButton(ctx, x1, y, bw, bh, muted ? '🔇' : '🔊', {
       kind: muted ? 'gray' : 'blue', hover: this.hover === 'toggleMusic', fontSize: 18,
     });
-    glassButton(ctx, x1 + bw + gap, y, bw, bh, '＋＋', {
+    glassButton(ctx, x1 + bw + gap, y, bw, bh, '❋', {
       kind: 'green', hover: this.hover === 'openRecharge', fontSize: 20,
     });
     this.buttons.push({ x: x1, y, w: bw, h: bh, id: 'toggleMusic' });
     this.buttons.push({ x: x1 + bw + gap, y, w: bw, h: bh, id: 'openRecharge' });
-    if (this.rechargeToastT > 0) {
-      ctx.font = 'bold 13px sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#8ab';
-      ctx.fillText('双击「＋＋」打开调试补给', x1 + bw + gap + bw, y + bh + 18);
-    }
   }
 
   private renderRecharge(): void {
@@ -1448,6 +1438,7 @@ class SummonHall {
     const items: { id: Page; label: string; icon: string }[] = [
       { id: 'summon', label: '召唤', icon: '✦' },
       { id: 'inventory', label: '仓库', icon: '▦' },
+      { id: 'shop', label: '商店', icon: '❋' },
       { id: 'event', label: '活动', icon: '⚑' },
       { id: 'map', label: '出击', icon: '⚔' },
       { id: 'team', label: '队伍', icon: '❖' },
@@ -1876,6 +1867,59 @@ class SummonHall {
   }
 
   // ============ 队伍编成页 ============
+  /** 商店购买（本地模拟充值：直接加宝石/月卡，无真实支付） */
+  private shopBuy(id: string): void {
+    const u = this.db.user;
+    if (id === 'monthCard') {
+      const now = Date.now();
+      const base = u.monthCardUntil > now ? u.monthCardUntil : now;
+      u.monthCardUntil = base + 30 * 86400000;
+      u.gems += 300; // 立即到账
+      this.monthCardClaim(true); // 若当日未领，立即补发今日
+      this.flashTeamMsg('月卡已续期 30 天，宝石 +300');
+      saveDB(this.db);
+      return;
+    }
+    if (id === 'claimDaily') {
+      this.monthCardClaim(false);
+      return;
+    }
+    const tiers: Record<string, number> = {
+      gem60: 60, gem300: 300, gem980: 980, gem1980: 1980, gem3280: 3280, gem6480: 6480,
+    };
+    if (tiers[id] !== undefined) {
+      // 首充双倍：paidGems === 0 时本次翻倍
+      const bonus = u.paidGems === 0 ? tiers[id] : 0;
+      u.gems += tiers[id] + bonus;
+      u.paidGems += tiers[id];
+      this.jewels = u.gems;
+      this.flashTeamMsg(bonus ? `首充双倍！宝石 +${tiers[id] * 2}` : `宝石 +${tiers[id]}`);
+      saveDB(this.db);
+      return;
+    }
+    if (id === 'restore') {
+      u.energy = u.energyMax;
+      u.battlePt = u.battlePtMax;
+      this.flashTeamMsg('回复药水已使用：体力与战斗体力已回满');
+      saveDB(this.db);
+      return;
+    }
+    this.flashTeamMsg('购买失败，请重试');
+  }
+
+  /** 月卡每日领取：当日未领则发宝石并标记。silent=true 时（如购买月卡）只补发不弹说明 */
+  private monthCardClaim(showMsg: boolean): void {
+    const u = this.db.user;
+    const today = new Date().toISOString().slice(0, 10);
+    if (u.monthCardUntil <= Date.now()) { this.flashTeamMsg('月卡已过期，请先续费'); return; }
+    if (u.monthCardLastClaim === today) { this.flashTeamMsg('今日月卡宝石已领取'); return; }
+    u.gems += 20;
+    this.jewels = u.gems;
+    u.monthCardLastClaim = today;
+    saveDB(this.db);
+    if (showMsg !== false) this.flashTeamMsg('月卡每日俸禄：宝石 +20');
+  }
+
   private activateInv(id: string): void {
     const inv = this.db.inventory;
     // 筛选 / 排序（复用 team 的 invFilter / invScroll，避免两套状态）
@@ -2191,6 +2235,90 @@ class SummonHall {
     this.buttons.push({ x: dx + 40 + (bw + 12) * 2, y: by, w: bw, h: bh, id: 'sellCard' });
     glassButton(ctx, dx + 20, dy + 14, 90, 42, '✕', { kind: 'gray', hover: this.hover === 'closeInvDetail', fontSize: 16 });
     this.buttons.push({ x: dx + 20, y: dy + 14, w: 90, h: 42, id: 'closeInvDetail' });
+  }
+
+  private renderShop(): void {
+    const ctx = this.ctx;
+    this.buttons = [];
+    ctx.fillStyle = 'rgba(8,6,18,0.55)';
+    ctx.fillRect(0, 0, W, H);
+    this.text('商 店', 60, 84, 28, '#f5e0a0', 'left', 'bold', true);
+    const u = this.db.user;
+
+    // 顶部：远程宝石余额
+    this.pill(56, 108, 340, 34, '#1a1030', '#b45cff');
+    this.text(`💎 ${u.gems.toLocaleString()}  · 累计充值 ${u.paidGems.toLocaleString()}`, 230, 128, 15, '#e0b0ff', 'center', 'bold');
+    const mcActive = u.monthCardUntil > Date.now();
+    const mcDays = Math.ceil((u.monthCardUntil - Date.now()) / 86400000);
+    this.pill(410, 108, 250, 34, mcActive ? '#123020' : '#302018', mcActive ? '#6fce9a' : '#c8a040');
+    this.text(mcActive ? `月卡生效中（剩 ${mcDays} 天）` : '月卡未购买', 535, 137, 13, mcActive ? '#a8f0c0' : '#cfc4a8', 'center', 'bold');
+
+    // ── 宝石档位 ──
+    this.text('── 宝石礼包 ──', 56, 176, 14, '#cfc4a8', 'left', 'bold');
+    const tiers: [string, number, number][] = [
+      ['gem60', 60, 6], ['gem300', 300, 30], ['gem980', 980, 98],
+      ['gem1980', 1980, 198], ['gem3280', 3280, 328], ['gem6480', 6480, 648],
+    ];
+    const cw = 188, ch = 150, gap = 14;
+    let cx = 56, cy = 188;
+    tiers.forEach(([id, gems, cost], i) => {
+      const hov = this.hover === `shopBuy:${id}`;
+      const isFirst = u.paidGems === 0;
+      this.rr(cx, cy, cw, ch, 12);
+      ctx.fillStyle = '#171226'; ctx.fill();
+      ctx.strokeStyle = '#b45cff'; ctx.lineWidth = 1.5;
+      this.rr(cx, cy, cw, ch, 12); ctx.stroke();
+      // 宝石图标（自制紫钻）
+      ctx.save();
+      ctx.translate(cx + cw / 2, cy + 46);
+      ctx.beginPath();
+      ctx.moveTo(0, -22); ctx.lineTo(16, -6); ctx.lineTo(10, 18); ctx.lineTo(-10, 18); ctx.lineTo(-16, -6);
+      ctx.closePath();
+      const dg = ctx.createLinearGradient(0, -22, 0, 18);
+      dg.addColorStop(0, '#fff'); dg.addColorStop(0.3, '#b45cff'); dg.addColorStop(1, '#5c2a8f');
+      ctx.fillStyle = dg; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.restore();
+      this.text(gems.toLocaleString(), cx + cw / 2, cy + 66, 20, '#e8d0ff', 'center', 'bold');
+      if (isFirst) {
+        this.pill(cx + cw / 2 - 50, cy + 78, 100, 18, '#ff5c5c', '#fff');
+        this.text('首充×2', cx + cw / 2, cy + 90, 10, '#fff', 'center', 'bold');
+      }
+      this.text(`¥${cost}`, cx + cw / 2, cy + 118, 15, '#ffd24d', 'center', 'bold');
+      glassButton(ctx, cx + 8, cy + ch - 34, cw - 16, 26, '购 买', { kind: 'blue', hover: hov, fontSize: 13 });
+      this.buttons.push({ x: cx, y: cy, w: cw, h: ch, id: `shopBuy:${id}` });
+      cx += cw + gap;
+      if ((i + 1) % 3 === 0) { cx = 56; cy += ch + 16; }
+    });
+
+    // ── 月卡 ──
+    const my = cy + 16;
+    this.rr(56, my, W - 112, 96, 12);
+    ctx.fillStyle = '#251a10'; ctx.fill();
+    ctx.strokeStyle = '#e8b23b'; ctx.lineWidth = 1.5;
+    this.rr(56, my, W - 112, 96, 12); ctx.stroke();
+    this.text('月卡 · 每日宝石', 78, my + 28, 17, '#ffd24d', 'left', 'bold');
+    this.text('立即获得宝石 300 · 每日可领取宝石 20 · 体力恢复 +50%', 78, my + 54, 12, '#cfc4a8', 'left');
+    this.text('¥30', 78, my + 80, 16, '#ffd24d', 'left', 'bold');
+    const mcClaimedToday = u.monthCardLastClaim === new Date().toISOString().slice(0, 10);
+    glassButton(ctx, W - 395, my + 28, 165, 44, mcClaimedToday
+      ? '今日已领取 ✓' : (mcActive ? '领取今日俸禄' : '月卡未生效'), {
+      kind: mcClaimedToday || !mcActive ? 'gray' : 'green',
+      hover: this.hover === 'shopBuy:claimDaily', fontSize: 14,
+    });
+    this.buttons.push({ x: W - 395, y: my + 28, w: 165, h: 44, id: 'shopBuy:claimDaily' });
+    glassButton(ctx, W - 200, my + 28, 150, 44, mcActive ? '再续 30 天' : '开通月卡', {
+      kind: 'green', hover: this.hover === 'shopBuy:monthCard', fontSize: 15,
+    });
+    this.buttons.push({ x: W - 200, y: my + 28, w: 150, h: 44, id: 'shopBuy:monthCard' });
+
+    // ── 每日补给 ──
+    const dy2 = my + 116;
+    glassButton(ctx, 56, dy2, 360, 46, '回复药水：体力 + 战斗体力回满', { kind: 'green', hover: this.hover === 'shopBuy:restore', fontSize: 15 });
+    this.buttons.push({ x: 56, y: dy2, w: 360, h: 46, id: 'shopBuy:restore' });
+    this.text('（此为本地模拟商店，无真实支付）', W - 56, dy2 + 30, 12, '#8892a8', 'right');
+
+    if (this.teamMsg && this.teamMsgT < 2.5) this.renderToast();
   }
 
   private renderToast(): void {
@@ -2928,12 +3056,14 @@ class SummonHall {
     const meta = this.meta.get(this.banner.id);
     const t = this.last / 1000;
 
-    // ── 顶栏下方：所持卡片数 / 少女券交换（避开全局资源条与右上角按钮）──
-    this.pill(20, 64, 240, 32, '#0d0a16', '#c8b285');
-    this.text(`所持卡片数：${this.cardCount}/${this.cardCap}`, 140, 81, 14, '#e8d5a8', 'center', 'bold');
-    this.pill(W - 180, 64, 160, 34, this.banner.accent, '#ffe9a8');
-    this.text('少女券交换', W - 100, 82, 15, '#1a1206', 'center', 'bold');
-    this.buttons.push({ x: W - 180, y: 64, w: 160, h: 34, id: 'exchange' });
+    // ── 顶栏下方：所持卡片数 / 商店（避开全局资源条与右上角按钮）──
+    this.cardCount = this.db.inventory.cards.length;
+    this.pill(20, 64, 250, 32, '#0d0a16', '#c8b285');
+    this.text(`所持卡片数：${this.cardCount}/${this.db.inventory.capacity}`, 145, 81, 14, '#e8d5a8', 'center', 'bold');
+    this.buttons.push({ x: 20, y: 64, w: 250, h: 32, id: 'nav:inventory' });
+    this.pill(W - 190, 64, 170, 34, '#e8b23b', '#ffe9a8');
+    this.text('❋ 商 店', W - 105, 82, 15, '#1a1206', 'center', 'bold');
+    this.buttons.push({ x: W - 190, y: 64, w: 170, h: 34, id: 'exchange' });
 
     // ── 左侧：当前卡池大立绘 banner ──
     const bx = 20, by = 108, bw = 760, bh = 520;
@@ -2983,7 +3113,30 @@ class SummonHall {
       drawCard(ctx, c, cx, cy, 54, 76, { showName: false, showBadge: true });
       this.buttons.push({ x: cx - 27, y: cy - 38, w: 54, h: 76, id: 'rates' });
     });
-    this.text('LR 出现率 普通', bx + bw - 24, by + 92, 13, '#ffe14d', 'right', 'bold');
+    // 真实稀有度概率文案（按权重）
+    const table = rateTable(this.banner);
+    const topE = table[0];
+    const lrE = table.find(r => r.rarity === 'LR');
+    this.text(`LR 出现率 ${lrE ? lrE.pct.toFixed(1) + '%' : this.banner.hardPity?.rarity ?? '—'}`,
+      bx + bw - 24, by + 92, 13, '#ffe14d', 'right', 'bold');
+
+    // 保底进度条（右侧池下方留白；画在 banner 顶部小条）
+    const prog = this.gacha.pityProgress(this.banner);
+    if (prog && this.banner.hardPity) {
+      const px0 = bx + 22, py0 = by + 88, pw2 = 220;
+      this.pill(px0 - 10, py0 - 14, pw2 + 20, 30, '#0d0a16', '#c8b285');
+      const ratio = Math.min(1, prog.current / prog.threshold);
+      ctx.save();
+      this.rr(px0, py0, pw2, 14, 7);
+      ctx.fillStyle = '#241a30'; ctx.fill();
+      if (ratio > 0) {
+        ctx.fillStyle = '#ffd24d';
+        this.rr(px0, py0, Math.max(14, pw2 * ratio), 14, 7); ctx.fill();
+      }
+      ctx.restore();
+      this.text(`距 ${this.banner.hardPity.rarity} 保底还差 ${prog.threshold - prog.current} 抽`,
+        px0 + pw2 / 2, py0 + 21, 11, '#e8d5a8', 'center', 'bold');
+    }
 
     // 四按钮（2×2）：上排 单抽(钻) / 十连(钻)，下排 单抽(券) / 十连(券)
     const tickets = meta?.tickets ?? 0;
@@ -3008,13 +3161,6 @@ class SummonHall {
     for (const b of BANNERS) {
       this.renderBannerListItem(b, rx, ry, rw, itemH);
       ry += itemH + 8;
-    }
-
-    // 保底进度
-    const prog = this.gacha.pityProgress(this.banner);
-    if (prog && this.banner.hardPity) {
-      this.text(`距 ${this.banner.hardPity.rarity} 保底还差 ${prog.threshold - prog.current} 抽`,
-        bx + bw / 2, by - 8, 12, '#d8c49a', 'center');
     }
 
     // 提供比率浮层

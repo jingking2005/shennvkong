@@ -52,6 +52,12 @@ export interface User {
   gems: number;        // 氪金石
   friendPt: number;
   tickets: Record<string, number>; // bannerId → 券数
+  /** 商店：累计充值宝石数（首充双倍判定） */
+  paidGems: number;
+  /** 月卡到期时间戳（0/缺省 = 无） */
+  monthCardUntil: number;
+  /** 月卡每日领取日期（YYYY-MM-DD），当天已领则不再发放 */
+  monthCardLastClaim: string | null;
 }
 
 /** 玩家持有的卡实例（库存项） */
@@ -210,6 +216,10 @@ export function loadDB(): DB | null {
       delete tix['legendary'];
       delete tix['divine'];
     }
+    // 商店字段迁移
+    if (typeof db.user.paidGems !== 'number') db.user.paidGems = 0;
+    if (typeof db.user.monthCardUntil !== 'number') db.user.monthCardUntil = 0;
+    if (typeof db.user.monthCardLastClaim !== 'string') db.user.monthCardLastClaim = null;
     if (!db.inventory.materials) db.inventory.materials = {};
     if (db.inventory.materials.upgradePotion === undefined) db.inventory.materials.upgradePotion = 0;
     // 关卡迁移：补齐新增关卡
@@ -255,6 +265,7 @@ export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
       battlePt: 2000, battlePtMax: 2000, battlePtRecoverAt: Date.now(),
       gold: 78000, gems: 3000, friendPt: 9999,
       tickets: { fate: 3, legend: 3, oracle: 3, friend: 30, 'lr-guaranteed': 1, collab: 0, element: 1 },
+      paidGems: 0, monthCardUntil: Date.now() + 30 * 86400000, monthCardLastClaim: null,
     },
     inventory: inv,
     stages,
