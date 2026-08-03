@@ -153,7 +153,7 @@ const STAGE_DEFS: { regionId: string; stageId: string; name: string; energyCost:
 /** 体力数值平衡：上限 600（3min/点），出战一趟扣 10 */
 export const ENERGY_MAX = 600;
 /** 仓库默认容量 */
-export const INV_CAPACITY = 200;
+export const INV_CAPACITY = 2000;
 
 function newStage(def: (typeof STAGE_DEFS)[number]): Stage {
   return {
@@ -201,8 +201,8 @@ export function loadDB(): DB | null {
       db.user.energy = Math.min(db.user.energy ?? 0, ENERGY_MAX);
       db.user.energyRecoverAt = Date.now();
     }
-    // 仓库容量迁移：旧 300 → 200
-    if (!db.inventory.capacity || db.inventory.capacity > INV_CAPACITY) {
+    // 仓库容量迁移：旧档一律升到当前上限
+    if (!db.inventory.capacity || db.inventory.capacity < INV_CAPACITY) {
       db.inventory.capacity = INV_CAPACITY;
     }
     // 召唤券键名迁移：旧 named legendary/divine → 卡池 id legend/oracle

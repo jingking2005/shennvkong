@@ -96,7 +96,7 @@ export function drawCard(
     ctx.fillStyle = pg;
     ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
     ctx.fillStyle = color + 'aa';
-    ctx.font = `bold ${Math.max(10, w * 0.1)}px system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(10, w * 0.1)}px "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(card.rarity, cx, cy);
   }
@@ -144,7 +144,7 @@ export function drawCard(
     ctx.closePath(); ctx.fill();
     ctx.strokeStyle = '#ffd0a8'; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.font = 'bold 10px "Cinzel", "PingFang SC", system-ui, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('NEW', nx, ny);
     ctx.restore();
@@ -155,7 +155,7 @@ export function drawCard(
     ctx.save();
     ctx.textBaseline = 'middle';
     // 右上 Lv.1
-    ctx.font = `bold ${Math.max(9, w * 0.07)}px system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(9, w * 0.07)}px "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.textAlign = 'right';
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     const lw = ctx.measureText('Lv.1').width + 10;
@@ -165,14 +165,14 @@ export function drawCard(
     // 左下 COST 数值
     ctx.textAlign = 'left';
     const costStr = String(card.cardCost);
-    ctx.font = `bold ${Math.max(10, w * 0.085)}px system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(10, w * 0.085)}px "Cinzel", "PingFang SC", system-ui, sans-serif`;
     const cw2 = Math.max(34, ctx.measureText(costStr).width + 12);
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(x + 6, y + h - 24, cw2, 18);
     ctx.fillStyle = '#fff';
-    ctx.font = `${Math.max(7, w * 0.05)}px system-ui, sans-serif`;
+    ctx.font = `${Math.max(7, w * 0.05)}px "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.fillText('COST', x + 10, y + h - 19);
-    ctx.font = `bold ${Math.max(11, w * 0.09)}px system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(11, w * 0.09)}px "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.fillText(costStr, x + 10, y + h - 9);
     ctx.restore();
   }
@@ -180,7 +180,7 @@ export function drawCard(
   // 卡名
   if (showName) {
     const fs = w >= 200 ? 15 : w >= 130 ? 12 : 9;
-    ctx.font = `bold ${fs}px system-ui, sans-serif`;
+    ctx.font = `bold ${fs}px "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     const maxLen = w >= 200 ? 14 : w >= 130 ? 10 : 7;
@@ -190,7 +190,7 @@ export function drawCard(
     ctx.shadowColor = '#000'; ctx.shadowBlur = 5;
     ctx.fillText(label, cx, y + h - (w >= 130 ? 22 : 14));
     // 元素
-    ctx.font = `bold ${Math.max(8, fs - 5)}px system-ui, sans-serif`;
+    ctx.font = `bold ${Math.max(8, fs - 5)}px "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.fillStyle = color;
     ctx.fillText(card.element, cx, y + h - 8);
     ctx.shadowBlur = 0;
@@ -251,7 +251,7 @@ function drawGlassRarityBadge(
 
   // 字：白字 + 深描边
   const fs = Math.max(9, Math.min(13, bw * 0.28));
-  ctx.font = `bold ${fs}px "Avenir Next", "Segoe UI", system-ui, sans-serif`;
+  ctx.font = `bold ${fs}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 2.5;

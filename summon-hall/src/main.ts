@@ -13,7 +13,7 @@ import {
   ExploreStage, EvolveCard, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
   claimRaidReward, claimAllRaidRewards, tickBattlePt, tickEnergy, openChest,
   ownedToCombatant, leaderAtkBonus, canClaimLogin, claimDailyLogin, LOGIN_REWARDS,
-  autoFodder, findDuplicate,
+  autoFodder, findDuplicate, MAX_STAR,
   type Combatant, type ExploreResult, type SkillFx,
   type ChestReward, type ChestQuality, mulberry32,
 } from './logic';
@@ -2213,8 +2213,7 @@ class SummonHall {
     // 筛选 / 排序（复用 team 的 invFilter / invScroll，避免两套状态）
     if (id.startsWith('invf:')) { this.invFilter = id.slice(5); this.invScroll = 0; return; }
     if (id.startsWith('invs:')) { this.invSort = id.slice(5); this.invScroll = 0; return; }
-    if (id === 'invpUp') { this.invScroll = Math.max(0, this.invScroll - 1); return; }
-    if (id === 'invpDown') { this.invScroll += 1; return; }
+    if (id === 'invpUp' || id === 'invpDown') return; // ▲▼ 按钮已移除，保留空分支防呆
     // 批量出售模式开关
     if (id === 'invSellMode') { this.invSelling = !this.invSelling; this.invSel.clear(); return; }
     // 卡点选
@@ -2250,6 +2249,8 @@ class SummonHall {
     if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
     if (id === 'closeInvDetail') { this.detailInst = null; return; }
     if (id === 'closeDetail') { this.detailInst = null; return; }
+    if (id === 'quickEnhance') { this.doQuickEnhance(); return; }
+    if (id === 'quickEvolve') { this.doQuickEvolve(); return; }
     if (id === 'lockCard') {
       const o = this.db.inventory.cards.find(c => c.instId === this.detailInst);
       if (o) { o.locked = !o.locked; this.flashTeamMsg(o.locked ? '已锁定' : '已解锁'); saveDB(this.db); }
@@ -2284,9 +2285,8 @@ class SummonHall {
     if (id === 'closeTeamDetail') { this.detailInst = null; this.enhanceMode = false; this.evolveMode = false; this.enhancePicks.clear(); this.evolvePick = null; return; }
     // 筛选
     if (id.startsWith('filter:')) { this.invFilter = id.slice(7); this.invScroll = 0; return; }
-    // 滚动
-    if (id === 'invUp') { this.invScroll = Math.max(0, this.invScroll - 1); return; }
-    if (id === 'invDown') { this.invScroll += 1; return; }
+    // 滚动（▲▼ 按钮已移除，滚轮/滚动条接管）
+    if (id === 'invUp' || id === 'invDown') return;
     // 出击槽：选中/卸下
     if (id.startsWith('slot:')) {
       const i = parseInt(id.slice(5), 10);
@@ -2363,30 +2363,9 @@ class SummonHall {
       this.detailInst = target; this.detailInstKeep = null;
       return;
     }
-    // 一键强化：自动喂狗粮（未锁定 N→R，最多 6 张），仓库详情内直接完成
-    if (id === 'quickEnhance') {
-      const target = this.detailInst;
-      if (!target) return;
-      const fodder = autoFodder(this.db, target, new Set(this.teamInstIds));
-      if (!fodder.length) { this.flashTeamMsg('没有可用狗粮（需未锁定的 N/R 卡）'); return; }
-      const r = EnhanceCard(this.db, target, fodder);
-      if (r.ok) this.flashTeamMsg(`强化成功！喂 ${fodder.length} 张狗粮，Lv.${r.lvBefore} → Lv.${r.lvAfter}（金币-${r.goldSpent}）`);
-      else this.flashTeamMsg(r.reason || '强化失败');
-      saveDB(this.db);
-      return;
-    }
-    // 一键升星：有同名卡直接合成（最高 5 星）
-    if (id === 'quickEvolve') {
-      const target = this.detailInst;
-      if (!target) return;
-      const dup = findDuplicate(this.db, target, new Set(this.teamInstIds));
-      if (!dup) { this.flashTeamMsg('没有同名卡（升星需同名卡×1）'); return; }
-      const r = EvolveCard(this.db, target, dup.instId);
-      if (r.ok) this.flashTeamMsg(`升星成功！${'★'.repeat(r.newEvoStage)} 继承 ATK+${r.inheritedAtk} HP+${r.inheritedHp}`);
-      else this.flashTeamMsg(r.reason || '升星失败');
-      saveDB(this.db);
-      return;
-    }
+    // 一键强化/升星（仓库/队伍共用，详情内直接完成）
+    if (id === 'quickEnhance') { this.doQuickEnhance(); return; }
+    if (id === 'quickEvolve') { this.doQuickEvolve(); return; }
     if (id === 'sellCard') {
       if (!this.detailInst) return;
       const o = inv.cards.find(c => c.instId === this.detailInst);
@@ -2411,6 +2390,54 @@ class SummonHall {
 
   private flashTeamMsg(msg: string): void { this.teamMsg = msg; this.teamMsgT = 0; }
 
+  /** 一键强化：自动喂狗粮（未锁定 N→R，最多 6 张），仓库/队伍详情内直接完成 */
+  private doQuickEnhance(): void {
+    const target = this.detailInst;
+    if (!target) return;
+    const fodder = autoFodder(this.db, target, new Set(this.teamInstIds));
+    if (!fodder.length) { this.flashTeamMsg('没有可用狗粮（需未锁定的 N/R 卡）'); return; }
+    const r = EnhanceCard(this.db, target, fodder);
+    if (r.ok) this.flashTeamMsg(`强化成功！喂 ${fodder.length} 张狗粮，Lv.${r.lvBefore} → Lv.${r.lvAfter}（金币-${r.goldSpent}）`);
+    else this.flashTeamMsg(r.reason || '强化失败');
+    saveDB(this.db);
+  }
+
+  /** 一键升星：有同名卡直接合成（最高 5 星）；素材在队伍中也可消耗，合成后自动下阵 */
+  private doQuickEvolve(): void {
+    const target = this.detailInst;
+    if (!target) return;
+    const t = this.db.inventory.cards.find(o => o.instId === target);
+    if (!t) return;
+    const dup = this.db.inventory.cards.find(o =>
+      o.instId !== target && o.cardId === t.cardId && !o.locked,
+    );
+    if (!dup) { this.flashTeamMsg('没有同名卡（升星需同名卡×1）'); return; }
+    const dupInTeam = this.teamInstIds.includes(dup.instId);
+    const r = EvolveCard(this.db, target, dup.instId);
+    if (r.ok) {
+      if (dupInTeam) { this.teamInstIds = this.teamInstIds.filter(x => x !== dup.instId); this.saveTeam(); }
+      this.flashTeamMsg(`升星成功！${'★'.repeat(r.newEvoStage)} 继承 ATK+${r.inheritedAtk} HP+${r.inheritedHp}${dupInTeam ? '（素材已下阵）' : ''}`);
+    }
+    else this.flashTeamMsg(r.reason || '升星失败');
+    saveDB(this.db);
+  }
+
+  /** 可升星提示：返回有可用同名素材且未满星的 instId 集合（仓库/队伍网格 badge 用） */
+  private evolvableInsts(): Set<string> {
+    const avail = new Map<string, number>();
+    for (const o of this.db.inventory.cards) {
+      if (o.locked) continue;
+      avail.set(o.cardId, (avail.get(o.cardId) ?? 0) + 1);
+    }
+    const res = new Set<string>();
+    for (const o of this.db.inventory.cards) {
+      if (o.evoStage >= MAX_STAR) continue;
+      const selfCounted = !o.locked ? 1 : 0;
+      if ((avail.get(o.cardId) ?? 0) - selfCounted >= 1) res.add(o.instId);
+    }
+    return res;
+  }
+
   private renderInventory(): void {
     const ctx = this.ctx;
     this.buttons = [];
@@ -2432,13 +2459,12 @@ class SummonHall {
 
     // ── 筛选 ──
     const filters = ['ALL', 'VR', 'X', 'LR', 'UR', 'SR', 'R', 'N'];
-    let fx = 56, fy = 168;
+    let fx = 56; const fy = 168;
     for (const f of filters) {
       const act = this.invFilter === f;
       glassButton(ctx, fx, fy, f === 'ALL' ? 60 : 44, 30, f, { kind: act ? 'blue' : 'gray', hover: this.hover === `invf:${f}`, fontSize: 12 });
       this.buttons.push({ x: fx, y: fy, w: f === 'ALL' ? 60 : 44, h: 30, id: `invf:${f}` });
       fx += (f === 'ALL' ? 60 : 44) + 8;
-      if (f === 'SR') fy += 38, fx = 56; // 两行筛选
     }
 
     // ── 排序（稀有度/攻击力/体力/等级/最近获得）──
@@ -2485,6 +2511,7 @@ class SummonHall {
     this.invScroll = Math.min(this.invScroll, maxScroll);
     const start = this.invScroll * cols;
     const visible = filtered.slice(start, start + cols * rowsVisible);
+    const evolvable = this.evolvableInsts();
 
     visible.forEach((o, vi) => {
       const c = getCard(o.cardId); if (!c) return;
@@ -2503,17 +2530,17 @@ class SummonHall {
       if (picked) { ctx.strokeStyle = '#ff8c6a'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (isDetail) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (o.locked) this.text('🔒', x + icw / 2 - 14, y - ich / 2 + 16, 14, '#fff', 'center');
+      if (evolvable.has(o.instId)) {
+        this.pill(x + icw / 2 - 50, y + ich / 2 - 26, 48, 15, '#3a2a08', '#ffd24d');
+        this.text('可升星', x + icw / 2 - 26, y + ich / 2 - 14, 9, '#ffd24d', 'center', 'bold');
+      }
       this.text(`Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, x, y + ich / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
       this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `invpc:${o.instId}` });
     });
 
-    // 滚动 / 批量出售悬浮
+    // 滚动（滚轮 + 可拖拽滚动条）
     if (maxScroll > 0) {
       this.drawScrollbar(gridX + cols * (icw + igx) + 6, gridY, rowsVisible * (ich + igy) - igy, rowsVisible);
-      glassButton(ctx, gridX + 1020, gridY + 30, 140, 40, '▲ 上', { kind: 'gray', hover: this.hover === 'invpUp', fontSize: 14 });
-      glassButton(ctx, gridX + 1020, gridY + 200, 140, 40, '▼ 下', { kind: 'gray', hover: this.hover === 'invpDown', fontSize: 14 });
-      this.buttons.push({ x: gridX + 1020, y: gridY + 30, w: 140, h: 40, id: 'invpUp' });
-      this.buttons.push({ x: gridX + 1020, y: gridY + 200, w: 140, h: 40, id: 'invpDown' });
     } else {
       this.thumbRect = null;
     }
@@ -2575,14 +2602,18 @@ class SummonHall {
     ];
     for (const [l, v] of rowsS) { this.text(l, ix, ry, 15, '#e8a0c0', 'left', 'bold'); this.text(v, ix + 120, ry, 15, '#f0e6cc', 'left', 'bold'); ry += 32; }
     if (o.atkBonus > 0 || o.hpBonus > 0) { this.text(`升星继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30; }
-    if (card.skillDesc) {
-      this.wrapText(card.skillDesc, ix, ry, 380, 20, 12, '#b8c8d8');
-      ry += Math.ceil(card.skillDesc.length / 31) * 20 + 8;
+    // 文本下界：不得侵入按钮区（by2 = dy+dh-122）
+    const textBound = dy + dh - 136;
+    if (card.skillDesc && ry < textBound) {
+      const maxLines = Math.max(1, Math.floor((textBound - ry) / 20));
+      const desc = card.skillDesc.length > maxLines * 31 ? card.skillDesc.slice(0, maxLines * 31 - 1) + '…' : card.skillDesc;
+      this.wrapText(desc, ix, ry, 380, 20, 12, '#b8c8d8');
+      ry += Math.ceil(desc.length / 31) * 20 + 8;
     }
-    // 引文（runtime catalog 卡；空间不足时跳过，不与技能文本叠字）
+    // 引文（runtime catalog 卡；空间不足时跳过，不与技能文本/按钮叠字）
     if (rdef?.quotesRef) {
       const q = quotesFor(rdef.quotesRef);
-      if (q?.description && ry + 56 <= dy + dh - 72) {
+      if (q?.description && ry + 56 <= textBound) {
         this.text('◆ 引文', ix, ry, 12, '#c8b285', 'left', 'bold');
         this.wrapText(q.description, ix, ry + 20, 380, 16, 11, '#a8b8c8');
       }
@@ -2647,12 +2678,12 @@ class SummonHall {
       ctx.fillStyle = dg; ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.2; ctx.stroke();
       ctx.restore();
-      this.text(gems.toLocaleString(), cx + cw / 2, cy + 66, 20, '#e8d0ff', 'center', 'bold');
+      this.text(gems.toLocaleString(), cx + cw / 2, cy + 62, 20, '#e8d0ff', 'center', 'bold');
       if (isFirst) {
-        this.pill(cx + cw / 2 - 50, cy + 78, 100, 18, '#ff5c5c', '#fff');
-        this.text('首充×2', cx + cw / 2, cy + 90, 10, '#fff', 'center', 'bold');
+        this.pill(cx + cw / 2 - 50, cy + 72, 100, 18, '#ff5c5c', '#fff');
+        this.text('首充×2', cx + cw / 2, cy + 84, 10, '#fff', 'center', 'bold');
       }
-      this.text(`¥${cost}`, cx + cw / 2, cy + 118, 15, '#ffd24d', 'center', 'bold');
+      this.text(`¥${cost}`, cx + cw / 2, cy + 108, 15, '#ffd24d', 'center', 'bold');
       glassButton(ctx, cx + 8, cy + ch - 34, cw - 16, 26, '购 买', { kind: 'blue', hover: hov, fontSize: 13 });
       this.buttons.push({ x: cx, y: cy, w: cw, h: ch, id: `shopBuy:${id}` });
       cx += cw + gap;
@@ -2791,6 +2822,7 @@ class SummonHall {
     this.invScroll = Math.min(this.invScroll, maxScroll);
     const start = this.invScroll * cols;
     const visible = filtered.slice(start, start + cols * rowsVisible);
+    const evolvable = this.evolvableInsts();
 
     visible.forEach((o, vi) => {
       const c = getCard(o.cardId); if (!c) return;
@@ -2812,17 +2844,17 @@ class SummonHall {
       if (picked) { ctx.strokeStyle = '#6fce9a'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (isDetail) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (o.locked) this.text('🔒', x + icw / 2 - 12, y - ich / 2 + 16, 14, '#fff', 'center');
+      if (evolvable.has(o.instId)) {
+        this.pill(x + icw / 2 - 52, y + ich / 2 - 26, 48, 15, '#3a2a08', '#ffd24d');
+        this.text('可升星', x + icw / 2 - 28, y + ich / 2 - 14, 9, '#ffd24d', 'center', 'bold');
+      }
       this.text(`Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, x, y + ich / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
       this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `inv:${o.instId}` });
     });
 
-    // 滚动按钮 + 可视滚动条
+    // 滚动（滚轮 + 可拖拽滚动条）
     if (maxScroll > 0) {
       this.drawScrollbar(gridX + cols * (icw + igx) + 6, gridY, rowsVisible * (ich + igy) - igy, rowsVisible);
-      glassButton(ctx, W - 130, gridY + 20, 90, 40, '▲ 上', { kind: 'gray', hover: this.hover === 'invUp', fontSize: 14 });
-      glassButton(ctx, W - 130, gridY + 140, 90, 40, '▼ 下', { kind: 'gray', hover: this.hover === 'invDown', fontSize: 14 });
-      this.buttons.push({ x: W - 130, y: gridY + 20, w: 90, h: 40, id: 'invUp' });
-      this.buttons.push({ x: W - 130, y: gridY + 140, w: 90, h: 40, id: 'invDown' });
     } else {
       this.thumbRect = null;
     }
@@ -3081,7 +3113,7 @@ class SummonHall {
       const dy = d.t * 70;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.font = 'bold 30px system-ui, "PingFang SC", sans-serif';
+      ctx.font = 'bold 30px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,0.75)';
       ctx.strokeText(d.v, d.x, d.y - dy);
@@ -3342,7 +3374,7 @@ class SummonHall {
     ctx.save();
     ctx.translate(W / 2, 200);
     ctx.scale(Math.max(0.02, pop), Math.max(0.02, pop));
-    ctx.font = 'bold 90px system-ui, "Arial Black", sans-serif';
+    ctx.font = 'bold 90px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.lineWidth = 12; ctx.strokeStyle = '#6a4a08';
     ctx.strokeText('VICTORY', 0, 0);
@@ -3518,38 +3550,45 @@ class SummonHall {
     g.addColorStop(1, 'rgba(6,4,14,0.92)');
     ctx.fillStyle = g;
     ctx.fillRect(bx, by + bh * 0.4, bw, bh * 0.6);
+    // 顶部渐变压暗（标题/概率文字在立绘上可读）
+    const gTop = ctx.createLinearGradient(0, by, 0, by + 150);
+    gTop.addColorStop(0, 'rgba(6,4,14,0.88)');
+    gTop.addColorStop(1, 'rgba(6,4,14,0)');
+    ctx.fillStyle = gTop;
+    ctx.fillRect(bx, by, bw, 150);
     ctx.restore();
     ctx.strokeStyle = this.banner.accent;
     ctx.lineWidth = 2;
     this.rr(bx, by, bw, bh, 12); ctx.stroke();
 
-    // 卡池标题 + 倒计时
-    this.text(this.banner.name, bx + 20, by + 30, 22, this.banner.accent, 'left', 'bold', true);
+    // 卡池标题 + 倒计时（顶部压暗带上，行距固定不叠字）
+    this.text(this.banner.name, bx + 20, by + 32, 22, this.banner.accent, 'left', 'bold', true);
     const remain = Math.max(0, (meta?.endAt ?? Date.now()) - Date.now());
     const dd = Math.floor(remain / 86400000);
     const hh = Math.floor((remain % 86400000) / 3600000);
-    this.pill(bx + 20, by + 52, 196, 24, '#0d0a16', '#c8b285');
-    this.text(`【距离结束还有】${dd}天${hh}小时`, bx + 118, by + 65, 11, '#ffe9a8', 'center', 'bold');
+    this.pill(bx + 20, by + 46, 196, 22, '#0d0a16', '#c8b285');
+    this.text(`【距离结束还有】${dd}天${hh}小时`, bx + 118, by + 61, 11, '#ffe9a8', 'center', 'bold');
 
-    // 精选缩略卡（点详情）
-    const show = bannerShowcase(this.banner, 3);
-    show.forEach((c, i) => {
-      const cx = bx + bw - 178 + i * 60, cy = by + 120;
-      drawCard(ctx, c, cx, cy, 52, 74, { showName: false, showBadge: true });
-      this.buttons.push({ x: cx - 26, y: cy - 37, w: 52, h: 74, id: 'rates' });
-    });
-    // 真实稀有度概率文案（按权重）+ 离线演示标注
+    // 真实稀有度概率文案（右上，压暗带上）+ 离线演示标注
     const table = rateTable(this.banner);
     const lrE = table.find(r => r.rarity === 'LR');
     this.text(`LR 出现率 ${lrE ? lrE.pct.toFixed(1) + '%' : '—'}`,
-      bx + bw - 20, by + 92, 12, '#ffe14d', 'right', 'bold');
-    this.text('离线演示配置 · 非原版概率', bx + bw - 20, by + 108, 10, '#8f86a8', 'right');
+      bx + bw - 20, by + 32, 13, '#ffe14d', 'right', 'bold');
+    this.text('离线演示配置 · 非原版概率', bx + bw - 20, by + 50, 10, '#b8aec8', 'right');
 
-    // 保底进度条（多档：UR/LR 各一行胶囊）
+    // 精选缩略卡（点详情；右对齐最多 4 张，不越出 banner）
+    const show = bannerShowcase(this.banner, 1).slice(0, 4);
+    show.forEach((c, i) => {
+      const cx = bx + bw - 46 - i * 58, cy = by + 182;
+      drawCard(ctx, c, cx, cy, 52, 74, { showName: false, showBadge: true });
+      this.buttons.push({ x: cx - 26, y: cy - 37, w: 52, h: 74, id: 'rates' });
+    });
+
+    // 保底进度条（多档：UR/LR 各一行胶囊，固定行距）
     const tiers = this.gacha.pityProgressAll(this.banner);
     tiers.forEach((t, i) => {
-      const px0 = bx + 20, py0 = by + 72 + i * 34, pw2 = 100;
-      this.pill(px0 - 10, py0 - 6, 348, 32, '#0d0a16', '#c8b285');
+      const px0 = bx + 20, py0 = by + 80 + i * 32, pw2 = 100;
+      this.pill(px0 - 10, py0 - 4, 348, 26, '#0d0a16', '#c8b285');
       const ratio = Math.min(1, t.current / t.threshold);
       ctx.save();
       this.rr(px0, py0 + 5, pw2, 12, 6);
@@ -3576,13 +3615,14 @@ class SummonHall {
     this.summonButton(bx + 296, b1, bw2, 58, `用 💎 ${this.banner.costTen}`, `进行 10 连召唤`, this.jewels >= this.banner.costTen, 'pull10');
     this.summonButton(bx + 16, b2, bw2, 58, `用 1 张召唤券`, `召唤 1 次`, tickets > 0, 'pull1ticket');
     this.summonButton(bx + 296, b2, bw2, 58, `用 10 张召唤券`, `进行 10 连召唤`, tickets >= 10, 'pull10ticket');
+    // 持有数（banner 下方独立行，左对齐）
     this.text(`目前持有数  🎟 ${tickets}  /  💎 ${this.jewels.toLocaleString()}`,
-      bx + 20, by + bh - 4, 12, '#ffe9a8', 'left', 'bold');
+      bx + 20, by + bh + 27, 13, '#ffe9a8', 'left', 'bold');
 
-    // 提供比率一览
-    this.pill(bx + bw / 2 - 110, by + bh + 10, 220, 34, '#0d0a16', '#c8b285');
-    this.text('提供比率一览', bx + bw / 2, by + bh + 28, 14, '#e8d5a8', 'center', 'bold');
-    this.buttons.push({ x: bx + bw / 2 - 110, y: by + bh + 10, w: 220, h: 34, id: 'rates' });
+    // 提供比率一览（banner 下方右侧，与持有数同行不叠字）
+    this.pill(bx + bw - 220, by + bh + 8, 220, 34, '#0d0a16', '#c8b285');
+    this.text('提供比率一览', bx + bw - 110, by + bh + 30, 14, '#e8d5a8', 'center', 'bold');
+    this.buttons.push({ x: bx + bw - 220, y: by + bh + 8, w: 220, h: 34, id: 'rates' });
 
     // ── 右侧：卡池列表（完整放下 7 个池） ──
     const rx = bx + bw + 14, rw = W - rx - 16;
@@ -3658,7 +3698,7 @@ class SummonHall {
   private speechBubble(x: number, y: number, w: number, line: string): void {
     const ctx = this.ctx;
     ctx.save();
-    ctx.font = '12px system-ui, "PingFang SC", sans-serif';
+    ctx.font = '12px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif';
     const lines: string[] = [];
     let cur = '';
     for (const ch of line) {
@@ -3715,7 +3755,7 @@ class SummonHall {
     ctx.stroke();
     ctx.shadowBlur = 0;
     // 文字
-    ctx.font = `bold ${r * 0.34}px system-ui, "PingFang SC", sans-serif`;
+    ctx.font = `bold ${r * 0.34}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.strokeText(label, cx, cy + 2);
@@ -3733,12 +3773,12 @@ class SummonHall {
     // 玻璃胶囊主体
     glassButton(ctx, x, y, w, h, '', { kind: 'green', hover: hov && enabled });
     // 两行文字
-    ctx.font = `bold 14px system-ui, "PingFang SC", sans-serif`;
+    ctx.font = `bold 14px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#d8ffd8';
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
     ctx.fillText(l1, x + w / 2, y + h / 2 - 11);
-    ctx.font = `bold 17px system-ui, "PingFang SC", sans-serif`;
+    ctx.font = `bold 17px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.fillStyle = '#ffffff';
     if (hov && enabled) { ctx.shadowColor = 'rgba(255,255,255,0.7)'; ctx.shadowBlur = 8; }
     ctx.fillText(l2, x + w / 2, y + h / 2 + 12);
@@ -3757,7 +3797,7 @@ class SummonHall {
     ctx.fillStyle = '#0d0a16'; ctx.fillRect(x, y, w, h);
     const pm = m?.portrait;
     if (pm) {
-      drawCard(ctx, pm, x + w - 60, y + h / 2, 70, h - 8, { showName: false, showBadge: false });
+      drawCard(ctx, pm, x + w - 56, y + h / 2, 62, h - 18, { showName: false, showBadge: false });
     }
     const gg = ctx.createLinearGradient(x, 0, x + w, 0);
     gg.addColorStop(0, 'rgba(6,4,14,0.9)');
@@ -3830,7 +3870,7 @@ class SummonHall {
   private wrapText(str: string, x: number, y: number, maxW: number, lh: number, size: number, color: string, weight = 'normal'): void {
     const ctx = this.ctx;
     ctx.save();
-    ctx.font = `${weight} ${size}px system-ui, "PingFang SC", sans-serif`;
+    ctx.font = `${weight} ${size}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillStyle = color;
     let line = '', yy = y;
@@ -4294,7 +4334,7 @@ class SummonHall {
       ctx.save();
       ctx.translate(W / 2, H / 2 + 210);
       ctx.scale(Math.max(0.02, pop), Math.max(0.02, pop));
-      ctx.font = `bold ${isLR ? 52 : 42}px system-ui, "Arial Black", sans-serif`;
+      ctx.font = `bold ${isLR ? 52 : 42}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.lineWidth = 10; ctx.strokeStyle = '#4a2a08';
       ctx.strokeText(label, 0, 0);
@@ -4392,7 +4432,7 @@ class SummonHall {
     align: CanvasTextAlign = 'left', weight = 'normal', glow = false): void {
     const ctx = this.ctx;
     ctx.save();
-    ctx.font = `${weight} ${size}px system-ui, "PingFang SC", sans-serif`;
+    ctx.font = `${weight} ${size}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.textAlign = align;
     ctx.textBaseline = 'middle';
     if (glow) { ctx.shadowColor = color; ctx.shadowBlur = 20; }
