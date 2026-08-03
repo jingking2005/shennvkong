@@ -1,0 +1,19 @@
+{
+  "_provenance": "original-fill",
+  "_note": "抽卡表现层配置：与结算逻辑完全解耦，仅控制光效颜色/时长/文案。",
+  "disclaimer": "离线演示配置 · 非原版概率",
+  "reveal": {
+    "cardFlipMs": 320,
+    "staggerMs": 110,
+    "skipHoldMs": 400
+  },
+  "rarityFx": {
+    "N":  { "glow": "#9aa3b2", "burstCount": 6,  "shake": 0 },
+    "R":  { "glow": "#6fb7ff", "burstCount": 10, "shake": 0 },
+    "SR": { "glow": "#c98bff", "burstCount": 16, "shake": 2 },
+    "UR": { "glow": "#ffd24a", "burstCount": 24, "shake": 4 },
+    "LR": { "glow": "#ff5c8a", "burstCount": 32, "shake": 6 },
+    "X":  { "glow": "#3ef0e0", "burstCount": 40, "shake": 8 },
+    "VR": { "glow": "#ffffff", "burstCount": 48, "shake": 10 }
+  }
+}

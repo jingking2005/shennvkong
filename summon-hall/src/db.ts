@@ -49,6 +49,8 @@ export interface User {
   loginStreak: number;
   /** 签到：上次领取日期（YYYY-MM-DD）；断签则 streak 重置 */
   loginLastClaim: string | null;
+  /** 抽卡保底计数（bannerId → rarity → 抽数）；刷新后保底进度不丢 */
+  gachaPity?: Record<string, Partial<Record<string, number>>>;
 }
 
 /** 玩家持有的卡实例（库存项） */

@@ -1,0 +1,87 @@
+{
+  "_provenance": "original-fill",
+  "_note": "离线演示配置：全部概率/保底为原创填充值，非 Nubee 原版数据。十连必出 SR（softPity）；常驻池 45 抽保底 UR；高级/确定池 80 抽保底 LR。",
+  "banners": [
+    {
+      "id": "fate", "name": "命运之门", "sub": "常驻 · 全稀有度", "accent": "#8b7ff0",
+      "costSingle": 300, "costTen": 3000,
+      "pool": [
+        { "rarity": "N", "weight": 40 }, { "rarity": "R", "weight": 36 },
+        { "rarity": "SR", "weight": 17 }, { "rarity": "UR", "weight": 5.5 },
+        { "rarity": "LR", "weight": 1.3 }, { "rarity": "X", "weight": 0.18 },
+        { "rarity": "VR", "weight": 0.02 }
+      ],
+      "softPity": "SR",
+      "hardPities": [
+        { "rarity": "UR", "threshold": 45 },
+        { "rarity": "LR", "threshold": 80 }
+      ]
+    },
+    {
+      "id": "legend", "name": "金色传说", "sub": "UR↑ · LR/X 限定", "accent": "#e8b23b",
+      "costSingle": 500, "costTen": 5000,
+      "pool": [
+        { "rarity": "SR", "weight": 45 }, { "rarity": "UR", "weight": 33 },
+        { "rarity": "LR", "weight": 15 }, { "rarity": "X", "weight": 5.5 },
+        { "rarity": "VR", "weight": 1.5 }
+      ],
+      "softPity": "UR",
+      "hardPities": [{ "rarity": "LR", "threshold": 80 }]
+    },
+    {
+      "id": "oracle", "name": "神谕召唤", "sub": "限时 · X/VR UP", "accent": "#ff6ea8",
+      "costSingle": 600, "costTen": 6000,
+      "pool": [
+        { "rarity": "R", "weight": 30 }, { "rarity": "SR", "weight": 36 },
+        { "rarity": "UR", "weight": 23 }, { "rarity": "LR", "weight": 8 },
+        { "rarity": "X", "weight": 2.5 }, { "rarity": "VR", "weight": 0.5 }
+      ],
+      "softPity": "SR",
+      "hardPities": [{ "rarity": "X", "threshold": 40 }],
+      "up": []
+    },
+    {
+      "id": "friend", "name": "友情召唤", "sub": "友情点 · 日常", "accent": "#6fce9a",
+      "costSingle": 100, "costTen": 1000,
+      "pool": [
+        { "rarity": "N", "weight": 60 }, { "rarity": "R", "weight": 32 },
+        { "rarity": "SR", "weight": 7.6 }, { "rarity": "UR", "weight": 0.4 }
+      ],
+      "softPity": "R"
+    },
+    {
+      "id": "lr-guaranteed", "name": "LR 确定召唤", "sub": "10连必出 LR", "accent": "#ff5c8a",
+      "costSingle": 0, "costTen": 8000,
+      "pool": [
+        { "rarity": "UR", "weight": 60 }, { "rarity": "LR", "weight": 30 },
+        { "rarity": "X", "weight": 8 }, { "rarity": "VR", "weight": 2 }
+      ],
+      "softPity": "UR",
+      "hardPities": [{ "rarity": "LR", "threshold": 10 }]
+    },
+    {
+      "id": "collab", "name": "魔界出击联动召唤", "sub": "联动 · 限定卡 UP", "accent": "#3ef0e0",
+      "costSingle": 500, "costTen": 5000,
+      "pool": [
+        { "rarity": "SR", "weight": 38 }, { "rarity": "UR", "weight": 36 },
+        { "rarity": "LR", "weight": 18 }, { "rarity": "X", "weight": 6.5 },
+        { "rarity": "VR", "weight": 1.5 }
+      ],
+      "softPity": "UR",
+      "hardPities": [{ "rarity": "X", "threshold": 30 }],
+      "up": []
+    },
+    {
+      "id": "element", "name": "元素精选召唤", "sub": "光/暗/炎 轮换 UP", "accent": "#ffb42e",
+      "costSingle": 400, "costTen": 4000,
+      "pool": [
+        { "rarity": "R", "weight": 30 }, { "rarity": "SR", "weight": 40 },
+        { "rarity": "UR", "weight": 22 }, { "rarity": "LR", "weight": 6.5 },
+        { "rarity": "X", "weight": 1.5 }
+      ],
+      "softPity": "SR",
+      "hardPities": [{ "rarity": "UR", "threshold": 45 }],
+      "up": []
+    }
+  ]
+}

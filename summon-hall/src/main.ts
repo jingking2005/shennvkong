@@ -226,6 +226,7 @@ class SummonHall {
     this.bg.setHallCarousel(EVENT_MAP_BGS); // 大厅背景：活动地图轮播
     const saved = loadDB();
     if (saved) this.db = saved;
+    this.gacha.restoreCounters(this.db.user.gachaPity as never);
     this.buildMeta();
     this.activeStage = this.db.stages[0];
     this.displayProg = this.activeStage.progress;
@@ -800,6 +801,7 @@ class SummonHall {
     }
     this.cardCount = this.db.inventory.cards.length;
     this.gacha.markOwned(pulls.map(p => p.card.id));
+    this.db.user.gachaPity = this.gacha.serializeCounters();
     saveDB(this.db);
 
     this.phase = { kind: 'summon', pulls, t: 0 };
@@ -3372,29 +3374,30 @@ class SummonHall {
       drawCard(ctx, c, cx, cy, 52, 74, { showName: false, showBadge: true });
       this.buttons.push({ x: cx - 26, y: cy - 37, w: 52, h: 74, id: 'rates' });
     });
-    // 真实稀有度概率文案（按权重）
+    // 真实稀有度概率文案（按权重）+ 离线演示标注
     const table = rateTable(this.banner);
     const lrE = table.find(r => r.rarity === 'LR');
-    this.text(`LR 出现率 ${lrE ? lrE.pct.toFixed(1) + '%' : this.banner.hardPity?.rarity ?? '—'}`,
+    this.text(`LR 出现率 ${lrE ? lrE.pct.toFixed(1) + '%' : '—'}`,
       bx + bw - 20, by + 92, 12, '#ffe14d', 'right', 'bold');
+    this.text('离线演示配置 · 非原版概率', bx + bw - 20, by + 108, 10, '#8f86a8', 'right');
 
-    // 保底进度条（单行胶囊：左进度条 + 右文字）
-    const prog = this.gacha.pityProgress(this.banner);
-    if (prog && this.banner.hardPity) {
-      const px0 = bx + 20, py0 = by + 80, pw2 = 100;
+    // 保底进度条（多档：UR/LR 各一行胶囊）
+    const tiers = this.gacha.pityProgressAll(this.banner);
+    tiers.forEach((t, i) => {
+      const px0 = bx + 20, py0 = by + 72 + i * 34, pw2 = 100;
       this.pill(px0 - 10, py0 - 6, 348, 32, '#0d0a16', '#c8b285');
-      const ratio = Math.min(1, prog.current / prog.threshold);
+      const ratio = Math.min(1, t.current / t.threshold);
       ctx.save();
       this.rr(px0, py0 + 5, pw2, 12, 6);
       ctx.fillStyle = '#241a30'; ctx.fill();
       if (ratio > 0) {
-        ctx.fillStyle = '#ffd24d';
+        ctx.fillStyle = t.rarity === 'LR' ? '#ff5c8a' : '#ffd24d';
         this.rr(px0, py0 + 5, Math.max(12, pw2 * ratio), 12, 6); ctx.fill();
       }
       ctx.restore();
-      this.text(`距 ${this.banner.hardPity.rarity} 保底还差 ${Math.max(0, prog.threshold - prog.current)} 抽`,
+      this.text(`距 ${t.rarity} 保底还差 ${Math.max(0, t.threshold - t.current)} 抽`,
         px0 + pw2 + 12, py0 + 12, 12, '#e8d5a8', 'left', 'bold');
-    }
+    });
 
     // 说明文案
     const tagline = meta?.tagline ?? '';
