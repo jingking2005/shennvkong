@@ -14,6 +14,10 @@ checkpoint.json
 cards.partial.json
 
 # Node / Game
+node_modules/
+dist/
+build/
+coverage/
 game/node_modules/
 game/dist/
 game/coverage/
@@ -24,5 +28,26 @@ game/coverage/
 # IDE
 .idea/
 .vscode/
+
+# 环境与密钥
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.cert
+credentials.json
+
+# 数据库与日志
+*.sqlite
+*.db
+*.log
+
+# 缓存与临时文件
+.cache/
+tmp/
+
+# 归档大文件
 archive/final-archive/extracted/
 archive/final-archive/*.zip

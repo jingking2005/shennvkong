@@ -259,6 +259,14 @@ git pull --ff-only
 | 已 push 的错误 | `git revert <commit>` 创建反向 commit |
 | 冲突 | 分析两侧意图 → 产品语义冲突问用户 → 解决 → 验证 |
 
+## Graphify 代码图谱协议（标准追加，2026-07-29）
+
+- 查询架构、模块边界、符号调用、依赖关系和修改影响范围时，先读取项目 Graphify 图谱，再读取命中的源码和测试。
+- 精确文本、配置值、日志、测试/构建错误、尚未索引的未提交改动和被排除目录，使用传统读取方法；图谱无结果、过期或置信度为 `AMBIGUOUS` 时必须回退源码与测试。
+- 修改流程：图谱查询 → 读取来源行号 → 检查 `git status` → 更新 SPEC/任务 → 最小修改 → 测试/构建/diff 审查。
+- 每次成功提交后增量更新图谱（项目采用 `/graphify . --update` 或已登记的 MCP 更新命令）；更新失败必须记录，不得伪装成功。
+- 图谱更新可按项目关闭，但必须在项目状态中说明原因、关闭时间和补建计划；Graphify 不替代源码、测试、构建或人工审查。
+
 ---
 
 ## 第四章：TDD 实现循环
@@ -493,6 +501,24 @@ Agent 不得默认拥有以下权限：
 ---
 
 # 项目专属指令：神女控数字考古
+
+---
+
+# Agent 分工（2026-08-02 强制生效）
+
+> **OpenCode = 主开发**（逻辑、数值、存档、战斗/探索/抽卡规则、**Commit & Push**）
+> **Cursor = UI 升级**（视觉、动效、布局；默认不 Push；每次 UI 改动写交接笔记）
+
+必读交接包：
+
+1. `docs/handoff/OPENCODE_PRIMARY_HANDOFF.md`
+2. `docs/handoff/COLLAB_PROTOCOL_CURSOR_OPENCODE.md`
+3. `docs/handoff/UI_CHANGELOG.md`
+
+主工程目录固定为：`/Users/VazeniF/Desktop/神女控/summon-hall`
+GitHub：`https://github.com/jingking2005/shennvkong`
+
+---
 
 > 你现在是我的高级 AI 开发 Agent（Hermes / Codex），拥有完整的自主执行权限。你的目标不是告诉我怎么做，而是主动完成整个项目，并在遇到问题时自行分析、修复、继续执行。
 
@@ -1013,3 +1039,45 @@ spec/v2/acceptance-matrix.md    — 验收矩阵
 - `game/src/data/schema/types.ts` → V2 完整数据模型
 - `game/src/scenes/BattleScene.ts` → 手动选目标+技能释放
 - `game/src/scenes/TeamScene.ts` → 5位置+Cost+羁绊
+
+---
+
+# Git Rules（长期强制规则，2026-07-24 生效）
+
+> 以下规则适用于本项目所有 Agent，不可违反。
+
+1. **默认 Private**：所有项目均为 Private Repository。未经用户明确要求，不得创建 Public Repository。
+2. **不主动 PR**：不主动创建 Pull Request。
+3. **不主动 Merge**：不主动执行 Merge 操作。
+4. **不主动删 Branch**：不主动删除任何 Branch。
+5. **规范 Commit**：每完成一个独立功能后进行一次规范 Commit，使用 Conventional Commits（`feat`/`fix`/`refactor`/`docs`/`test`/`style`/`chore`）。禁止使用 `update`、`test`、`123`、`aaa` 等无意义信息。
+6. **Push 前确认**：Push 前提醒用户确认，不得静默 Push。
+7. **安全检查**：检查 `.gitignore`，禁止上传 API Key、Token、证书、数据库、日志及个人配置文件。
+8. **单人开发模式**：保持 `开发 → Commit → Push` 的简洁流程，不引入多人协作复杂度。
+
+---
+
+# 轻量吸取规则（来自 Anthropic Opus 5 提示词，2026-07-26）
+
+> 仅挑选可直接落地的轻量规则，保持当前工作流不重。
+
+1. **先读 Skill 再动手**：写代码、创建文件、运行复杂工具前，先扫描 `<available_skills>` 并阅读相关 `SKILL.md`。
+2. **评估输出形式**：
+   - 短代码/简短回答 → 直接会话内回复
+   - 长代码、交付物、报告、可复用工具 → 创建文件
+   - 空间/数据/流程类内容 → 使用 Canvas/可视化
+3. **搜索原则**：当前状态、版本、人物职位、新闻等易变信息先搜索；历史事实、科学原理不搜。
+4. **只记用户亲口说的话**：跨会话记忆（如 user rules、AGENTS.md）只写入用户明确陈述的事实或选择，不写入 Agent 自己的推导、建议或生成内容。
+5. **拒绝与批评处理**：被粗鲁对待时不过度道歉；承认错误并修复，保持专业与自尊。
+
+<!-- BEGIN AI AGENT STANDARD: TEMPLATE PROVENANCE -->
+## AI Agent 标准模板来源
+
+- 新建项目或补齐项目级 Agent 标准时，以
+  `/Users/VazeniF/Desktop/obsidian/wiki-AI工具/项目标准模板/版本/2026-07-29-v4`
+  为版本化模板快照，并以
+  `/Users/VazeniF/Documents/Codex/2026-07-29/ai-agent-agents-md-docs-spec`
+  的 `docs/graphify-protocol.md`、SPEC 三件套和 hooks 说明为工作事实源。
+- 不得用模板覆盖本项目已有规则；任何已有 `AGENTS.md`、hooks、Obsidian 文件、工具安装或全局 Agent 配置改动，先备份、生成最小补丁和回滚证据。
+- 模板或图谱建议不替代项目 SPEC、源码、测试、Git 状态、构建日志或用户最新决定。
+<!-- END AI AGENT STANDARD: TEMPLATE PROVENANCE -->

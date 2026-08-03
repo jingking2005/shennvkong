@@ -1,8 +1,17 @@
 # 神女控 数字考古 — 第一阶段交接文档
 
+> **【2026-08-02 重要更新】** 游戏主线开发权已移交给 **OpenCode**。
+> Cursor 仅负责 UI 升级。请勿只读本文档开工。
+> **请改读：**
+> - [`docs/handoff/OPENCODE_PRIMARY_HANDOFF.md`](docs/handoff/OPENCODE_PRIMARY_HANDOFF.md) — 主交接（路径/素材/模块）
+> - [`docs/handoff/COLLAB_PROTOCOL_CURSOR_OPENCODE.md`](docs/handoff/COLLAB_PROTOCOL_CURSOR_OPENCODE.md) — 协作与 Commit/Push 协议
+> - [`docs/handoff/UI_CHANGELOG.md`](docs/handoff/UI_CHANGELOG.md) — UI 变更流水
+
+---
+
 **交接时间：** 2026-07-24 00:15 CST  
 **执行 Agent：** Hermes (DeepSeek-V4-Pro)  
-**状态：** ✅ 第一阶段完成
+**状态：** ✅ 第一阶段完成（Wiki 考古；以下为历史内容）
 
 ---
 
