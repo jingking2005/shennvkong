@@ -1888,10 +1888,11 @@ class SummonHall {
       gem60: 60, gem300: 300, gem980: 980, gem1980: 1980, gem3280: 3280, gem6480: 6480,
     };
     if (tiers[id] !== undefined) {
-      // 首充双倍：paidGems === 0 时本次翻倍
-      const bonus = u.paidGems === 0 ? tiers[id] : 0;
+      // 首充双倍：按档位判定，每档各享一次
+      const bonus = (u.paidTiers[id] ?? 0) === 0 ? tiers[id] : 0;
       u.gems += tiers[id] + bonus;
       u.paidGems += tiers[id];
+      u.paidTiers[id] = (u.paidTiers[id] ?? 0) + 1;
       this.jewels = u.gems;
       this.flashTeamMsg(bonus ? `首充双倍！宝石 +${tiers[id] * 2}` : `宝石 +${tiers[id]}`);
       saveDB(this.db);
@@ -2263,7 +2264,7 @@ class SummonHall {
     let cx = 56, cy = 188;
     tiers.forEach(([id, gems, cost], i) => {
       const hov = this.hover === `shopBuy:${id}`;
-      const isFirst = u.paidGems === 0;
+      const isFirst = (u.paidTiers[id] ?? 0) === 0;
       this.rr(cx, cy, cw, ch, 12);
       ctx.fillStyle = '#171226'; ctx.fill();
       ctx.strokeStyle = '#b45cff'; ctx.lineWidth = 1.5;
