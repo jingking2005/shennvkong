@@ -137,12 +137,14 @@ export function tickBattlePt(db: DB, now = Date.now()): { battlePt: number; next
 export function tickEnergy(db: DB, now = Date.now()): void {
   const u = db.user;
   if (u.energy >= u.energyMax) { u.energyRecoverAt = now; return; }
+  // 月卡特权：体力恢复速度 +50%（每点所需毫秒 × 2/3）
+  const recoverMs = u.monthCardUntil > now ? ENERGY_RECOVER_MS * 2 / 3 : ENERGY_RECOVER_MS;
   const elapsed = now - u.energyRecoverAt;
   if (elapsed <= 0) return;
-  const gained = Math.min(Math.floor(elapsed / ENERGY_RECOVER_MS), u.energyMax - u.energy);
+  const gained = Math.min(Math.floor(elapsed / recoverMs), u.energyMax - u.energy);
   if (gained > 0) {
     u.energy += gained;
-    u.energyRecoverAt += gained * ENERGY_RECOVER_MS;
+    u.energyRecoverAt += gained * recoverMs;
     if (u.energy >= u.energyMax) u.energyRecoverAt = now;
   }
 }
