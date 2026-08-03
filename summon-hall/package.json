@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --port 3100 --strictPort",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "python3 scripts/smoke_test.py"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

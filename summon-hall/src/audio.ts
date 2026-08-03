@@ -3,6 +3,7 @@
  */
 
 import { BGM, type BgmKey } from './assets';
+import { reportAssetFailure } from './diag';
 
 const LS_MUTE = 'summonHall_bgmMuted';
 const LS_VOL = 'summonHall_bgmVolume';
@@ -21,6 +22,7 @@ export class AudioManager {
     this.el = new Audio();
     this.el.loop = true;
     this.el.preload = 'auto';
+    this.el.onerror = () => { if (this.el.src) reportAssetFailure('audio', this.el.src); };
     this.applyVolume();
   }
 

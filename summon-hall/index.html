@@ -13,11 +13,23 @@
       font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
+    /* 非 16:9 窗口的设计底：虚化延展的活动地图 + 暗角，替代黑色留边 */
+    #backdrop {
+      position: fixed; inset: -40px;
+      background: url('/archive/map/AreaMap_001.Celestial Realm Campaign 1.png') center / cover no-repeat #06030f;
+      filter: blur(28px) brightness(0.32) saturate(0.85);
+    }
+    #vignette {
+      position: fixed; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse at center, rgba(6,3,15,0) 40%, rgba(6,3,15,0.75) 100%);
+    }
     #app { position: fixed; inset: 0; display: grid; place-items: center; }
     canvas { display: block; }
   </style>
 </head>
 <body>
+  <div id="backdrop"></div>
+  <div id="vignette"></div>
   <div id="app"></div>
   <script type="module" src="/src/main.ts"></script>
 </body>

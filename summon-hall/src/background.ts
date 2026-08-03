@@ -5,6 +5,7 @@
  */
 
 import { RotationLoader } from './assets';
+import { reportAssetFailure } from './diag';
 
 export interface BgLayer {
   img: HTMLImageElement;
@@ -15,6 +16,7 @@ function loadImage(src: string): BgLayer {
   const img = new Image();
   const layer: BgLayer = { img, loaded: false };
   img.onload = () => { layer.loaded = true; };
+  img.onerror = () => reportAssetFailure('image', src);
   img.src = src;
   return layer;
 }

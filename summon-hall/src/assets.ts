@@ -8,6 +8,8 @@
  *   神女控2/.../Audio/stream        → BGM（Battle/Audio 目录为空，改用此处）
  */
 
+import { reportAssetFailure } from './diag';
+
 /** 活动 / 女神地图背景（归档 Battle/Map 全量 133 张；首页轮播 + 战役进军图） */
 export const EVENT_MAP_BGS: string[] = [
   '/archive/map/AreaMap_001.Celestial Realm Campaign 1.png',
@@ -435,6 +437,7 @@ export function loadAssetImage(src: string): HTMLImageElement {
   let img = cache.get(src);
   if (img) return img;
   img = new Image();
+  img.onerror = () => reportAssetFailure('image', src);
   img.src = src;
   cache.set(src, img);
   return img;
@@ -453,6 +456,7 @@ export class RotationLoader {
       return img;
     }
     img = new Image();
+    img.onerror = () => reportAssetFailure('image', src);
     img.src = src;
     this.cache.set(src, img);
     while (this.cache.size > this.maxKeep) {
