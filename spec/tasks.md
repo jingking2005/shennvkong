@@ -26,7 +26,7 @@ OC-00（本文件）→ OC-01 稳定性 → OC-02 数据基础设施 → OC-03 �
 - **产出**：本三件套；变更单只读引用
 - **验收**：三件套写明 Canvas2D 路线、资源策略、来源等级、非目标和用户批准状态 ✅
 
-## OC-01：运行稳定性与启动烟雾测试
+## OC-01：运行稳定性与启动烟雾测试 ✅ 已完成（2026-08-03，commit 310db37）
 
 - **所有者**：OpenCode
 - **可修改文件**：`summon-hall/src/main.ts`、`src/background.ts`、`src/assets.ts`、`src/audio.ts`、测试文件
@@ -38,7 +38,7 @@ OC-00（本文件）→ OC-01 稳定性 → OC-02 数据基础设施 → OC-03 �
 - **验收**：60 秒 Console 0 Error/Warning；页面切换不白屏；失败资源可定位
 - **预估**：2-3h
 
-## OC-02：数据类型、来源与 manifest 基础设施
+## OC-02：数据类型、来源与 manifest 基础设施 ✅ 已完成（2026-08-03）
 
 - **所有者**：OpenCode
 - **可修改文件**：新增 `src/data/types.ts`、`provenance.ts`、`asset-resolver.ts`、`catalog.ts` 及测试；`src/data.ts` 仅留兼容层

@@ -7,10 +7,13 @@
     "dev": "vite --port 3100 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "python3 scripts/smoke_test.py"
+    "test": "vitest run && python3 scripts/smoke_test.py",
+    "test:unit": "vitest run",
+    "data:validate": "node scripts/validate-runtime-data.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
-    "vite": "^5.4.0"
+    "vite": "^5.4.0",
+    "vitest": "^2.1.9"
   }
 }
