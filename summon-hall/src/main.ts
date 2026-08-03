@@ -688,6 +688,11 @@ class SummonHall {
         this.battle = null; this.syncBgm();
         return;
       }
+      if (id === 'batAttack') {
+        // 手动普攻一回合（攒怒；满怒卡在此回合放技能）
+        if (this.battlePhase === 'fighting' && !b.auto) this.runTurn();
+        return;
+      }
       if (id === 'batRetreat') { this.page = 'sortie'; this.battle = null; this.syncBgm(); return; }
       if (id === 'batAuto') { b.auto = !b.auto; b.autoTimer = 0; return; }
       if (id === 'batStatus') { return; }
@@ -1092,7 +1097,7 @@ class SummonHall {
         instId: raid.raidId, card: bossCard, lv: raid.level,
         atk: raid.attack, hp: raid.hp, hpMax: raid.hpMax, def: 500,
         speed: 120, element: 'dark', skillName: '魔女之咆哮',
-        procChance: 0.5, skillMult: 3, skillFx: 'shadow', isLeader: false,
+        procChance: 0.5, skillMult: 3, skillFx: 'shadow', isLeader: false, rage: 0,
       }];
     } else {
       const boss = cardsByRarity('LR')[1] ?? cardsByRarity('UR')[0];
@@ -1106,7 +1111,7 @@ class SummonHall {
         atk: Math.floor(avgHp * 0.16 * (0.9 + Math.random() * 0.2)),
         hp: bossHp, hpMax: bossHp,
         def: 800, speed: 100, element: 'dark', skillName: '暗之冲击',
-        procChance: 0.4, skillMult: 2.5, skillFx: 'arcane', isLeader: false,
+        procChance: 0.4, skillMult: 2.5, skillFx: 'arcane', isLeader: false, rage: 0,
       }];
     }
     this.battle = {
@@ -1399,7 +1404,22 @@ class SummonHall {
       // 出击/战斗：当前关卡（或讨伐战）的确定 BattleBG
       const raidKey = this.battle?.raid ? (this.battle.raid.archWitch ? '_raid-archwitch' : '_raid-normal') : null;
       const vis = stageVisual(raidKey ?? this.activeStage.stageId);
-      drawCover(ctx, loadAssetImage(vis.battleBgAsset), W, H, 1);
+      const m = this.page === 'sortie' ? this.marchAnim : null;
+      if (m) {
+        // 进军推进感：背景放大 + 动态模糊（进时推近，回时复原）
+        const p = Math.min(1, m.t / m.dur);
+        const push = Math.sin(p * Math.PI);
+        ctx.save();
+        ctx.filter = `blur(${(push * 3).toFixed(1)}px)`;
+        ctx.translate(W / 2, H / 2);
+        ctx.scale(1 + push * 0.07, 1 + push * 0.07);
+        ctx.translate(-W / 2, -H / 2);
+        drawCover(ctx, loadAssetImage(vis.battleBgAsset), W, H, 1);
+        ctx.restore();
+        ctx.filter = 'none';
+      } else {
+        drawCover(ctx, loadAssetImage(vis.battleBgAsset), W, H, 1);
+      }
       ctx.fillStyle = this.page === 'battle' ? 'rgba(20,6,24,0.35)' : 'rgba(12,6,20,0.32)';
       ctx.fillRect(0, 0, W, H);
     }
@@ -2093,14 +2113,24 @@ class SummonHall {
     const total = 5 * cw + 4 * gx;
     let x = (W - total) / 2;
     const m = this.marchAnim;
-    const hop = m ? Math.sin(Math.min(1, m.t / m.dur) * Math.PI) : 0;
-    const xHop = hop * 22;
-    const yHop = -hop * 26;
+    const mp = m ? Math.min(1, m.t / m.dur) : 0;
+    // 走路律动：两拍上下颠（|sin(2πp)|），整体随进军前移
+    const bob = m ? Math.abs(Math.sin(mp * Math.PI * 2)) : 0;
+    const xHop = m ? mp * 34 : 0;
+    const yHop = -bob * 16;
     for (let i = 0; i < team.length; i++) {
       const slot = team[i];
-      const stagger = hop * (i - 2) * 3;
-      drawCard(ctx, slot.card, x + cw / 2 + xHop + stagger, baseY + ch / 2 + yHop, cw, ch,
+      // 左右脚交替：相邻卡相位差半拍
+      const alt = m ? Math.sin(mp * Math.PI * 2 + i * Math.PI) * 3 : 0;
+      ctx.save();
+      if (m) {
+        ctx.translate(x + cw / 2 + xHop, baseY + ch / 2 + yHop);
+        ctx.rotate(alt * 0.02);
+        ctx.translate(-(x + cw / 2 + xHop), -(baseY + ch / 2 + yHop));
+      }
+      drawCard(ctx, slot.card, x + cw / 2 + xHop, baseY + ch / 2 + yHop, cw, ch,
         { showName: false, showBadge: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
+      ctx.restore();
       // 队长标记
       if (slot.isLeader) {
         this.pill(x + 4 + xHop, baseY - 4 + yHop, 40, 18, '#3a2a08', '#ffd24d');
@@ -2956,8 +2986,22 @@ class SummonHall {
       drawHpBar(ctx, cx - BAT.allyHp.w / 2 + 8, BAT.ally.cy + BAT.allyHp.dy,
         BAT.allyHp.w, BAT.allyHp.h, hpr,
         { element: s.card.element, value: String(Math.floor(Math.max(0, s.hp))), valueColor: COLORS.hpNumAlly });
-      // 技能星（fighting 且存活时可点）
-      if (this.battlePhase === 'fighting' && s.hp > 0) {
+      // 怒气条（HP 条下方）：普攻/受击积攒，满 100 弹出技能星
+      const rgy = BAT.ally.cy + BAT.allyHp.dy + BAT.allyHp.h + 5;
+      this.rr(cx - BAT.allyHp.w / 2 + 8, rgy, BAT.allyHp.w, 7, 3.5);
+      ctx.fillStyle = 'rgba(16,10,26,0.9)'; ctx.fill();
+      const rgr = Math.min(1, s.rage / 100);
+      if (rgr > 0) {
+        const rg = ctx.createLinearGradient(cx - BAT.allyHp.w / 2, rgy, cx + BAT.allyHp.w / 2, rgy);
+        rg.addColorStop(0, '#7a4fe8'); rg.addColorStop(1, rgr >= 1 ? '#ff5ce8' : '#b48cff');
+        ctx.save();
+        if (rgr >= 1) { ctx.shadowColor = '#ff5ce8'; ctx.shadowBlur = 10; }
+        this.rr(cx - BAT.allyHp.w / 2 + 8, rgy, BAT.allyHp.w * rgr, 7, 3.5);
+        ctx.fillStyle = rg; ctx.fill();
+        ctx.restore();
+      }
+      // 技能星：仅满怒时弹出（水晶质感，点击放大招）
+      if (this.battlePhase === 'fighting' && s.hp > 0 && s.rage >= 100) {
         const stx = cx, sty = BAT.ally.cy + BAT.star.dy;
         drawSkillStar(ctx, stx, sty, BAT.star.r, t + i * 0.7, this.hover === `star:${i}`);
         this.buttons.push({ x: stx - BAT.star.r, y: sty - BAT.star.r, w: BAT.star.r * 2, h: BAT.star.r * 2, id: `star:${i}` });
@@ -2965,10 +3009,18 @@ class SummonHall {
       x += BAT.ally.cw + BAT.ally.gap;
     }
 
-    // 撤退 / 自动（橙金圆钮）
+    // 普攻按钮（手动模式唯一出手方式：攒怒；满怒卡自动放技能）
+    if (this.battlePhase === 'fighting' && !b.auto && !b.victory && !b.defeated) {
+      glassButton(ctx, W / 2 - 100, 664, 200, 58, '⚔ 攻击', {
+        kind: 'red', hover: this.hover === 'batAttack', fontSize: 24,
+      });
+      this.buttons.push({ x: W / 2 - 100, y: 664, w: 200, h: 58, id: 'batAttack' });
+    }
+
+    // 撤退 / 自动（橙金圆钮；自动开启时变绿显示「自动中」）
     drawCircleButton(ctx, BAT.retreat.cx, BAT.retreat.cy, BAT.retreat.r, '撤退', this.hover === 'batRetreat');
     this.buttons.push({ x: BAT.retreat.cx - BAT.retreat.r, y: BAT.retreat.cy - BAT.retreat.r, w: BAT.retreat.r * 2, h: BAT.retreat.r * 2, id: 'batRetreat' });
-    drawCircleButton(ctx, BAT.auto.cx, BAT.auto.cy, BAT.auto.r, '自动', this.hover === 'batAuto');
+    drawCircleButton(ctx, BAT.auto.cx, BAT.auto.cy, BAT.auto.r, b.auto ? '自动中' : '自动', this.hover === 'batAuto', b.auto);
     this.buttons.push({ x: BAT.auto.cx - BAT.auto.r, y: BAT.auto.cy - BAT.auto.r, w: BAT.auto.r * 2, h: BAT.auto.r * 2, id: 'batAuto' });
 
     // ── 技能特效 + 伤害飘字（此前只更新未绘制，战斗看不到光影）──

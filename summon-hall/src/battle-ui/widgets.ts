@@ -34,24 +34,25 @@ export function elemColor(element: string): string {
 
 // ─────────────────────────── 圆形按钮（撤退/自动/菜单）───────────────────────────
 
-export function drawCircleButton(ctx: Ctx, cx: number, cy: number, r: number, label: string, hover: boolean): void {
+export function drawCircleButton(ctx: Ctx, cx: number, cy: number, r: number, label: string, hover: boolean, active = false): void {
   ctx.save();
-  if (hover) { ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 20; }
+  if (hover || active) { ctx.shadowColor = active ? '#6fe8a0' : '#ffe14d'; ctx.shadowBlur = active ? 26 : 20; }
   // 金属外环
   const ring = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
   ring.addColorStop(0, '#f0e8d8'); ring.addColorStop(0.5, '#8a8078'); ring.addColorStop(1, '#d8d0c0');
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fillStyle = ring; ctx.fill();
   ctx.shadowBlur = 0;
-  // 橙色球体
+  // 球体：激活态绿色，否则橙色
   const body = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.35, r * 0.15, cx, cy, r);
-  body.addColorStop(0, '#f8c868'); body.addColorStop(0.55, COLORS.circleBtnTop); body.addColorStop(1, COLORS.circleBtnBot);
+  if (active) { body.addColorStop(0, '#a8f8c8'); body.addColorStop(0.55, '#3ec878'); body.addColorStop(1, '#1a7a44'); }
+  else { body.addColorStop(0, '#f8c868'); body.addColorStop(0.55, COLORS.circleBtnTop); body.addColorStop(1, COLORS.circleBtnBot); }
   ctx.beginPath(); ctx.arc(cx, cy, r - 5, 0, Math.PI * 2);
   ctx.fillStyle = body; ctx.fill();
   // 顶部高光
   ctx.beginPath(); ctx.ellipse(cx, cy - r * 0.42, r * 0.5, r * 0.26, 0, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
-  text(ctx, label, cx, cy + 1, r * 0.42, '#fff', 'center', true, true);
+  text(ctx, label, cx, cy + 1, r * 0.38, '#fff', 'center', true, true);
   ctx.restore();
 }
 
@@ -101,20 +102,50 @@ function starPath(ctx: Ctx, cx: number, cy: number, r: number): void {
   ctx.closePath();
 }
 
+/** 满怒技能星：水晶/玻璃质感——冰蓝折射星体 + 棱面 + 镜面反光 + 闪烁星芒 */
 export function drawSkillStar(ctx: Ctx, cx: number, cy: number, r: number, t: number, hover: boolean): void {
   const pulse = 1 + Math.sin(t * 3.2) * 0.07;
-  const rr = r * pulse * (hover ? 1.12 : 1);
+  const rr = r * pulse * (hover ? 1.14 : 1);
   ctx.save();
-  ctx.shadowColor = '#ffec9a'; ctx.shadowBlur = hover ? 30 : 18;
+  // 冰晶光晕
+  const halo = ctx.createRadialGradient(cx, cy, rr * 0.2, cx, cy, rr * 2.0);
+  halo.addColorStop(0, 'rgba(190,230,255,0.55)');
+  halo.addColorStop(1, 'rgba(120,180,255,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath(); ctx.arc(cx, cy, rr * 2.0, 0, Math.PI * 2); ctx.fill();
+  // 玻璃星体：冰蓝纵向渐变 + 青色外发光
+  ctx.shadowColor = '#9fd8ff'; ctx.shadowBlur = hover ? 34 : 20;
   const g = ctx.createLinearGradient(cx, cy - rr, cx, cy + rr);
-  g.addColorStop(0, '#fff6c8'); g.addColorStop(0.5, COLORS.starFill); g.addColorStop(1, '#d89010');
+  g.addColorStop(0, '#ffffff'); g.addColorStop(0.35, '#d8f0ff');
+  g.addColorStop(0.7, '#8fc8f8'); g.addColorStop(1, '#4a90d8');
   starPath(ctx, cx, cy, rr);
   ctx.fillStyle = g; ctx.fill();
   ctx.shadowBlur = 0;
-  ctx.lineWidth = 3; ctx.strokeStyle = COLORS.starEdge; ctx.stroke();
-  // 中心小星高光
-  starPath(ctx, cx, cy - rr * 0.08, rr * 0.42);
-  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
+  // 晶体棱面（中心到五角的折射线）
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 1.2;
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * rr * 0.9, cy + Math.sin(a) * rr * 0.9); ctx.stroke();
+  }
+  // 冰边描边
+  ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(230,246,255,0.95)';
+  starPath(ctx, cx, cy, rr); ctx.stroke();
+  // 顶部镜面反光
+  ctx.beginPath();
+  ctx.ellipse(cx - rr * 0.16, cy - rr * 0.4, rr * 0.32, rr * 0.14, -0.5, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fill();
+  // 闪烁十字星芒（随时间呼吸）
+  const sp = (t * 1.2) % 1;
+  const sr = rr * 0.26 * (1 - Math.abs(sp - 0.5) * 2);
+  if (sr > 1) {
+    const sx = cx + rr * 0.48, sy = cy - rr * 0.52;
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(sx - sr, sy); ctx.lineTo(sx + sr, sy);
+    ctx.moveTo(sx, sy - sr); ctx.lineTo(sx, sy + sr);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 

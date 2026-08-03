@@ -67,6 +67,7 @@ export function ownedToCombatant(o: OwnedCard, isLeader = false): Combatant | nu
     skillMult: C.skillMultBase.value + tier * C.skillMultPerTier.value,
     skillFx: fx,
     isLeader,
+    rage: 0,
   };
 }
 
@@ -289,9 +290,9 @@ export function spawnWitch(
   const hpMax = Math.floor(
     Math.max(stage.enemyPower * (arch ? 4 : 1.5), dpt * (arch ? 14 : 6)) * (0.9 + rng() * 0.2),
   );
-  // ── 攻击平衡：普通魔女每击约打掉单卡 16% HP、大魔女 30%（有威胁但不秒杀）──
+  // ── 攻击平衡：普通魔女每击约打掉单卡 10% HP、大魔女 18%（用户反馈打不过，下调）──
   const attack = Math.floor(
-    Math.max(stage.enemyPower * 0.12, avgHp * (arch ? 0.30 : 0.16)) * (0.9 + rng() * 0.2),
+    Math.max(stage.enemyPower * 0.12, avgHp * (arch ? 0.18 : 0.10)) * (0.9 + rng() * 0.2),
   );
   const raid: WitchRaidBoss = {
     raidId: newInstId(),
@@ -310,12 +311,13 @@ export function spawnWitch(
 
 // ─────────────────────────── 队伍战力估算（敌人动态平衡用）───────────────────────────
 
-/** 估算队伍每回合期望总输出（库存最强 5 张，含技能期望倍率；×1.45 补偿元素克制/队长/暴击） */
+/** 估算队伍每回合期望总输出（库存最强 5 张；怒气制技能约每 4 击 1 次，有效触发率取 0.25；×1.45 补偿元素克制/队长/暴击） */
 export function estimateTeamDPT(db: DB): number {
+  const EFFECTIVE_SKILL_RATE = 0.25;
   const pows = db.inventory.cards
     .map(o => {
       const c = ownedToCombatant(o);
-      return c ? c.atk * (1 + c.procChance * (c.skillMult - 1)) : 0;
+      return c ? c.atk * (1 + EFFECTIVE_SKILL_RATE * (c.skillMult - 1)) : 0;
     })
     .sort((a, b) => b - a);
   return Math.max(3000, pows.slice(0, 5).reduce((s, v) => s + v, 0) * 1.45);

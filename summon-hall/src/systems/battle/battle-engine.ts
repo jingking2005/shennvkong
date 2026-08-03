@@ -34,6 +34,8 @@ export interface Combatant {
   skillMult: number;
   skillFx: SkillFx;
   isLeader: boolean;
+  /** 怒气 0..100：玩家侧满 100 才能放技能；普攻/受击积攒 */
+  rage: number;
 }
 
 export interface BattleAction {
@@ -82,7 +84,16 @@ export function runBattleTurn(
     const target = aliveFoes[Math.floor(rng() * aliveFoes.length)];
     const targetIndex = foes.indexOf(target);
 
-    const useSkill = rng() < c.procChance;
+    // 怒气技能：玩家侧满怒才放技能（否则普攻攒怒）；敌方保持概率触发
+    const rageMax = CFG.rageMax.value;
+    let useSkill: boolean;
+    if (side === 'player') {
+      useSkill = c.rage >= rageMax;
+      c.rage = useSkill ? 0 : Math.min(rageMax, c.rage + CFG.ragePerAttack.value);
+    } else {
+      useSkill = rng() < c.procChance;
+    }
+    target.rage = Math.min(rageMax, target.rage + CFG.ragePerHit.value);
     const hit = computeHit({
       atk: c.atk,
       targetDef: target.def,
@@ -147,7 +158,8 @@ export function raidAttack(
   const skills: { actorInstId: string; skillFx: SkillFx; skillName: string }[] = [];
   for (const c of team) {
     if (c.hp <= 0) continue;
-    const useSkill = rng() < c.procChance;
+    const useSkill = c.rage >= CFG.rageMax.value;
+    c.rage = useSkill ? 0 : Math.min(CFG.rageMax.value, c.rage + CFG.ragePerAttack.value);
     const mult = useSkill ? c.skillMult : 1.0;
     const em = elementalMultiplier(c.element, 'dark');
     const v = CFG.damageVariance.value;

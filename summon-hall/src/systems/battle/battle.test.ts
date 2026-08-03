@@ -15,7 +15,7 @@ function mk(over: Partial<Combatant> & { instId: string }): Combatant {
     } as Combatant['card'],
     lv: 1, atk: 100, hp: 1000, hpMax: 1000, def: 50, speed: 100,
     element: 'passion', skillName: '测试技能', procChance: 0.5, skillMult: 3.0,
-    skillFx: 'fire', isLeader: false,
+    skillFx: 'fire', isLeader: false, rage: 0,
     ...over,
   } as Combatant;
 }
@@ -69,6 +69,27 @@ describe('状态引擎边界', () => {
     const r = runBattleTurn(team5, foe, 3);
     expect(r.actions.length).toBe(6);
     expect(r.playerAlive).toBe(5);
+  });
+});
+
+describe('怒气系统', () => {
+  it('玩家单位：不满怒只能普攻，普攻攒怒 25', () => {
+    const p = mk({ instId: 'p', rage: 0 });
+    const e = [mk({ instId: 'e', hp: 999999, hpMax: 999999, speed: 1 })];
+    const r = runBattleTurn([p], e, 1);
+    const act = r.actions.find(a => a.actorInstId === 'p')!;
+    expect(act.skillUsed).toBe(false);
+    expect(p.rage).toBe(35); // 普攻 +25，受敌方反击 +10
+  });
+
+  it('满怒放技能且怒气清零；受击也攒怒', () => {
+    const p = mk({ instId: 'p', rage: 100 });
+    const e = mk({ instId: 'e', hp: 999999, hpMax: 999999, speed: 200, rage: 0 });
+    const r = runBattleTurn([p], [e], 1);
+    const act = r.actions.find(a => a.actorInstId === 'p')!;
+    expect(act.skillUsed).toBe(true);
+    expect(p.rage).toBe(0);       // 放完清零（受击 +10 发生在敌方行动时，速度更快先打）
+    expect(e.rage).toBeGreaterThan(0);
   });
 });
 

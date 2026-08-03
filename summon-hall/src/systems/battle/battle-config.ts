@@ -44,4 +44,9 @@ export const BATTLE_CONFIG = {
   counterDefReduction: { value: 0.5, source: FILL } as BattleConfigEntry<number>,
   counterVarianceMin: { value: 0.85, source: FILL } as BattleConfigEntry<number>,
   counterVarianceSpan: { value: 0.3, source: FILL } as BattleConfigEntry<number>,
+
+  /** 怒气系统（original-fill）：普攻 +ragePerAttack，受击 +ragePerHit，满 100 才能放技能 */
+  rageMax: { value: 100, source: FILL } as BattleConfigEntry<number>,
+  ragePerAttack: { value: 25, source: FILL } as BattleConfigEntry<number>,
+  ragePerHit: { value: 10, source: FILL } as BattleConfigEntry<number>,
 } as const;
