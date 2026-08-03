@@ -8,13 +8,13 @@ import { BANNERS, Gacha, rateTable, bannerShowcase, type Banner, type Pull } fro
 import { cardsByRarity, getCard, SUMMON_CARDS, type Card, type Rarity } from './data';
 import { Ease, Tweener } from './ease';
 import { glassButton, metalDialog, engravedText, roundRectPath } from './ui';
-import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchRaidBoss } from './db';
+import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchRaidBoss, type OwnedCard } from './db';
 import {
-  ExploreStage, EvolveCard, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
+  ExploreStage, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
   claimRaidReward, claimAllRaidRewards, tickBattlePt, tickEnergy, openChest,
   ownedToCombatant, leaderAtkBonus, canClaimLogin, claimDailyLogin, LOGIN_REWARDS,
-  autoFodder, findDuplicate, MAX_STAR,
-  type Combatant, type ExploreResult, type SkillFx,
+  autoFodder, findDuplicate, evolveRate, prepareEvolve, applyEvolve, MAX_STAR, STAR_STAT_MULT,
+  type Combatant, type ExploreResult, type SkillFx, type EvolvePrep,
   type ChestReward, type ChestQuality, mulberry32,
 } from './logic';
 import { eventMapBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST, EVENT_MAP_BGS, NAVI_SPRITES, naviSprite, naviName, RotationLoader } from './assets';
@@ -98,7 +98,7 @@ const FX_COLOR: Record<SkillFx, string> = {
 };
 
 /** 顶层页面 */
-type Page = 'summon' | 'event' | 'map' | 'sortie' | 'battle' | 'team' | 'records' | 'inventory' | 'shop';
+type Page = 'summon' | 'event' | 'map' | 'sortie' | 'battle' | 'team' | 'records' | 'inventory' | 'shop' | 'evolve';
 
 /** 队伍槽位 */
 interface TeamSlot { card: Card; hp: number; maxHp: number; lv: number; exp: number; }
@@ -122,7 +122,7 @@ interface BattleState {
   autoTimer: number;
   seed: number;
   skillPrompt: number | null;
-  dmgFloat: { x: number; y: number; v: string; t: number; color: string }[];
+  dmgFloat: { x: number; y: number; v: string; t: number; color: string; em?: number; crit?: boolean }[];
   victory: boolean; victoryT: number;
   defeated: boolean;
   banner: string;                  // '魔女出现！' / 'VICTORY' 横幅
@@ -148,6 +148,8 @@ class SummonHall {
   private scale = 1;
   private particles: BurstParticle[] = [];
   private shake = 0;
+  private skillCineT = 0;           // 技能演出压暗剩余秒数
+  private skillCineName = '';       // 演出中的技能名
   private flashV = 0;
   private flashColor = '#ffe14d';
   private pillarV = 0;               // 光柱强度
@@ -184,8 +186,14 @@ class SummonHall {
   private detailInstKeep: string | null = null; // 强化/进化的主卡（详情关闭后保留）
   private enhanceMode = false;        // 强化选狗粮模式
   private enhancePicks = new Set<string>(); // 选中的狗粮
-  private evolveMode = false;         // 进化选素材模式
-  private evolvePick: string | null = null;
+  /** 升星合成页状态 */
+  private evolveTarget: string | null = null;   // 主卡
+  private evolveMatSel: string | null = null;   // 同名模式：选中的素材
+  private evolveMatPair: string[] = [];         // 同稀有度模式：选中的两张素材
+  private evolveTab: 'same' | 'rarity' = 'same';
+  private evolveFrom: Page = 'inventory';       // 返回页
+  /** 升星融合动画（非 null 时全屏覆盖并拦截输入） */
+  private evolveAnim: { targetInst: string; mats: { instId: string; card: Card; star: number }[]; t: number; prep: EvolvePrep; applied: boolean; tgtCard: Card; tgtStar: number } | null = null;
   private teamMsg = '';               // 操作反馈
   private teamMsgT = 0;
   /** 充值（调试）弹窗 */
@@ -404,6 +412,11 @@ class SummonHall {
   private onDown(e: PointerEvent): void {
     audio.unlock();
     const p = this.toGame(e);
+    // 升星融合动画：点击跳到结果
+    if (this.evolveAnim) {
+      this.evolveAnim.t = Math.max(this.evolveAnim.t, this.evolveAnim.prep.success ? 2.95 : 2.5);
+      return;
+    }
     // 滚动条滑块拖拽
     if (this.thumbRect && (this.page === 'inventory' || this.page === 'team')) {
       const t = this.thumbRect;
@@ -413,7 +426,7 @@ class SummonHall {
       }
     }
     // 编队页：库存卡/队伍槽按下 → 进入拖动候选，点击判定延迟到 pointerup
-    if (this.page === 'team' && !this.enhanceMode && !this.evolveMode) {
+    if (this.page === 'team' && !this.enhanceMode) {
       for (let i = this.buttons.length - 1; i >= 0; i--) {
         const b = this.buttons[i];
         if (p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h) {
@@ -534,8 +547,14 @@ class SummonHall {
   }
 
   private activate(id: string): void {
+    audio.playSe('uiClick');
     // 全局 HUD（任意页优先）
     if (id === 'toggleMusic') { audio.toggleMute(); return; }
+    // 抽卡快速跳过：不再逐张揭示，直接展示全部结果
+    if (id === 'skipAll' && (this.phase.kind === 'reveal' || this.phase.kind === 'summon')) {
+      this.phase = { kind: 'settle', pulls: this.phase.pulls, t: 0 };
+      return;
+    }
     if (id === 'openRecharge') { this.page = 'shop'; this.syncBgm(); return; }
     if (id === 'closeRecharge') { this.showRecharge = false; return; }
     if (id.startsWith('recharge:')) {
@@ -574,7 +593,7 @@ class SummonHall {
       this.page = p === 'map' ? 'map' : p;
       this.showRates = false; this.cardDetail = null;
       if (this.page === 'summon') this.phase = { kind: 'hall' };
-      if (p === 'team') { this.detailInst = null; this.enhanceMode = false; this.evolveMode = false; this.teamSelSlot = -1; }
+      if (p === 'team') { this.detailInst = null; this.enhanceMode = false; this.teamSelSlot = -1; }
       this.syncBgm();
       return;
     }
@@ -582,6 +601,8 @@ class SummonHall {
     if (this.page === 'team') { this.activateTeam(id); return; }
     // 仓库页交互
     if (this.page === 'inventory') { this.activateInv(id); return; }
+    // 升星合成页交互
+    if (this.page === 'evolve') { this.activateEvolve(id); return; }
     // 战绩领取
     if (this.page === 'records') {
       if (id === 'recordsBack') { this.page = 'event'; this.syncBgm(); return; }
@@ -968,6 +989,37 @@ class SummonHall {
     this.flashV = Math.max(0, this.flashV - dt * 1.8);
     this.pillarV = Math.max(0, this.pillarV - dt * 2.4);
 
+    // 升星融合动画推进（1.3s 融合 → 白光一闪 → 成功放射/失败爆碎）
+    if (this.evolveAnim) {
+      const ea = this.evolveAnim;
+      ea.t += dt;
+      if (!ea.applied && ea.t >= 1.3) {
+        ea.applied = true;
+        const matIds = ea.mats.map(m => m.instId);
+        applyEvolve(this.db, ea.targetInst, matIds, ea.prep);
+        const dropSet = new Set(matIds);
+        if (this.teamInstIds.some(x => dropSet.has(x))) {
+          this.teamInstIds = this.teamInstIds.filter(x => !dropSet.has(x));
+          this.saveTeam();
+        }
+        saveDB(this.db);
+        if (ea.prep.success) {
+          const s = ea.prep.newEvoStage;
+          this.burst(s >= 10 ? '#ff9ce8' : s >= 7 ? '#ffd24d' : s >= 5 ? '#eef2fa' : '#e0a060', s >= 10 ? 120 : s >= 7 ? 80 : s >= 5 ? 60 : 40);
+          if (s >= 10) { this.burst('#6fd8ff', 60); this.burst('#ffd24d', 60); }
+        }
+      }
+      const endT = ea.prep.success ? 3.0 : 2.6;
+      if (ea.t >= endT) {
+        this.flashTeamMsg(ea.prep.success
+          ? `升星成功！${'★'.repeat(ea.prep.newEvoStage)} 继承 ATK+${ea.prep.inheritedAtk} HP+${ea.prep.inheritedHp}`
+          : `合成失败……素材损毁，主卡降至 ${Math.max(0, ea.tgtStar - 1)} 星（成功率 ${ea.prep.rate}%）`);
+        this.evolveAnim = null;
+        this.evolveMatSel = null;
+        this.evolveMatPair = [];
+      }
+    }
+
     for (const p of this.particles) {
       p.life -= dt;
       p.x += p.vx * dt;
@@ -981,6 +1033,7 @@ class SummonHall {
       const b = this.battle;
       b.t += dt;
       b.bannerT += dt;
+      this.skillCineT = Math.max(0, this.skillCineT - dt);
       for (const d of b.dmgFloat) d.t += dt;
       b.dmgFloat = b.dmgFloat.filter(d => d.t < 1);
       this.updateFx(dt);   // 技能特效推进
@@ -1150,6 +1203,7 @@ class SummonHall {
       if (r.dmg > 0) {
         b.dmgFloat.push({ x: W / 2, y: 200, v: String(r.dmg), t: 0, color: '#ffe14d' });
         this.burst('#c05ce8', 25); this.shake = 0.35;
+        audio.playSe(r.skills.length ? 'skill' : 'attack');
       }
       // 技能特效：每张触发技能的卡向 BOSS 施放
       for (let i = 0; i < r.skills.length; i++) {
@@ -1174,6 +1228,7 @@ class SummonHall {
           });
           b.dmgFloat.push({ x: tx, y: H - 320, v: String(r.counter.dmg), t: 0.3, color: '#ff8c8c' });
           this.shake = Math.max(this.shake, 0.3);
+          audio.playSe('attack');
         }
         // 团灭判定
         if (b.team.every(c => c.hp <= 0)) {
@@ -1184,6 +1239,7 @@ class SummonHall {
         }
       }
       if (r.defeated) {
+        audio.playSe('winLose');
         b.victory = true; b.victoryT = 0;
         b.banner = `讨伐成功！积分 +${r.ptGain}`;
         b.bannerT = 0;
@@ -1204,37 +1260,63 @@ class SummonHall {
     b.lastActions = res.actions.map(a => ({
       actor: a.actorName, dmg: a.damage, skill: a.skillUsed, crit: a.crit, em: a.elementMult,
     }));
+    // SE：本回合有普攻→attack，有技能→skill
+    if (res.actions.some(a => a.skillUsed)) audio.playSe('skill');
+    else if (res.actions.length) audio.playSe('attack');
     // 伤害飘字：玩家对敌 → 顶部；敌对我 → 底部
     let fxDelay = 0;
     for (const a of res.actions) {
       const isPlayerAtk = b.team.some(c => c.instId === a.actorInstId);
       if (isPlayerAtk) {
-        b.dmgFloat.push({ x: W / 2 + (Math.random() - 0.5) * 60, y: 200, v: String(a.damage), t: 0, color: a.crit ? '#ff5c5c' : '#ffe14d' });
-        // 玩家技能特效：从施法卡 → BOSS
+        b.dmgFloat.push({ x: W / 2 + (Math.random() - 0.5) * 60, y: 200, v: String(a.damage), t: 0, color: a.crit ? '#ff5c5c' : '#ffe14d', em: a.elementMult, crit: a.crit });
+        const ci = b.team.findIndex(c => c.instId === a.actorInstId);
+        const sx = ci >= 0 ? this.teamSlotX(ci) : W / 2;
         if (a.skillFx) {
-          const ci = b.team.findIndex(c => c.instId === a.actorInstId);
-          const sx = ci >= 0 ? this.teamSlotX(ci) : W / 2;
+          // 玩家技能特效：从施法卡 → BOSS（附全屏演出）
           this.spawnFx({
             kind: a.skillFx, sx, sy: H - 160, tx: W / 2, ty: 130,
             t: 0, dur: 0.75, delay: fxDelay, color: FX_COLOR[a.skillFx], hitT: 0.7, boom: [], player: true,
+          });
+          this.skillCineT = 0.8;
+          this.skillCineName = (ci >= 0 ? b.team[ci].skillName : '') || '技能发动';
+        } else {
+          // 普攻也有动作：小型星光弹
+          this.spawnFx({
+            kind: 'star', sx, sy: H - 160, tx: W / 2, ty: 130,
+            t: 0, dur: 0.42, delay: fxDelay, color: '#ffe9a8', hitT: 0.72, boom: [], player: true,
           });
         }
       } else {
         const slotIdx = a.targetIndex;
         const x = this.teamSlotX(slotIdx);
-        b.dmgFloat.push({ x, y: H - 320, v: String(a.damage), t: 0, color: '#ff8c8c' });
-        // 敌方技能特效：从 BOSS → 玩家卡
+        b.dmgFloat.push({ x, y: H - 320, v: String(a.damage), t: 0, color: '#ff8c8c', em: a.elementMult, crit: a.crit });
         if (a.skillFx) {
+          // 敌方技能特效：从 BOSS → 玩家卡
           this.spawnFx({
             kind: a.skillFx, sx: W / 2, sy: 130, tx: x, ty: H - 160,
             t: 0, dur: 0.75, delay: fxDelay, color: FX_COLOR[a.skillFx], hitT: 0.7, boom: [], player: false,
+          });
+          this.skillCineT = 0.8;
+          this.skillCineName = '敌方技能';
+        } else {
+          // 敌方普攻：暗影弹
+          this.spawnFx({
+            kind: 'shadow', sx: W / 2, sy: 130, tx: x, ty: H - 160,
+            t: 0, dur: 0.42, delay: fxDelay, color: '#c05ce8', hitT: 0.72, boom: [], player: false,
           });
         }
       }
       fxDelay += 0.12;
     }
-    this.shake = 0.3;
+    // 打击感：按本回合最高伤害占目标最大 HP 比例震屏
+    const maxRatio = Math.max(0, ...res.actions.map(a => {
+      const isPlayerAtk = b.team.some(c => c.instId === a.actorInstId);
+      const hpMax = isPlayerAtk ? (b.enemies[0]?.hpMax ?? 1) : (b.team[a.targetIndex]?.hpMax ?? 1);
+      return a.damage / Math.max(1, hpMax);
+    }));
+    this.shake = 0.28 + Math.min(0.4, maxRatio * 1.6) + (res.actions.some(a => a.crit) ? 0.1 : 0);
     if (res.finished) {
+      audio.playSe('winLose');
       if (res.playerWon) {
         b.victory = true; b.victoryT = 0;
         b.banner = 'VICTORY'; b.bannerT = 0;
@@ -1441,13 +1523,17 @@ class SummonHall {
     else if (this.page === 'inventory') this.renderInventory();
     else if (this.page === 'shop') this.renderShop();
     else if (this.page === 'records') this.renderRecords();
+    else if (this.page === 'evolve') this.renderEvolvePage();
 
-    // 底部导航（战斗 / 出击 / 结算时隐藏，复刻截图全屏画面）
-    if (this.page !== 'battle' && this.page !== 'sortie' && this.phase.kind !== 'settle' && !this.showRecharge) this.renderNav();
+    // 底部导航（战斗 / 出击 / 升星合成 / 结算时隐藏，复刻截图全屏画面）
+    if (this.page !== 'battle' && this.page !== 'sortie' && this.page !== 'evolve' && this.phase.kind !== 'settle' && !this.showRecharge) this.renderNav();
 
-    // 全局：音乐 + 充值（战斗/出击页隐藏，避免与复刻 UI 冲突）
-    if (this.page !== 'battle' && this.page !== 'sortie') this.renderGlobalHud();
+    // 全局：音乐 + 充值（战斗/出击/升星合成页隐藏，避免与复刻 UI 冲突）
+    if (this.page !== 'battle' && this.page !== 'sortie' && this.page !== 'evolve') this.renderGlobalHud();
     if (this.showRecharge) this.renderRecharge();
+
+    // 升星融合动画（全屏覆盖层，压在页面/导航之上、粒子之下）
+    if (this.evolveAnim) this.renderEvolveAnim();
 
     // 粒子
     ctx.save();
@@ -2213,6 +2299,8 @@ class SummonHall {
     // 筛选 / 排序（复用 team 的 invFilter / invScroll，避免两套状态）
     if (id.startsWith('invf:')) { this.invFilter = id.slice(5); this.invScroll = 0; return; }
     if (id.startsWith('invs:')) { this.invSort = id.slice(5); this.invScroll = 0; return; }
+    // 合卡入口（无主卡进入合成页）
+    if (id === 'openEvolve') { this.openEvolvePage(null); return; }
     if (id === 'invpUp' || id === 'invpDown') return; // ▲▼ 按钮已移除，保留空分支防呆
     // 批量出售模式开关
     if (id === 'invSellMode') { this.invSelling = !this.invSelling; this.invSel.clear(); return; }
@@ -2282,7 +2370,7 @@ class SummonHall {
     const inv = this.db.inventory;
     // 关闭详情
     if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
-    if (id === 'closeTeamDetail') { this.detailInst = null; this.enhanceMode = false; this.evolveMode = false; this.enhancePicks.clear(); this.evolvePick = null; return; }
+    if (id === 'closeTeamDetail') { this.detailInst = null; this.enhanceMode = false; this.enhancePicks.clear(); return; }
     // 筛选
     if (id.startsWith('filter:')) { this.invFilter = id.slice(7); this.invScroll = 0; return; }
     // 滚动（▲▼ 按钮已移除，滚轮/滚动条接管）
@@ -2303,17 +2391,6 @@ class SummonHall {
         if (this.enhancePicks.has(instId)) this.enhancePicks.delete(instId); else this.enhancePicks.add(instId);
         return;
       }
-      // 进化选素材
-      if (this.evolveMode && this.detailInstKeep) {
-        const target = inv.cards.find(c => c.instId === this.detailInstKeep);
-        const cand = inv.cards.find(c => c.instId === instId);
-        if (cand && target && cand.cardId === target.cardId && cand.instId !== target.instId) {
-          this.evolvePick = instId;
-        } else {
-          this.flashTeamMsg('必须选择同名卡作为升星素材');
-        }
-        return;
-      }
       // 编队：若选中了出击槽，把这张卡换上
       if (this.teamSelSlot >= 0) {
         this.teamInstIds[this.teamSelSlot] = instId;
@@ -2326,11 +2403,11 @@ class SummonHall {
       }
       // 默认：打开详情
       this.detailInst = instId;
-      this.enhanceMode = false; this.evolveMode = false; this.enhancePicks.clear(); this.evolvePick = null;
+      this.enhanceMode = false; this.enhancePicks.clear();
       return;
     }
-    // 详情弹层按钮：强化/进化 → 关闭详情进入选择模式（主卡记在 detailInstKeep）
-    if (id === 'enhanceStart') { this.enhanceMode = true; this.evolveMode = false; this.enhancePicks.clear(); this.detailInstKeep = this.detailInst; this.detailInst = null; this.page = 'team'; return; }
+    // 详情弹层按钮：强化 → 关闭详情进入选择模式（主卡记在 detailInstKeep）
+    if (id === 'enhanceStart') { this.enhanceMode = true; this.enhancePicks.clear(); this.detailInstKeep = this.detailInst; this.detailInst = null; this.page = 'team'; return; }
     if (id === 'enhanceGo') {
       const target = this.detailInstKeep;
       if (!target || this.enhancePicks.size === 0) { this.flashTeamMsg('请先点选狗粮卡'); return; }
@@ -2351,18 +2428,7 @@ class SummonHall {
       saveDB(this.db);
       return;
     }
-    if (id === 'evolveStart') { this.evolveMode = true; this.enhanceMode = false; this.evolvePick = null; this.detailInstKeep = this.detailInst; this.detailInst = null; this.page = 'team'; return; }
-    if (id === 'evolveGo') {
-      const target = this.detailInstKeep;
-      if (!target || !this.evolvePick) { this.flashTeamMsg('请先点选同名素材卡'); return; }
-      const r = EvolveCard(this.db, target, this.evolvePick);
-      if (r.ok) this.flashTeamMsg(`升星成功！${'★'.repeat(r.newEvoStage)} 继承 ATK+${r.inheritedAtk} HP+${r.inheritedHp}`);
-      else this.flashTeamMsg(r.reason || '进化失败');
-      saveDB(this.db);
-      this.evolvePick = null; this.evolveMode = false;
-      this.detailInst = target; this.detailInstKeep = null;
-      return;
-    }
+    if (id === 'evolveStart') { if (this.detailInst) this.openEvolvePage(this.detailInst); return; }
     // 一键强化/升星（仓库/队伍共用，详情内直接完成）
     if (id === 'quickEnhance') { this.doQuickEnhance(); return; }
     if (id === 'quickEvolve') { this.doQuickEvolve(); return; }
@@ -2402,40 +2468,466 @@ class SummonHall {
     saveDB(this.db);
   }
 
-  /** 一键升星：有同名卡直接合成（最高 5 星）；素材在队伍中也可消耗，合成后自动下阵 */
+  /** 一键升星 → 进入升星合成页（预选最优素材） */
   private doQuickEvolve(): void {
     const target = this.detailInst;
     if (!target) return;
-    const t = this.db.inventory.cards.find(o => o.instId === target);
-    if (!t) return;
-    const dup = this.db.inventory.cards.find(o =>
-      o.instId !== target && o.cardId === t.cardId && !o.locked,
-    );
-    if (!dup) { this.flashTeamMsg('没有同名卡（升星需同名卡×1）'); return; }
-    const dupInTeam = this.teamInstIds.includes(dup.instId);
-    const r = EvolveCard(this.db, target, dup.instId);
-    if (r.ok) {
-      if (dupInTeam) { this.teamInstIds = this.teamInstIds.filter(x => x !== dup.instId); this.saveTeam(); }
-      this.flashTeamMsg(`升星成功！${'★'.repeat(r.newEvoStage)} 继承 ATK+${r.inheritedAtk} HP+${r.inheritedHp}${dupInTeam ? '（素材已下阵）' : ''}`);
-    }
-    else this.flashTeamMsg(r.reason || '升星失败');
-    saveDB(this.db);
+    this.openEvolvePage(target);
   }
 
-  /** 可升星提示：返回有可用同名素材且未满星的 instId 集合（仓库/队伍网格 badge 用） */
+  /** 进入升星合成页：target 为 null 时先选主卡；有同名素材优先（同星>高等级），否则切同稀有度×2 */
+  private openEvolvePage(target: string | null): void {
+    this.evolveFrom = this.page === 'team' ? 'team' : 'inventory';
+    this.detailInst = null; this.detailInstKeep = null;
+    this.evolveMatSel = null; this.evolveMatPair = [];
+    this.evolveTarget = null;
+    if (target) {
+      this.evolveTarget = target;
+      this.preselectEvolveMats();
+    }
+    this.page = 'evolve';
+    this.syncBgm();
+  }
+
+  /** 预选素材：同名（同星优先）→ 同稀有度×2 */
+  private preselectEvolveMats(): void {
+    const t = this.db.inventory.cards.find(o => o.instId === this.evolveTarget);
+    const same = t ? this.sameCardCandidates(t) : [];
+    if (same.length) {
+      this.evolveTab = 'same';
+      this.evolveMatSel = same[0].instId;
+    } else {
+      this.evolveTab = 'rarity';
+      this.evolveMatPair = (t ? this.rarityCandidates(t) : []).slice(0, 2).map(o => o.instId);
+    }
+  }
+
+  /** 同名素材候选：未锁定、星级差≤1；同星优先、等级高优先 */
+  private sameCardCandidates(t: OwnedCard): OwnedCard[] {
+    return this.db.inventory.cards
+      .filter(o => o.instId !== t.instId && o.cardId === t.cardId && !o.locked && evolveRate(t.evoStage, o.evoStage) !== null)
+      .sort((x, y) => (x.evoStage === t.evoStage ? 0 : 1) - (y.evoStage === t.evoStage ? 0 : 1) || y.lv - x.lv);
+  }
+
+  /** 同稀有度素材候选：未锁定、非自身；等级高优先 */
+  private rarityCandidates(t: OwnedCard): OwnedCard[] {
+    const rar = getCard(t.cardId)?.rarity;
+    if (!rar) return [];
+    return this.db.inventory.cards
+      .filter(o => o.instId !== t.instId && !o.locked && getCard(o.cardId)?.rarity === rar)
+      .sort((x, y) => y.lv - x.lv);
+  }
+
+  private activateEvolve(id: string): void {
+    if (id === 'evoBack') {
+      this.page = this.evolveFrom;
+      this.evolveTarget = null; this.evolveMatSel = null; this.evolveMatPair = [];
+      this.syncBgm();
+      return;
+    }
+    if (id === 'evoTgtClear') { this.evolveTarget = null; this.evolveMatSel = null; this.evolveMatPair = []; return; }
+    if (id.startsWith('evoTgt:')) {
+      this.evolveTarget = id.slice(7);
+      this.evolveMatSel = null; this.evolveMatPair = [];
+      this.preselectEvolveMats();
+      return;
+    }
+    if (id === 'evoTab:same' || id === 'evoTab:rarity') {
+      this.evolveTab = id === 'evoTab:same' ? 'same' : 'rarity';
+      return;
+    }
+    if (id.startsWith('evoMat:')) {
+      const instId = id.slice(7);
+      if (this.evolveTab === 'same') {
+        this.evolveMatSel = this.evolveMatSel === instId ? null : instId;
+      } else if (this.evolveMatPair.includes(instId)) {
+        this.evolveMatPair = this.evolveMatPair.filter(x => x !== instId);
+      } else {
+        this.evolveMatPair.push(instId);
+        if (this.evolveMatPair.length > 2) this.evolveMatPair.shift();
+      }
+      return;
+    }
+    if (id === 'evoGo') {
+      const target = this.evolveTarget;
+      const mats = this.evolveTab === 'same' ? (this.evolveMatSel ? [this.evolveMatSel] : []) : this.evolveMatPair;
+      if (!target || !mats.length) {
+        this.flashTeamMsg(this.evolveTab === 'same' ? '请先选择一张同名素材卡' : '请先选择两张同稀有度素材卡');
+        return;
+      }
+      const prep = prepareEvolve(this.db, target, mats);
+      if (!prep.ok) { this.flashTeamMsg(prep.reason || '无法合成'); return; }
+      const t = this.db.inventory.cards.find(o => o.instId === target);
+      const tgtCard = t ? getCard(t.cardId) : null;
+      if (!t || !tgtCard) return;
+      const matObjs = mats
+        .map(mid => this.db.inventory.cards.find(o => o.instId === mid))
+        .filter((o): o is OwnedCard => !!o)
+        .map(o => ({ instId: o.instId, card: getCard(o.cardId)!, star: o.evoStage }));
+      this.evolveAnim = { targetInst: target, mats: matObjs, t: 0, prep, applied: false, tgtCard, tgtStar: t.evoStage };
+      audio.playSe('skill');
+      return;
+    }
+  }
+
+  /** 可升星提示：同名素材×1（星级差≤1）或同稀有度素材×2 可合成的 instId 集合（网格 badge/排序用） */
   private evolvableInsts(): Set<string> {
-    const avail = new Map<string, number>();
+    const stagesByCard = new Map<string, number[]>();
+    const countByRarity = new Map<string, number>();
     for (const o of this.db.inventory.cards) {
       if (o.locked) continue;
-      avail.set(o.cardId, (avail.get(o.cardId) ?? 0) + 1);
+      const arr = stagesByCard.get(o.cardId); if (arr) arr.push(o.evoStage); else stagesByCard.set(o.cardId, [o.evoStage]);
+      const r = getCard(o.cardId)?.rarity;
+      if (r) countByRarity.set(r, (countByRarity.get(r) ?? 0) + 1);
     }
     const res = new Set<string>();
     for (const o of this.db.inventory.cards) {
       if (o.evoStage >= MAX_STAR) continue;
-      const selfCounted = !o.locked ? 1 : 0;
-      if ((avail.get(o.cardId) ?? 0) - selfCounted >= 1) res.add(o.instId);
+      const card = getCard(o.cardId); if (!card) continue;
+      // 同名：排除自身（未锁定时自身占一个同星名额）后存在星级差≤1 的素材
+      let skippedSelf = o.locked;
+      const same = (stagesByCard.get(o.cardId) ?? []).some(s => {
+        if (!skippedSelf && s === o.evoStage) { skippedSelf = true; return false; }
+        return evolveRate(o.evoStage, s) !== null;
+      });
+      // 同稀有度：排除自身（未锁定时）后还有 ≥2 张
+      const pair = (countByRarity.get(card.rarity) ?? 0) - (!o.locked ? 1 : 0) >= 2;
+      if (same || pair) res.add(o.instId);
     }
     return res;
+  }
+
+  // ============ 升星合成页 ============
+  private renderEvolvePage(): void {
+    const ctx = this.ctx;
+    this.buttons = [];
+    ctx.fillStyle = 'rgba(8,6,18,0.72)';
+    ctx.fillRect(0, 0, W, H);
+    this.text('升 星 合 成', 60, 84, 28, '#f5e0a0', 'left', 'bold', true);
+    glassButton(ctx, W - 180, 58, 124, 42, '返回', { kind: 'gray', hover: this.hover === 'evoBack', fontSize: 16 });
+    this.buttons.push({ x: W - 180, y: 58, w: 124, h: 42, id: 'evoBack' });
+
+    const t = this.evolveTarget ? this.db.inventory.cards.find(o => o.instId === this.evolveTarget) : null;
+    const tc = t ? getCard(t.cardId) : null;
+    if (!t || !tc) {
+      // 主卡选择模式：列出所有可升星的卡
+      this.text('选择要升星的主卡', W / 2, 120, 20, '#f5e0a0', 'center', 'bold', true);
+      this.text('同名卡×1 或 同稀有度卡×2 可作为素材', W / 2, 148, 13, '#8892a8', 'center');
+      const evoSet = this.evolvableInsts();
+      const cands = this.db.inventory.cards
+        .filter(o => evoSet.has(o.instId))
+        .sort((a, b) => (RANK[getCard(b.cardId)?.rarity ?? 'N'] - RANK[getCard(a.cardId)?.rarity ?? 'N']) || b.evoStage - a.evoStage || b.lv - a.lv);
+      if (!cands.length) {
+        this.text('当前没有可升星的卡（需要同名卡×1 或同稀有度卡×2）', W / 2, 320, 15, '#8892a8', 'center', 'bold');
+        return;
+      }
+      const cols = 10, cw0 = 106, ch0 = 146, gx = 10, gy = 12;
+      cands.slice(0, cols * 3).forEach((o, i) => {
+        const oc = getCard(o.cardId); if (!oc) return;
+        const cx = 64 + (i % cols) * (cw0 + gx) + cw0 / 2;
+        const cy0 = 250 + Math.floor(i / cols) * (ch0 + gy) + ch0 / 2;
+        drawCard(ctx, oc, cx, cy0, cw0, ch0, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1 });
+        this.drawCardAura(cx, cy0, cw0, ch0, o.evoStage);
+        this.drawLvStars(cx, cy0 + ch0 / 2 - 8, o.lv, o.evoStage);
+        this.buttons.push({ x: cx - cw0 / 2, y: cy0 - ch0 / 2, w: cw0, h: ch0, id: `evoTgt:${o.instId}` });
+      });
+      return;
+    }
+
+    // 模式页签：同名×1 / 同稀有度×2
+    const tabs: [string, string][] = [['same', '同名卡 ×1'], ['rarity', `同稀有度 ×2（${tc.rarity}）`]];
+    let tx = W / 2 - 240;
+    for (const [k, label] of tabs) {
+      const act = this.evolveTab === k;
+      glassButton(ctx, tx, 110, 230, 38, label, { kind: act ? 'blue' : 'gray', hover: this.hover === `evoTab:${k}`, fontSize: 15 });
+      this.buttons.push({ x: tx, y: 110, w: 230, h: 38, id: `evoTab:${k}` });
+      tx += 250;
+    }
+
+    // 素材选择
+    const matIds = this.evolveTab === 'same' ? (this.evolveMatSel ? [this.evolveMatSel] : []) : this.evolveMatPair;
+    const mats = matIds.map(mid => this.db.inventory.cards.find(o => o.instId === mid)).filter((o): o is OwnedCard => !!o);
+    const rate = this.evolveTab === 'same'
+      ? (mats[0] ? evolveRate(t.evoStage, mats[0].evoStage) : null)
+      : (mats.length === 2 ? evolveRate(t.evoStage, t.evoStage) : null);
+    const needMats = this.evolveTab === 'same' ? 1 : 2;
+
+    // 舞台：主卡 + 素材槽
+    const cy = 310, cw = 180, ch = 254;
+    const slotX = this.evolveTab === 'same' ? [W / 2 - 190, W / 2 + 190] : [W / 2 - 320, W / 2, W / 2 + 320];
+    drawCard(ctx, tc, slotX[0], cy, cw, ch, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
+    this.drawCardAura(slotX[0], cy, cw, ch, t.evoStage);
+    this.buttons.push({ x: slotX[0] - cw / 2, y: cy - ch / 2, w: cw, h: ch, id: 'evoTgtClear' });
+    this.text(`主卡 Lv.${t.lv} ${'★'.repeat(t.evoStage) || '无星'}（点击可更换）`, slotX[0], cy + ch / 2 + 22, 13, '#ffe9a8', 'center', 'bold');
+    for (let i = 0; i < needMats; i++) {
+      const sx = slotX[i + 1];
+      const m = mats[i];
+      const mc = m ? getCard(m.cardId) : null;
+      if (m && mc) {
+        drawCard(ctx, mc, sx, cy, cw, ch, { showName: true });
+        this.drawCardAura(sx, cy, cw, ch, m.evoStage);
+        const inTeam = this.teamInstIds.includes(m.instId);
+        this.text(`素材 Lv.${m.lv} ${'★'.repeat(m.evoStage) || '无星'}${inTeam ? '（出撃中，合成后下阵）' : ''}`, sx, cy + ch / 2 + 22, 13, '#cfc4a8', 'center', 'bold');
+      } else {
+        this.rr(sx - cw / 2, cy - ch / 2, cw, ch, 10);
+        ctx.fillStyle = 'rgba(20,16,32,0.8)'; ctx.fill();
+        ctx.setLineDash([7, 6]); ctx.strokeStyle = '#5a5470'; ctx.lineWidth = 2;
+        this.rr(sx - cw / 2, cy - ch / 2, cw, ch, 10); ctx.stroke();
+        ctx.setLineDash([]);
+        this.text('从下方选择素材卡', sx, cy, 14, '#8892a8', 'center', 'bold');
+      }
+    }
+
+    // 成功率 / 结果预览 / 合成按钮
+    if (rate !== null) {
+      const col = rate >= 80 ? '#6fce9a' : rate >= 50 ? '#ffd24d' : '#ff8c6a';
+      this.text(`成功率 ${rate}%`, W / 2, 486, 26, col, 'center', 'bold', true);
+      this.text(`→ ${'★'.repeat(Math.max(t.evoStage, ...(this.evolveTab === 'same' && mats[0] ? [mats[0].evoStage] : [])) + 1)}`, W / 2, 514, 18, '#ffe14d', 'center', 'bold');
+      this.text('失败：素材损毁，主卡降 1 星', W / 2, 538, 12, '#ff9c9c', 'center');
+    } else {
+      this.text(this.evolveTab === 'same'
+        ? (mats[0] ? '星级差超过 1 不能合成' : '选择 1 张同名卡作为素材')
+        : (mats.length ? `再选 ${2 - mats.length} 张 ${tc.rarity} 卡作为素材` : `选择 2 张 ${tc.rarity} 卡作为素材`),
+        W / 2, 496, 15, '#8892a8', 'center', 'bold');
+    }
+    const can = rate !== null && !this.evolveAnim;
+    glassButton(ctx, W / 2 - 140, 556, 280, 52, can ? `合成升星（${rate}%）` : '合成升星', { kind: can ? 'green' : 'gray', hover: can && this.hover === 'evoGo', fontSize: 20 });
+    if (can) this.buttons.push({ x: W / 2 - 140, y: 556, w: 280, h: 52, id: 'evoGo' });
+
+    // 候选素材条
+    const cands = this.evolveTab === 'same' ? this.sameCardCandidates(t) : this.rarityCandidates(t);
+    this.text(`可用素材（${cands.length}）`, 60, 630, 14, '#cfc4a8', 'left', 'bold');
+    if (!cands.length) {
+      this.text(this.evolveTab === 'same' ? '没有同名卡。可切换到「同稀有度 ×2」模式。' : `没有足够的 ${tc.rarity} 卡（需 2 张未锁定）。`, 60, 656, 13, '#8892a8', 'left');
+    }
+    const ccw = 84, cch = 118, ccy = 700;
+    cands.slice(0, 13).forEach((o, i) => {
+      const oc = getCard(o.cardId); if (!oc) return;
+      const cx = 60 + i * (ccw + 10) + ccw / 2;
+      const sel = matIds.includes(o.instId);
+      ctx.save();
+      if (sel) { ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 16; }
+      drawCard(ctx, oc, cx, ccy, ccw, cch, { showName: false });
+      ctx.restore();
+      if (sel) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(cx - ccw / 2, ccy - cch / 2, ccw, cch, 8); ctx.stroke(); }
+      ctx.save();
+      ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+      this.text(`${'★'.repeat(o.evoStage) || '0星'} Lv.${o.lv}`, cx, ccy + cch / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
+      ctx.restore();
+      this.buttons.push({ x: cx - ccw / 2, y: ccy - cch / 2, w: ccw, h: cch, id: `evoMat:${o.instId}` });
+    });
+
+    if (this.teamMsg && this.teamMsgT < 2.5) this.renderToast();
+  }
+
+  /** 星级视觉档：<3 默认 / 3-4 铜色发光 / 5-6 银色+白晕 / 7-9 金色+金晕 / 10 钻石+七彩晕 */
+  private starStyle(star: number): { color: string; halo: string | null; rainbow: boolean; glyph: string } {
+    if (star >= 10) return { color: '#bff3ff', halo: null, rainbow: true, glyph: '◆' };
+    if (star >= 7) return { color: '#ffd24d', halo: '#ffdf80', rainbow: false, glyph: '★' };
+    if (star >= 5) return { color: '#eef2fa', halo: '#ffffff', rainbow: false, glyph: '★' };
+    if (star >= 3) return { color: '#e0a060', halo: '#c8803c', rainbow: false, glyph: '★' };
+    return { color: '#ffe9a8', halo: null, rainbow: false, glyph: '★' };
+  }
+
+  /** 卡牌星级光晕（5 星起，drawCard 之后调用）；10 星七彩流动描边 */
+  private drawCardAura(cx: number, cy: number, w: number, h: number, star: number): void {
+    if (star < 5) return;
+    const s = this.starStyle(star);
+    const ctx = this.ctx;
+    ctx.save();
+    if (s.rainbow) {
+      const hue0 = (this.last / 6) % 360;
+      const g = ctx.createLinearGradient(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
+      for (let i = 0; i <= 6; i++) g.addColorStop(i / 6, `hsla(${(hue0 + i * 60) % 360},100%,68%,0.9)`);
+      ctx.strokeStyle = g; ctx.lineWidth = 5;
+      ctx.shadowColor = `hsla(${hue0},100%,70%,0.9)`; ctx.shadowBlur = 24;
+      this.rr(cx - w / 2 - 4, cy - h / 2 - 4, w + 8, h + 8, 12); ctx.stroke();
+    } else if (s.halo) {
+      ctx.strokeStyle = s.color; ctx.lineWidth = star >= 7 ? 4 : 2.5;
+      ctx.shadowColor = s.halo; ctx.shadowBlur = star >= 7 ? 22 : 14;
+      ctx.globalAlpha = 0.9;
+      this.rr(cx - w / 2 - 3, cy - h / 2 - 3, w + 6, h + 6, 11); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** 详情弹窗边框：3 星起按星级呼吸发光（铜/银/金/七彩）；普通卡无边框光 */
+  private drawDialogAura(x: number, y: number, w: number, h: number, star: number): void {
+    if (star < 3) return;
+    const s = this.starStyle(star);
+    const ctx = this.ctx;
+    const breathe = 0.55 + 0.45 * Math.sin(this.last / 350);
+    ctx.save();
+    if (s.rainbow) {
+      const hue0 = (this.last / 5) % 360;
+      const g = ctx.createLinearGradient(x, y, x + w, y + h);
+      for (let i = 0; i <= 6; i++) g.addColorStop(i / 6, `hsla(${(hue0 + i * 60) % 360},100%,70%,${(0.5 + breathe * 0.5).toFixed(3)})`);
+      ctx.strokeStyle = g; ctx.lineWidth = 4;
+      ctx.shadowColor = `hsla(${hue0},100%,72%,0.95)`; ctx.shadowBlur = 18 + breathe * 22;
+      this.rr(x - 3, y - 3, w + 6, h + 6, 14); ctx.stroke();
+    } else if (s.halo) {
+      ctx.strokeStyle = s.color; ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.5 + breathe * 0.5;
+      ctx.shadowColor = s.halo; ctx.shadowBlur = 10 + breathe * 18;
+      this.rr(x - 3, y - 3, w + 6, h + 6, 14); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** Lv + 星级文字（按星级着色发光；10 星显示 ◆ 钻） */
+  private drawLvStars(cx: number, y: number, lv: number, star: number, fontSize = 10): void {
+    const s = this.starStyle(star);
+    const label = `Lv.${lv}${star > 0 ? ' ' + s.glyph.repeat(star) : ''}`;
+    const ctx = this.ctx;
+    ctx.save();
+    if (star >= 3) {
+      ctx.shadowColor = s.rainbow ? `hsla(${(this.last / 6) % 360},100%,70%,0.95)` : s.halo!;
+      ctx.shadowBlur = 10;
+    }
+    this.text(label, cx, y, fontSize, star > 0 ? s.color : '#ffe9a8', 'center', 'bold');
+    ctx.restore();
+  }
+
+  /** 升星成功演出分档：1-2 基础 / 3-4 铜 / 5-6 银+扩散环 / 7-9 金+双环 / 10 钻+七彩放射+全场彩带 */
+  private renderEvolveSuccess(star: number, card: Card, t: number, cy: number, cw: number, ch: number): void {
+    const ctx = this.ctx;
+    const tier = star >= 10 ? 4 : star >= 7 ? 3 : star >= 5 ? 2 : star >= 3 ? 1 : 0;
+    const mainCol = ['#ffe9a8', '#e0a060', '#eef2fa', '#ffd24d', '#bff3ff'][tier];
+    const rayN = [12, 16, 22, 28, 40][tier];
+    const pt = t - 1.3;
+
+    // 放射光（10 星七彩旋转变色，其余单色）
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < rayN; i++) {
+      const a = (i / rayN) * Math.PI * 2 + t * (tier >= 3 ? 0.9 : 0.5);
+      const len = 380 + tier * 40;
+      const gg = ctx.createLinearGradient(W / 2, cy, W / 2 + Math.cos(a) * len, cy + Math.sin(a) * len);
+      if (tier >= 4) {
+        const hue = (i * 360 / rayN + t * 120) % 360;
+        gg.addColorStop(0, `hsla(${hue},100%,72%,0.6)`);
+        gg.addColorStop(1, `hsla(${hue},100%,72%,0)`);
+      } else {
+        gg.addColorStop(0, mainCol + '73');
+        gg.addColorStop(1, mainCol + '00');
+      }
+      ctx.strokeStyle = gg; ctx.lineWidth = tier >= 3 ? 7 : 5;
+      ctx.beginPath(); ctx.moveTo(W / 2, cy); ctx.lineTo(W / 2 + Math.cos(a) * len, cy + Math.sin(a) * len); ctx.stroke();
+    }
+    ctx.restore();
+
+    // 5 星+：扩散光环；7 星+：双环
+    if (tier >= 2) {
+      const ringP = (pt % 0.9) / 0.9;
+      ctx.save();
+      ctx.globalAlpha = (1 - ringP) * 0.8;
+      ctx.strokeStyle = mainCol; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(W / 2, cy, 60 + ringP * 300, 0, Math.PI * 2); ctx.stroke();
+      if (tier >= 3) {
+        ctx.globalAlpha = (1 - ringP) * 0.5;
+        ctx.beginPath(); ctx.arc(W / 2, cy, 40 + ringP * 200, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 成品卡 pop（高星更夸张）
+    const pop = Ease.outBack(Math.min(1, pt / (tier >= 3 ? 0.55 : 0.4)));
+    ctx.save();
+    ctx.translate(W / 2, cy);
+    ctx.scale(Math.max(0.02, pop), Math.max(0.02, pop));
+    ctx.shadowColor = mainCol; ctx.shadowBlur = 30 + tier * 14;
+    drawCard(ctx, card, 0, 0, cw, ch, { showName: false, rainbowT: (this.last / 1000 * 0.35) % 1 });
+    ctx.restore();
+
+    // 10 星：全场彩带撒花
+    if (tier >= 4) {
+      const confCols = ['#ff5c8a', '#ffd24d', '#6fce9a', '#6fd8ff', '#c05ce8', '#ffffff'];
+      for (let i = 0; i < 70; i++) {
+        const speed = 160 + (i % 7) * 40;
+        const x = (i * 173) % W + Math.sin(t * 3 + i) * 24;
+        const y = ((pt * speed + i * 89) % (H + 120)) - 60;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(t * 4 + i);
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = confCols[i % confCols.length];
+        ctx.fillRect(-5, -3, 10, 6);
+        ctx.restore();
+      }
+    }
+
+    // 星标文字（10 星 ◆ 钻）
+    const s = this.starStyle(star);
+    ctx.save();
+    ctx.shadowColor = mainCol; ctx.shadowBlur = tier >= 2 ? 18 : 0;
+    this.text(`升星成功 ${s.glyph.repeat(star)}`, W / 2, cy + ch / 2 + 52, 28, s.color, 'center', 'bold');
+    ctx.restore();
+  }
+
+  /** 升星融合动画：两卡靠拢 → 光晕增强 → 白光一闪 → 成功（放射光+成品 pop）/ 失败（灰白+素材爆碎） */
+  private renderEvolveAnim(): void {
+    const ea = this.evolveAnim!;
+    const ctx = this.ctx;
+    const t = ea.t;
+    ctx.fillStyle = 'rgba(2,2,8,0.92)';
+    ctx.fillRect(0, 0, W, H);
+    const cy = H / 2 - 40, cw = 190, ch = 268;
+    const merge = Math.min(1, t / 1.3);
+    const e = 1 - Math.pow(1 - merge, 3); // outCubic
+    const flash = ea.applied && t < 1.55 ? 1 - (t - 1.3) / 0.25 : 0;
+
+    if (!ea.applied) {
+      // 融合中：卡向中心收拢 + 光晕增强 + 素材淡出
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(W / 2, cy, 0, W / 2, cy, 320);
+      g.addColorStop(0, `rgba(255,230,150,${(0.12 + e * 0.5).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(255,230,150,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(W / 2, cy, 320, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      const fade = merge > 0.72 ? 1 - (merge - 0.72) / 0.28 : 1;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, fade);
+      ea.mats.forEach((m, i) => {
+        const startX = W / 2 + (ea.mats.length === 1 ? 260 : 150 + i * 220);
+        drawCard(ctx, m.card, W / 2 + (startX - W / 2) * (1 - e), cy, cw, ch, { showName: false });
+      });
+      ctx.restore();
+      drawCard(ctx, ea.tgtCard, W / 2 - 260 * (1 - e), cy, cw, ch, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1 });
+      this.text(`成功率 ${ea.prep.rate}%`, W / 2, cy + ch / 2 + 46, 22, '#ffd24d', 'center', 'bold', true);
+      this.text('融合中……', W / 2, cy + ch / 2 + 76, 14, '#cfc4a8', 'center', 'bold');
+    } else if (ea.prep.success) {
+      this.renderEvolveSuccess(ea.prep.newEvoStage, ea.tgtCard, t, cy, cw, ch);
+    } else {
+      // 失败：主卡灰白抖动降星保留，素材爆碎消散
+      const fp = Math.min(1, (t - 1.3) / 0.9);
+      const shakeX = Math.sin(t * 40) * 8 * (1 - fp);
+      ctx.save();
+      ctx.filter = 'grayscale(1) brightness(0.65)';
+      drawCard(ctx, ea.tgtCard, W / 2 - 120 + shakeX, cy, cw, ch, { showName: false });
+      ctx.globalAlpha = Math.max(0, 1 - fp * 1.5);
+      ea.mats.forEach((m, i) => {
+        drawCard(ctx, m.card, W / 2 + 120 + i * 30, cy + i * 20, cw, ch, { showName: false });
+      });
+      ctx.restore();
+      ctx.save();
+      for (let i = 0; i < 26; i++) {
+        const a = i * 1.713, sp = 70 + (i % 5) * 46;
+        const px = W / 2 + 120 + Math.cos(a) * sp * fp;
+        const py = cy + Math.sin(a) * sp * fp - fp * 34;
+        ctx.globalAlpha = Math.max(0, 0.85 - fp);
+        ctx.fillStyle = '#9a94a8';
+        ctx.fillRect(px, py, 6, 6);
+      }
+      ctx.restore();
+      this.text(`合成失败……素材损毁，主卡降至 ${Math.max(0, ea.tgtStar - 1)} 星`, W / 2, cy + ch / 2 + 52, 22, '#8a8498', 'center', 'bold');
+    }
+
+    if (flash > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${(flash * 0.95).toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+    this.text('点击跳过', W - 30, H - 22, 12, 'rgba(255,255,255,0.4)', 'right');
   }
 
   private renderInventory(): void {
@@ -2467,8 +2959,8 @@ class SummonHall {
       fx += (f === 'ALL' ? 60 : 44) + 8;
     }
 
-    // ── 排序（稀有度/攻击力/体力/等级/最近获得）──
-    const sorts: [string, string][] = [['rarity', '稀有度'], ['attack', '攻击力'], ['hp', '体力'], ['lv', '等级'], ['new', '最近获得']];
+    // ── 排序（稀有度/攻击力/体力/等级/最近获得/星级）+ 合卡入口 ──
+    const sorts: [string, string][] = [['rarity', '稀有度'], ['attack', '攻击力'], ['hp', '体力'], ['lv', '等级'], ['new', '最近获得'], ['star', '星级']];
     let sx = 56;
     this.text('排序', 56, 238, 12, '#8892a8', 'left', 'bold');
     sx = 96;
@@ -2478,6 +2970,8 @@ class SummonHall {
       this.buttons.push({ x: sx, y: 224, w: 88, h: 28, id: `invs:${k}` });
       sx += 96;
     }
+    glassButton(ctx, sx + 8, 224, 108, 28, '⇄ 合卡', { kind: 'blue', hover: this.hover === 'openEvolve', fontSize: 13 });
+    this.buttons.push({ x: sx + 8, y: 224, w: 108, h: 28, id: 'openEvolve' });
 
     // ── 网格 ──
     // 攻击力/体力排序预算一次战力表，避免 sort 内重复构造
@@ -2488,6 +2982,7 @@ class SummonHall {
         if (cb) powMap.set(o.instId, { atk: cb.atk, hp: cb.hpMax });
       }
     }
+    const evolvable = this.evolvableInsts();
     const filtered = inv
       .filter(o => {
         const c = getCard(o.cardId); if (!c) return false;
@@ -2498,6 +2993,8 @@ class SummonHall {
         const na = a.gainedAt ?? 0, nb = b.gainedAt ?? 0;
         if (this.invSort === 'new') return nb - na;
         if (this.invSort === 'lv') return b.lv - a.lv;
+        if (this.invSort === 'evo') return Number(evolvable.has(b.instId)) - Number(evolvable.has(a.instId)) || rb - ra || b.lv - a.lv;
+        if (this.invSort === 'star') return b.evoStage - a.evoStage || rb - ra || b.lv - a.lv;
         if (this.invSort === 'attack') return (powMap.get(b.instId)?.atk ?? 0) - (powMap.get(a.instId)?.atk ?? 0);
         if (this.invSort === 'hp') return (powMap.get(b.instId)?.hp ?? 0) - (powMap.get(a.instId)?.hp ?? 0);
         return rb - ra || b.lv - a.lv || nb - na;
@@ -2511,7 +3008,6 @@ class SummonHall {
     this.invScroll = Math.min(this.invScroll, maxScroll);
     const start = this.invScroll * cols;
     const visible = filtered.slice(start, start + cols * rowsVisible);
-    const evolvable = this.evolvableInsts();
 
     visible.forEach((o, vi) => {
       const c = getCard(o.cardId); if (!c) return;
@@ -2526,6 +3022,7 @@ class SummonHall {
       if (picked) { ctx.shadowColor = '#ff5c5c'; ctx.shadowBlur = 16; }
       drawCard(ctx, c, x, y, icw, ich, { showName: false, isNew: fresh, rainbowT: (this.last / 1000 * 0.3) % 1 });
       ctx.restore();
+      this.drawCardAura(x, y, icw, ich, o.evoStage);
       if (inTeam) { this.pill(x - 26, y - ich / 2 + 2, 52, 16, '#3a2a08', '#ffd24d'); this.text('出撃', x, y - ich / 2 + 10, 10, '#ffd24d', 'center', 'bold'); }
       if (picked) { ctx.strokeStyle = '#ff8c6a'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (isDetail) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
@@ -2534,7 +3031,7 @@ class SummonHall {
         this.pill(x + icw / 2 - 50, y + ich / 2 - 26, 48, 15, '#3a2a08', '#ffd24d');
         this.text('可升星', x + icw / 2 - 26, y + ich / 2 - 14, 9, '#ffd24d', 'center', 'bold');
       }
-      this.text(`Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, x, y + ich / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
+      this.drawLvStars(x, y + ich / 2 - 8, o.lv, o.evoStage);
       this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `invpc:${o.instId}` });
     });
 
@@ -2567,14 +3064,15 @@ class SummonHall {
     ctx.fillRect(0, 0, W, H);
     const dw = 700, dh = 460, dx = W / 2 - dw / 2, dy = H / 2 - dh / 2;
     metalDialog(ctx, dx, dy, dw, dh);
+    this.drawDialogAura(dx, dy, dw, dh, o.evoStage);
     const rdef = runtimeByLegacyId(card.id);
     const formRef = rdef ? (formOf(rdef, this.detailForm) ?? formOf(rdef, 'main')) : null;
     if (rdef && formRef) {
       const img = resolveImage(formRef);
       if (img.complete && img.naturalWidth) {
-        const s = Math.min(200 / img.naturalWidth, 290 / img.naturalHeight);
+        const s = Math.min(176 / img.naturalWidth, 256 / img.naturalHeight);
         const dw2 = img.naturalWidth * s, dh2 = img.naturalHeight * s;
-        ctx.drawImage(img, dx + 130 - dw2 / 2, dy + 210 - dh2 / 2, dw2, dh2);
+        ctx.drawImage(img, dx + 130 - dw2 / 2, dy + 172 - dh2 / 2, dw2, dh2);
       }
       // 形态切换（只显示实际存在的形态）：叠在卡图右上角，避免与底部操作行冲突
       const forms = (['main', 'h', 'x'] as const).filter(f => formOf(rdef, f));
@@ -2588,22 +3086,25 @@ class SummonHall {
         fx += 30;
       }
     } else {
-      drawCard(ctx, card, dx + 130, dy + 210, 200, 290, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
+      drawCard(ctx, card, dx + 130, dy + 172, 176, 256, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
     }
-    engravedText(ctx, card.name, dx + 130, dy + 385, 16);
-    this.text(`${card.rarity} · ${card.element} · COST ${card.cardCost}`, dx + 130, dy + 410, 12, '#cfc4a8', 'center', 'bold');
+    this.drawCardAura(dx + 130, dy + 172, 176, 256, o.evoStage);
+    engravedText(ctx, card.name, dx + 130, dy + 322, 16);
     const ix = dx + 290;
-    engravedText(ctx, `Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, ix + 160, dy + 44, 20);
-    let ry = dy + 88;
+    this.drawLvStars(ix + 160, dy + 44, o.lv, o.evoStage, 20);
+    if (o.evoStage > 0) {
+      this.text(`星级加成 ×${Math.round(Math.pow(STAR_STAT_MULT, o.evoStage) * 100)}%（已计入下列数值）`, ix, dy + 68, 12, this.starStyle(o.evoStage).color, 'left', 'bold');
+    }
+    let ry = dy + 84;
     const rowsS: [string, string][] = [
       ['稀有度', card.rarity], ['元素', card.element], ['攻击力', String(cb?.atk ?? card.stats.attack)],
       ['生命力', String(cb?.hpMax ?? 0)], ['防御力', String(card.stats.defense)], ['速度', String(card.stats.speed)],
       ['技能', card.skillName || '—'], ['获得', isFresh(o) ? '今天' : '较早'],
     ];
-    for (const [l, v] of rowsS) { this.text(l, ix, ry, 15, '#e8a0c0', 'left', 'bold'); this.text(v, ix + 120, ry, 15, '#f0e6cc', 'left', 'bold'); ry += 32; }
-    if (o.atkBonus > 0 || o.hpBonus > 0) { this.text(`升星继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30; }
+    for (const [l, v] of rowsS) { this.text(l, ix, ry, 15, '#e8a0c0', 'left', 'bold'); this.text(v, ix + 120, ry, 15, '#f0e6cc', 'left', 'bold'); ry += 28; }
     // 文本下界：不得侵入按钮区（by2 = dy+dh-122）
     const textBound = dy + dh - 136;
+    if ((o.atkBonus > 0 || o.hpBonus > 0) && ry <= textBound) { this.text(`升星继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 28; }
     if (card.skillDesc && ry < textBound) {
       const maxLines = Math.max(1, Math.floor((textBound - ry) / 20));
       const desc = card.skillDesc.length > maxLines * 31 ? card.skillDesc.slice(0, maxLines * 31 - 1) + '…' : card.skillDesc;
@@ -2622,8 +3123,10 @@ class SummonHall {
     // 操作按钮两排：上排 一键强化/升星/划至队伍（详情内直接完成），下排 锁定/出售
     const bw = 150, bh = 46, by = dy + dh - 66, by2 = by - 56;
     const dup = findDuplicate(this.db, o.instId, new Set(this.teamInstIds));
+    const canEvo = !!dup || this.evolvableInsts().has(o.instId);
+    const evoLabel = dup ? `升星 ★ ${evolveRate(o.evoStage, dup.evoStage)}%` : canEvo ? '升星 ★（同级×2）' : '升星（缺素材）';
     glassButton(ctx, dx + 40, by2, bw, bh, '一键强化', { kind: 'green', hover: this.hover === 'quickEnhance', fontSize: 16 });
-    glassButton(ctx, dx + 40 + (bw + 12), by2, bw, bh, dup ? '升星 ★' : '升星(缺同名)', { kind: dup ? 'blue' : 'gray', hover: this.hover === 'quickEvolve' && !!dup, fontSize: 15 });
+    glassButton(ctx, dx + 40 + (bw + 12), by2, bw, bh, evoLabel, { kind: canEvo ? 'blue' : 'gray', hover: this.hover === 'quickEvolve' && canEvo, fontSize: 14 });
     glassButton(ctx, dx + 40 + (bw + 12) * 2, by2, bw, bh, '划至队伍', { kind: 'gray', hover: this.hover === 'invToTeam', fontSize: 16 });
     glassButton(ctx, dx + 40, by, bw, bh, o.locked ? '解锁' : '锁定', { kind: 'gray', hover: this.hover === 'lockCard', fontSize: 16 });
     glassButton(ctx, dx + 40 + (bw + 12), by, bw, bh, '出售', { kind: 'red', hover: this.hover === 'sellCard', fontSize: 16 });
@@ -2785,8 +3288,8 @@ class SummonHall {
     }
     this.text(`库存 ${inv.length}/${this.db.inventory.capacity}`, W - 60, 338, 14, '#cfc4a8', 'right', 'bold');
 
-    // 排序（与仓库共用 invSort：稀有度/攻击力/体力/等级/最近获得）
-    const tSorts: [string, string][] = [['rarity', '稀有度'], ['attack', '攻击力'], ['hp', '体力'], ['lv', '等级'], ['new', '最近']];
+    // 排序（与仓库共用 invSort：稀有度/攻击力/体力/等级/最近获得/星级/可升星）
+    const tSorts: [string, string][] = [['rarity', '稀有度'], ['attack', '攻击力'], ['hp', '体力'], ['lv', '等级'], ['new', '最近'], ['star', '星级'], ['evo', '可升星']];
     let tsx = 60;
     for (const [k, label] of tSorts) {
       const act = this.invSort === k;
@@ -2802,6 +3305,7 @@ class SummonHall {
         if (cb) powMap.set(o.instId, { atk: cb.atk, hp: cb.hpMax });
       }
     }
+    const evolvable = this.evolvableInsts();
     const filtered = inv.filter(o => {
       const c = getCard(o.cardId); if (!c) return false;
       return this.invFilter === 'ALL' || c.rarity === this.invFilter;
@@ -2811,6 +3315,8 @@ class SummonHall {
       if (this.invSort === 'hp') return (powMap.get(b.instId)?.hp ?? 0) - (powMap.get(a.instId)?.hp ?? 0);
       if (this.invSort === 'lv') return b.lv - a.lv;
       if (this.invSort === 'new') return (b.gainedAt ?? 0) - (a.gainedAt ?? 0);
+      if (this.invSort === 'star') return b.evoStage - a.evoStage || rb - ra || b.lv - a.lv;
+      if (this.invSort === 'evo') return Number(evolvable.has(b.instId)) - Number(evolvable.has(a.instId)) || rb - ra || b.lv - a.lv;
       return rb - ra || b.lv - a.lv;
     });
 
@@ -2822,7 +3328,6 @@ class SummonHall {
     this.invScroll = Math.min(this.invScroll, maxScroll);
     const start = this.invScroll * cols;
     const visible = filtered.slice(start, start + cols * rowsVisible);
-    const evolvable = this.evolvableInsts();
 
     visible.forEach((o, vi) => {
       const c = getCard(o.cardId); if (!c) return;
@@ -2830,13 +3335,14 @@ class SummonHall {
       const x = gridX + col * (icw + igx) + icw / 2;
       const y = gridY + row * (ich + igy) + ich / 2;
       const inTeam = this.teamInstIds.includes(o.instId);
-      const picked = this.enhancePicks.has(o.instId) || this.evolvePick === o.instId;
+      const picked = this.enhancePicks.has(o.instId);
       const isDetail = this.detailInst === o.instId;
       ctx.save();
       if (picked) { ctx.shadowColor = '#6fce9a'; ctx.shadowBlur = 16; }
       if (this.drag?.started && this.drag.instId === o.instId) ctx.globalAlpha = 0.3;
       drawCard(ctx, c, x, y, icw, ich, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1 });
       ctx.restore();
+      this.drawCardAura(x, y, icw, ich, o.evoStage);
       if (inTeam) {
         this.pill(x - 24, y - ich / 2 + 3, 48, 16, '#3a2a08', '#ffd24d');
         this.text('出撃', x, y - ich / 2 + 11, 10, '#ffd24d', 'center', 'bold');
@@ -2848,7 +3354,7 @@ class SummonHall {
         this.pill(x + icw / 2 - 52, y + ich / 2 - 26, 48, 15, '#3a2a08', '#ffd24d');
         this.text('可升星', x + icw / 2 - 28, y + ich / 2 - 14, 9, '#ffd24d', 'center', 'bold');
       }
-      this.text(`Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, x, y + ich / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
+      this.drawLvStars(x, y + ich / 2 - 8, o.lv, o.evoStage);
       this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `inv:${o.instId}` });
     });
 
@@ -2881,11 +3387,6 @@ class SummonHall {
       this.text(`×${potions}`, W / 2 - 222, 358, 13, '#6fce9a', 'left', 'bold');
       glassButton(ctx, W / 2 + 250, 340, 120, 36, potions > 0 ? '用药水+1' : '药水不足', { kind: potions > 0 ? 'green' : 'gray', hover: this.hover === 'enhancePotion' && potions > 0, fontSize: 14 });
       this.buttons.push({ x: W / 2 + 250, y: 340, w: 120, h: 36, id: 'enhancePotion' });
-    }
-    if (this.evolveMode) {
-      this.text(`升星模式：点选一张同名卡作为素材（最高 5 星）${this.evolvePick ? '（已选）' : ''}`, 250, 348, 13, '#ff5ce8', 'left', 'bold');
-      glassButton(ctx, W / 2 - 90, 340, 180, 36, '确认进化', { kind: 'blue', hover: this.hover === 'evolveGo', fontSize: 14 });
-      this.buttons.push({ x: W / 2 - 90, y: 340, w: 180, h: 36, id: 'evolveGo' });
     }
 
     // 详情弹层
@@ -2925,13 +3426,18 @@ class SummonHall {
     ctx.fillRect(0, 0, W, H);
     const dw = 700, dh = 460, dx = W / 2 - dw / 2, dy = H / 2 - dh / 2;
     metalDialog(ctx, dx, dy, dw, dh);
+    this.drawDialogAura(dx, dy, dw, dh, o.evoStage);
     // 左：大卡
-    drawCard(ctx, card, dx + 130, dy + 210, 200, 290, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
-    engravedText(ctx, card.name, dx + 130, dy + 380, 16);
-    this.text(`${card.rarity} · ${card.element} · COST ${card.cardCost}`, dx + 130, dy + 404, 12, '#cfc4a8', 'center', 'bold');
+    drawCard(ctx, card, dx + 130, dy + 205, 200, 290, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
+    this.drawCardAura(dx + 130, dy + 205, 200, 290, o.evoStage);
+    engravedText(ctx, card.name, dx + 130, dy + 366, 16);
+    this.text(`${card.rarity} · ${card.element} · COST ${card.cardCost}`, dx + 130, dy + 386, 12, '#cfc4a8', 'center', 'bold');
     // 右：信息
     const ix = dx + 280;
-    engravedText(ctx, `Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, ix + 180, dy + 40, 20);
+    this.drawLvStars(ix + 180, dy + 40, o.lv, o.evoStage, 20);
+    if (o.evoStage > 0) {
+      this.text(`星级加成 ×${Math.round(Math.pow(STAR_STAT_MULT, o.evoStage) * 100)}%（已计入下列数值）`, ix, dy + 64, 12, this.starStyle(o.evoStage).color, 'left', 'bold');
+    }
     const rows: [string, string][] = [
       ['攻击力', String(cb?.atk ?? card.stats.attack)],
       ['生命力', String(cb?.hpMax ?? 0)],
@@ -3106,19 +3612,44 @@ class SummonHall {
     drawCircleButton(ctx, BAT.auto.cx, BAT.auto.cy, BAT.auto.r, b.auto ? '自动中' : '自动', this.hover === 'batAuto', b.auto);
     this.buttons.push({ x: BAT.auto.cx - BAT.auto.r, y: BAT.auto.cy - BAT.auto.r, w: BAT.auto.r * 2, h: BAT.auto.r * 2, id: 'batAuto' });
 
+    // ── 技能演出：全屏压暗脉冲 + 技能名横幅 ──
+    if (this.skillCineT > 0) {
+      const a = Math.min(0.42, this.skillCineT * 1.2);
+      ctx.fillStyle = `rgba(2,2,10,${a.toFixed(3)})`;
+      ctx.fillRect(0, 0, W, H);
+      const bp = Math.min(1, (0.8 - this.skillCineT) / 0.15);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.skillCineT / 0.25);
+      engravedText(ctx, `★ ${this.skillCineName} ★`, W / 2, 96, 26 + Ease.outBack(bp) * 4);
+      ctx.restore();
+    }
+
     // ── 技能特效 + 伤害飘字（此前只更新未绘制，战斗看不到光影）──
     this.renderFx();
     for (const d of b.dmgFloat) {
       const a = Math.max(0, 1 - d.t);
       const dy = d.t * 70;
+      // 弹出：前 0.18t 从 1.6 倍缩放到 1 倍（打击感）
+      const pop = d.t < 0.18 ? 1.6 - Ease.outBack(d.t / 0.18) * 0.6 : 1;
+      const fs = (d.crit ? 44 : 34) * pop;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.font = 'bold 30px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif';
+      ctx.font = `bold ${fs.toFixed(1)}px "Cinzel", "PingFang SC", system-ui, sans-serif`;
       ctx.textAlign = 'center';
-      ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+      ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,0.8)';
       ctx.strokeText(d.v, d.x, d.y - dy);
       ctx.fillStyle = d.color;
       ctx.fillText(d.v, d.x, d.y - dy);
+      // 克制/抵抗标签（原版 WEAK 横幅风格）
+      if ((d.em ?? 1) > 1.05 || (d.em ?? 1) < 0.95) {
+        const weak = (d.em ?? 1) > 1.05;
+        const label = weak ? 'WEAK' : 'RESIST';
+        ctx.font = 'bold 15px "Cinzel", "PingFang SC", system-ui, sans-serif';
+        ctx.lineWidth = 4; ctx.strokeStyle = weak ? '#6a4a08' : 'rgba(0,0,0,0.8)';
+        ctx.strokeText(label, d.x, d.y - dy - fs * 0.8);
+        ctx.fillStyle = weak ? '#ffd24d' : '#b8c0d0';
+        ctx.fillText(label, d.x, d.y - dy - fs * 0.8);
+      }
       ctx.restore();
     }
   }
@@ -4005,6 +4536,11 @@ class SummonHall {
     if (high) this.text('✦ 极品预兆 ✦', W / 2, 56, 22, col, 'center', 'bold', true);
     else if (mid) this.text('稀有反应…', W / 2, 56, 18, col, 'center', 'bold');
     this.text('点击加速爆破', W - 30, H - 24, 12, 'rgba(255,255,255,0.5)', 'right');
+    // 快速跳过：不看爆破与逐张揭示，直接展示全部结果
+    glassButton(ctx, W - 176, H / 2 - 26, 156, 52, '快速跳过 ≫', {
+      kind: 'blue', hover: this.hover === 'skipAll', fontSize: 17,
+    });
+    this.buttons.push({ x: W - 176, y: H / 2 - 26, w: 156, h: 52, id: 'skipAll' });
   }
 
   /** 绿色符文魔法阵 */
@@ -4360,6 +4896,11 @@ class SummonHall {
       }
     }
     this.text('点击跳过此张', W - 30, H - 24, 12, 'rgba(255,255,255,0.5)', 'right');
+    // 快速跳过：直接展示全部结果（右侧常驻）
+    glassButton(ctx, W - 176, H / 2 - 26, 156, 52, '快速跳过 ≫', {
+      kind: 'blue', hover: this.hover === 'skipAll', fontSize: 17,
+    });
+    this.buttons.push({ x: W - 176, y: H / 2 - 26, w: 156, h: 52, id: 'skipAll' });
   }
 
   private renderSettle(): void {

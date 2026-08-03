@@ -50,16 +50,19 @@ export function ownedToCombatant(o: OwnedCard, isLeader = false): Combatant | nu
   if (!card) return null;
   const C = BATTLE_CONFIG;
   const lvScale = 1 + (o.lv - 1) * C.lvScalePerLv.value;
-  const atk = Math.floor(card.stats.attack * lvScale) + o.atkBonus;
+  const starScale = Math.pow(STAR_STAT_MULT, o.evoStage); // 每星全属性 ×1.2（复利）
+  const atk = Math.floor((Math.floor(card.stats.attack * lvScale) + o.atkBonus) * starScale);
   const hpMax = Math.floor(
-    (card.stats.soldiers * C.hpSoldiersMult.value + card.stats.defense * C.hpDefenseMult.value + C.hpBase.value) * lvScale,
-  ) + o.hpBonus;
+    (Math.floor(
+      (card.stats.soldiers * C.hpSoldiersMult.value + card.stats.defense * C.hpDefenseMult.value + C.hpBase.value) * lvScale,
+    ) + o.hpBonus) * starScale,
+  );
   const tier = RARITY_RANK[card.rarity];
   const fx = assignSkillFx(card.element, card.rarity);
   return {
     instId: o.instId, card, lv: o.lv,
     atk, hp: hpMax, hpMax, def: card.stats.defense,
-    speed: card.stats.speed || 100,
+    speed: Math.floor((card.stats.speed || 100) * starScale),
     element: card.element,
     // 物品名/空技能名 → 用特效名（wiki 技能多为物品名，观赏性差）
     skillName: card.skillName && card.skillName.length <= 16 ? card.skillName : FX_NAMES[fx],
@@ -338,55 +341,101 @@ export function estimateTeamHP(db: DB): number {
 
 // ─────────────────────────── 进化 ───────────────────────────
 
-export interface EvolveResult {
+/** 升星上限：同名卡合成，最高 10 星 */
+export const MAX_STAR = 10;
+
+/** 每星属性倍率：n 星 = 基础 × 1.2^n（攻击/体力/速度，复利） */
+export const STAR_STAT_MULT = 1.2;
+
+/**
+ * 升星成功率（%）：两张同名卡、星级差 ≤1 可合，结果 = max(星级)+1。
+ * 同星合成：(10-目标星)×10%（→1星90%、→2星80%、→3星70%…→9星10%）
+ * 混星合成：再 -10%（如 1星+2星→3星 60%，3星+2星→4星 50%），保底 5%。
+ * 规则为离线原创配置，非原版数值。
+ */
+export function evolveRate(starA: number, starB: number): number | null {
+  if (Math.abs(starA - starB) > 1) return null;
+  const target = Math.max(starA, starB) + 1;
+  if (target > MAX_STAR) return null;
+  const base = (10 - target) * 10;
+  const mixed = starA !== starB;
+  return Math.max(5, base - (mixed ? 10 : 0));
+}
+
+export interface EvolvePrep {
   ok: boolean;
   reason?: string;
-  result?: OwnedCard;
+  rate: number;           // 成功率 %
+  success: boolean;       // 预掷结果（动画播完才落库）
+  newEvoStage: number;
   inheritedAtk: number;
   inheritedHp: number;
-  newEvoStage: number;
 }
 
 /**
- * EvolveCard(cardA, cardB)：两张同名卡合成进化
- * - 校验同 cardId
- * - 素材卡 8% 属性永久继承（满级进化更多，12%）
- * - 进化次数 +1，提升上限
+ * 预计算升星结果（不改动 db）；rng 注入便于测试。
+ * 素材两种合法形态：
+ *  - 同名卡×1（星级差 ≤1）：rate = evolveRate(主星, 素材星)，结果 = max+1
+ *  - 同稀有度卡×2（无需同名）：rate = 同星基准 (10-(主星+1))×10%，结果 = 主星+1
  */
-/** 升星上限：同名卡合成，最高 5 星 */
-export const MAX_STAR = 5;
+export function prepareEvolve(db: DB, instA: string, matInsts: string[], rng: () => number = Math.random, inheritRate = 0.08): EvolvePrep {
+  const res: EvolvePrep = { ok: false, rate: 0, success: false, newEvoStage: 0, inheritedAtk: 0, inheritedHp: 0 };
+  const a = db.inventory.cards.find(c => c.instId === instA);
+  if (!a) { res.reason = '卡牌不存在'; return res; }
+  if (a.evoStage >= MAX_STAR) { res.reason = `已达 ${MAX_STAR} 星上限`; return res; }
+  const mats = matInsts.map(id => db.inventory.cards.find(c => c.instId === id));
+  if (mats.some(m => !m)) { res.reason = '素材卡不存在'; return res; }
+  if (new Set(matInsts).size !== matInsts.length || matInsts.includes(instA)) { res.reason = '素材卡重复'; return res; }
+  const cardA = getCard(a.cardId)!;
 
-export function EvolveCard(db: DB, instA: string, instB: string, inheritRate = 0.08): EvolveResult {
-  const inv = db.inventory;
-  const a = inv.cards.find(c => c.instId === instA);
-  const b = inv.cards.find(c => c.instId === instB);
-  const res: EvolveResult = { ok: false, inheritedAtk: 0, inheritedHp: 0, newEvoStage: 0 };
-  if (!a || !b) { res.reason = '卡牌不存在'; return res; }
-  if (a.instId === b.instId) { res.reason = '不能与自己合成'; return res; }
-  if (a.cardId !== b.cardId) { res.reason = '必须同名卡'; return res; }
-  if (a.evoStage >= MAX_STAR) { res.reason = '已达 5 星上限'; return res; }
+  let rate: number;
+  if (mats.length === 1) {
+    const b = mats[0]!;
+    if (b.cardId !== a.cardId) { res.reason = '单素材必须同名卡'; return res; }
+    const r = evolveRate(a.evoStage, b.evoStage);
+    if (r === null) { res.reason = '星级差超过 1 不能合成'; return res; }
+    rate = r;
+    res.newEvoStage = Math.max(a.evoStage, b.evoStage) + 1;
+  } else if (mats.length === 2) {
+    const rarA = cardA.rarity;
+    if (mats.some(m => getCard(m!.cardId)?.rarity !== rarA)) { res.reason = '双素材必须与主卡同稀有度'; return res; }
+    rate = evolveRate(a.evoStage, a.evoStage)!;
+    res.newEvoStage = a.evoStage + 1;
+  } else {
+    res.reason = '需要 1 张同名卡或 2 张同稀有度卡'; return res;
+  }
 
-  const card = getCard(a.cardId)!;
-  // 满级进化继承更多
-  const bMax = b.lv >= maxLv(card.rarity, b.evoStage);
-  const rate = bMax ? inheritRate * 1.5 : inheritRate;
-  const bAtk = card.stats.attack * (1 + (b.lv - 1) * 0.06) + b.atkBonus;
-  const bHp = (card.stats.soldiers * 100 + card.stats.defense * 10 + 5000) * (1 + (b.lv - 1) * 0.06) + b.hpBonus;
-  const inhAtk = Math.floor(bAtk * rate);
-  const inhHp = Math.floor(bHp * rate);
-
-  a.atkBonus += inhAtk;
-  a.hpBonus += inhHp;
-  a.evoStage += 1;
-  // 移除素材卡
-  inv.cards = inv.cards.filter(c => c.instId !== instB);
+  // 继承：各素材均摊（总量与单素材一致；满级素材继承 ×1.5）
+  for (const m of mats) {
+    const mc = getCard(m!.cardId)!;
+    const mMax = m!.lv >= maxLv(mc.rarity, m!.evoStage);
+    const ir = (mMax ? inheritRate * 1.5 : inheritRate) / mats.length;
+    const mAtk = mc.stats.attack * (1 + (m!.lv - 1) * 0.06) + m!.atkBonus;
+    const mHp = (mc.stats.soldiers * 100 + mc.stats.defense * 10 + 5000) * (1 + (m!.lv - 1) * 0.06) + m!.hpBonus;
+    res.inheritedAtk += Math.floor(mAtk * ir);
+    res.inheritedHp += Math.floor(mHp * ir);
+  }
 
   res.ok = true;
-  res.result = a;
-  res.inheritedAtk = inhAtk;
-  res.inheritedHp = inhHp;
-  res.newEvoStage = a.evoStage;
+  res.rate = rate;
+  res.success = rng() * 100 < rate;
   return res;
+}
+
+/** 应用升星结果：成功=主卡加星+继承、素材消耗；失败=主卡降 1 星（0 星不降）、素材损毁 */
+export function applyEvolve(db: DB, instA: string, matInsts: string[], prep: EvolvePrep): void {
+  const inv = db.inventory;
+  const a = inv.cards.find(c => c.instId === instA);
+  if (!a || !prep.ok) return;
+  if (prep.success) {
+    a.atkBonus += prep.inheritedAtk;
+    a.hpBonus += prep.inheritedHp;
+    a.evoStage = prep.newEvoStage;
+  } else {
+    a.evoStage = Math.max(0, a.evoStage - 1);
+  }
+  const drop = new Set(matInsts);
+  inv.cards = inv.cards.filter(c => !drop.has(c.instId));
 }
 
 export function maxLv(rarity: string, evoStage: number): number {
@@ -445,13 +494,16 @@ export function autoFodder(db: DB, targetInst: string, teamInsts: Set<string>, m
   return [...n, ...r].slice(0, max).map(o => o.instId);
 }
 
-/** 一键升星：找第一张可合成的同名卡（未锁定、不在队伍、非自身） */
+/** 一键升星：找可合成的同名素材（未锁定、不在队伍、星级差≤1；同星优先、等级高优先） */
 export function findDuplicate(db: DB, targetInst: string, teamInsts: Set<string>): OwnedCard | null {
   const target = db.inventory.cards.find(o => o.instId === targetInst);
-  if (!target) return null;
-  return db.inventory.cards.find(o =>
-    o.instId !== targetInst && o.cardId === target.cardId && !o.locked && !teamInsts.has(o.instId),
-  ) ?? null;
+  if (!target || target.evoStage >= MAX_STAR) return null;
+  const cands = db.inventory.cards.filter(o =>
+    o.instId !== targetInst && o.cardId === target.cardId && !o.locked &&
+    !teamInsts.has(o.instId) && evolveRate(target.evoStage, o.evoStage) !== null,
+  );
+  cands.sort((x, y) => (x.evoStage === target.evoStage ? 0 : 1) - (y.evoStage === target.evoStage ? 0 : 1) || y.lv - x.lv);
+  return cands[0] ?? null;
 }
 
 /** 药水提供的经验（等价 1 张 R 卡狗粮） */
