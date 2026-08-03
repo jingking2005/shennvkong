@@ -17,6 +17,8 @@ import {
   type ChestReward,
 } from './logic';
 import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST, EVENT_MAP_BGS, NAVI_SPRITES, naviSprite, naviName, RotationLoader } from './assets';
+import { runtimeByLegacyId, quotesFor } from './data/runtime-catalog';
+import { formOf, resolveImage } from './data/asset-resolver';
 import { audio } from './audio';
 import {
   drawBattleCard, drawHpBar, drawSkillStar, drawCircleButton, drawSkillConfirm,
@@ -152,6 +154,7 @@ class SummonHall {
   private showLogin = false;         // 每日签到浮层
   private naviLoader = new RotationLoader(6); // 看板娘轮播（懒加载）
   private cardDetail: Card | null = null; // 卡牌详情浮层
+  private detailForm: 'main' | 'h' | 'x' = 'main'; // 详情形态切换（runtime catalog 卡）
   private rateCards: Card[] = [];    // 提供比率浮层展示的卡
   private meta = new Map<string, BannerMeta>();
   private cardCount = 250;           // 所持卡片数
@@ -596,7 +599,7 @@ class SummonHall {
     if (id.startsWith('teamcard:')) {
       const i = parseInt(id.slice(9), 10);
       const c = this.teamCombatants()[i];
-      if (c) this.cardDetail = c.card;
+      if (c) { this.cardDetail = c.card; this.detailForm = 'main'; }
       return;
     }
     // 探索框架按钮（出击/遭遇共用）：菜单 / 全恢复 / 部队
@@ -713,9 +716,10 @@ class SummonHall {
       const i = parseInt(id.slice(5), 10);
       const src = this.phase.kind === 'settle' ? this.phase.pulls : null;
       const c = src?.[i]?.card ?? this.rateCards[i];
-      if (c) this.cardDetail = c;
+      if (c) { this.cardDetail = c; this.detailForm = 'main'; }
       return;
     }
+    if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
     if (id === 'closeDetail') { this.cardDetail = null; return; }
     // settle 阶段按钮
     if (this.phase.kind === 'settle') {
@@ -1457,10 +1461,38 @@ class SummonHall {
     ctx.fillRect(0, 0, W, H);
     this.buttons.push({ x: 0, y: 0, w: W, h: H, id: 'closeDetail' });
 
-    // 左侧大卡
+    // 左侧大卡（runtime catalog 卡按所选形态绘制归档原图，否则回退 wiki 卡面）
     const cw = 300, ch = 424;
     const cardX = W / 2 - 320, cardY = H / 2 - 20;
-    drawCard(ctx, card, cardX, cardY, cw, ch, { isNew: false, rainbowT: (t * 0.3) % 1, showMeta: true });
+    const rdef = runtimeByLegacyId(card.id);
+    const formRef = rdef ? (formOf(rdef, this.detailForm) ?? formOf(rdef, 'main')) : null;
+    if (rdef && formRef) {
+      const img = resolveImage(formRef);
+      this.rr(cardX - 4, cardY - 4, cw + 8, ch + 8, 10);
+      ctx.fillStyle = 'rgba(10,8,20,0.85)'; ctx.fill();
+      ctx.strokeStyle = '#c8b285'; ctx.lineWidth = 2; ctx.stroke();
+      if (img.complete && img.naturalWidth) {
+        const s = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
+        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+        ctx.save();
+        this.rr(cardX, cardY, cw, ch, 8); ctx.clip();
+        ctx.drawImage(img, cardX + (cw - dw) / 2, cardY + (ch - dh) / 2, dw, dh);
+        ctx.restore();
+      }
+      // 形态切换按钮（只显示实际存在的形态）
+      const forms: Array<'main' | 'h' | 'x'> = (['main', 'h', 'x'] as const).filter(f => formOf(rdef, f));
+      const labels = { main: '主图', h: 'H', x: 'X' } as const;
+      let fx = cardX;
+      for (const f of forms) {
+        const active = this.detailForm === f;
+        this.pill(fx, cardY + ch + 12, 56, 26, active ? '#c8a040' : '#0d0a16', '#c8b285');
+        this.text(labels[f], fx + 28, cardY + ch + 26, 13, active ? '#0a0a12' : '#e8d5a8', 'center', 'bold');
+        this.buttons.push({ x: fx, y: cardY + ch + 12, w: 56, h: 26, id: `form:${f}` });
+        fx += 64;
+      }
+    } else {
+      drawCard(ctx, card, cardX, cardY, cw, ch, { isNew: false, rainbowT: (t * 0.3) % 1, showMeta: true });
+    }
 
     // 右侧信息面板（金属边框）
     const px = W / 2 + 10, py = H / 2 - 220, pw = 380, ph = 400;
@@ -1499,6 +1531,18 @@ class SummonHall {
       this.text('Lv.1', px + pw - 30, ry, 14, '#9ab', 'right');
       ry += 28;
       if (card.skillDesc) this.wrapText(card.skillDesc, px + 30, ry, pw - 60, 20, 13, '#b8c8d8');
+      ry += Math.ceil((card.skillDesc || '').length / 24) * 20 + 8;
+    }
+
+    // 引文（runtime catalog 卡；英文原版，direct）
+    if (rdef?.quotesRef) {
+      const q = quotesFor(rdef.quotesRef);
+      if (q?.description) {
+        ry = Math.min(ry, py + ph - 96);
+        this.text('◆ 引文', px + 30, ry, 13, '#c8b285', 'left', 'bold');
+        ry += 22;
+        this.wrapText(q.description, px + 30, ry, pw - 60, 18, 12, '#a8b8c8');
+      }
     }
 
     // 关闭按钮
@@ -2092,6 +2136,7 @@ class SummonHall {
         return;
       }
       this.detailInst = instId;
+      this.detailForm = 'main';
       return;
     }
     // 批量出售确认
@@ -2113,6 +2158,7 @@ class SummonHall {
       return;
     }
     // 详情内按钮
+    if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
     if (id === 'closeInvDetail') { this.detailInst = null; return; }
     if (id === 'closeDetail') { this.detailInst = null; return; }
     if (id === 'lockCard') {
@@ -2145,6 +2191,7 @@ class SummonHall {
   private activateTeam(id: string): void {
     const inv = this.db.inventory;
     // 关闭详情
+    if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
     if (id === 'closeTeamDetail') { this.detailInst = null; this.enhanceMode = false; this.evolveMode = false; this.enhancePicks.clear(); this.evolvePick = null; return; }
     // 筛选
     if (id.startsWith('filter:')) { this.invFilter = id.slice(7); this.invScroll = 0; return; }
@@ -2366,7 +2413,29 @@ class SummonHall {
     ctx.fillRect(0, 0, W, H);
     const dw = 700, dh = 460, dx = W / 2 - dw / 2, dy = H / 2 - dh / 2;
     metalDialog(ctx, dx, dy, dw, dh);
-    drawCard(ctx, card, dx + 130, dy + 210, 200, 290, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
+    const rdef = runtimeByLegacyId(card.id);
+    const formRef = rdef ? (formOf(rdef, this.detailForm) ?? formOf(rdef, 'main')) : null;
+    if (rdef && formRef) {
+      const img = resolveImage(formRef);
+      if (img.complete && img.naturalWidth) {
+        const s = Math.min(200 / img.naturalWidth, 290 / img.naturalHeight);
+        const dw2 = img.naturalWidth * s, dh2 = img.naturalHeight * s;
+        ctx.drawImage(img, dx + 130 - dw2 / 2, dy + 210 - dh2 / 2, dw2, dh2);
+      }
+      // 形态切换（只显示实际存在的形态）：叠在卡图右上角，避免与底部操作行冲突
+      const forms = (['main', 'h', 'x'] as const).filter(f => formOf(rdef, f));
+      const labels = { main: '主', h: 'H', x: 'X' } as const;
+      let fx = dx + 222 - forms.length * 30;
+      for (const f of forms) {
+        const active = this.detailForm === f;
+        this.pill(fx, dy + 70, 26, 20, active ? '#c8a040' : 'rgba(13,10,22,0.85)', '#c8b285');
+        this.text(labels[f], fx + 13, dy + 81, 10, active ? '#0a0a12' : '#e8d5a8', 'center', 'bold');
+        this.buttons.push({ x: fx, y: dy + 70, w: 26, h: 20, id: `form:${f}` });
+        fx += 30;
+      }
+    } else {
+      drawCard(ctx, card, dx + 130, dy + 210, 200, 290, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
+    }
     engravedText(ctx, card.name, dx + 130, dy + 385, 16);
     this.text(`${card.rarity} · ${card.element} · COST ${card.cardCost}`, dx + 130, dy + 410, 12, '#cfc4a8', 'center', 'bold');
     const ix = dx + 290;
@@ -2379,7 +2448,18 @@ class SummonHall {
     ];
     for (const [l, v] of rowsS) { this.text(l, ix, ry, 15, '#e8a0c0', 'left', 'bold'); this.text(v, ix + 120, ry, 15, '#f0e6cc', 'left', 'bold'); ry += 32; }
     if (o.atkBonus > 0 || o.hpBonus > 0) { this.text(`进化继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30; }
-    if (card.skillDesc) this.wrapText(card.skillDesc, ix, ry, 380, 20, 12, '#b8c8d8');
+    if (card.skillDesc) {
+      this.wrapText(card.skillDesc, ix, ry, 380, 20, 12, '#b8c8d8');
+      ry += Math.ceil(card.skillDesc.length / 31) * 20 + 8;
+    }
+    // 引文（runtime catalog 卡；空间不足时跳过，不与技能文本叠字）
+    if (rdef?.quotesRef) {
+      const q = quotesFor(rdef.quotesRef);
+      if (q?.description && ry + 56 <= dy + dh - 72) {
+        this.text('◆ 引文', ix, ry, 12, '#c8b285', 'left', 'bold');
+        this.wrapText(q.description, ix, ry + 20, 380, 16, 11, '#a8b8c8');
+      }
+    }
 
     const bw = 150, bh = 46, by = dy + dh - 66;
     glassButton(ctx, dx + 40, by, bw, bh, '划至队伍', { kind: 'green', hover: this.hover === 'invToTeam', fontSize: 16 });

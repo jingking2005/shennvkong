@@ -1,0 +1,590 @@
+[
+  {
+    "cardKey": "fenrir",
+    "legacyId": "wiki-fenrir",
+    "name": {
+      "en": "Fenrir",
+      "cn": "Fenrir"
+    },
+    "rarity": "UR",
+    "element": "Cool",
+    "stats": {
+      "attack": 800,
+      "defense": 600,
+      "soldiers": 4000,
+      "speed": 60,
+      "critRate": 0.08,
+      "critDamage": 0.5
+    },
+    "skill": {
+      "name": "Chain Release",
+      "desc": "All {{Cool",
+      "source": {
+        "level": "wiki-data"
+      }
+    },
+    "forms": [
+      {
+        "role": "main",
+        "asset": "/archive/cards/fenrir/Fenrir.png",
+        "sourceFile": "Cards/UR/Cool/Fenrir/Fenrir.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "guildIcon",
+        "asset": "/archive/cards/fenrir/Fenrir_G_icon.png",
+        "sourceFile": "Cards/UR/Cool/Fenrir/Fenrir_G_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "xIcon",
+        "asset": "/archive/cards/fenrir/Fenrir_X_icon.png",
+        "sourceFile": "Cards/UR/Cool/Fenrir/Fenrir_X_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "hIcon",
+        "asset": "/archive/cards/fenrir/Fenrir_H_icon.png",
+        "sourceFile": "Cards/UR/Cool/Fenrir/Fenrir_H_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "icon",
+        "asset": "/archive/cards/fenrir/Fenrir_icon.png",
+        "sourceFile": "Cards/UR/Cool/Fenrir/Fenrir_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "x",
+        "asset": "/archive/cards/fenrir/Fenrir_X.png",
+        "sourceFile": "Cards/UR/Cool/Fenrir/Fenrir_X.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "h",
+        "asset": "/archive/cards/fenrir/Fenrir_H.png",
+        "sourceFile": "Cards/UR/Cool/Fenrir/Fenrir_H.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      }
+    ],
+    "quotesRef": "fenrir",
+    "source": {
+      "level": "wiki-data",
+      "sourceNote": "assets=direct（归档文件）；stats/skill=wiki-data"
+    }
+  },
+  {
+    "cardKey": "aisha",
+    "legacyId": "wiki-aisha",
+    "name": {
+      "en": "Aisha",
+      "cn": "Aisha"
+    },
+    "rarity": "LR",
+    "element": "Cool",
+    "stats": {
+      "attack": 800,
+      "defense": 600,
+      "soldiers": 4000,
+      "speed": 60,
+      "critRate": 0.08,
+      "critDamage": 0.5
+    },
+    "skill": {
+      "name": "Buyer Beware!",
+      "desc": "Deal 300% {{Cool",
+      "source": {
+        "level": "wiki-data"
+      }
+    },
+    "forms": [
+      {
+        "role": "hIcon",
+        "asset": "/archive/cards/aisha/Aisha_H_icon.png",
+        "sourceFile": "Cards/LR/Cool/Aisha/Aisha_H_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "h",
+        "asset": "/archive/cards/aisha/Aisha_H.png",
+        "sourceFile": "Cards/LR/Cool/Aisha/Aisha_H.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "x",
+        "asset": "/archive/cards/aisha/Aisha_X.png",
+        "sourceFile": "Cards/LR/Cool/Aisha/Aisha_X.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "icon",
+        "asset": "/archive/cards/aisha/Aisha_icon.png",
+        "sourceFile": "Cards/LR/Cool/Aisha/Aisha_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "guildIcon",
+        "asset": "/archive/cards/aisha/Aisha_G_icon.png",
+        "sourceFile": "Cards/LR/Cool/Aisha/Aisha_G_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "xIcon",
+        "asset": "/archive/cards/aisha/Aisha_X_icon.png",
+        "sourceFile": "Cards/LR/Cool/Aisha/Aisha_X_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "main",
+        "asset": "/archive/cards/aisha/Aisha.png",
+        "sourceFile": "Cards/LR/Cool/Aisha/Aisha.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      }
+    ],
+    "quotesRef": "aisha",
+    "source": {
+      "level": "wiki-data",
+      "sourceNote": "assets=direct（归档文件）；stats/skill=wiki-data"
+    }
+  },
+  {
+    "cardKey": "mage-emilie",
+    "legacyId": "wiki-mage-emilie",
+    "name": {
+      "en": "Mage Emilie",
+      "cn": "Mage Emilie"
+    },
+    "rarity": "UR",
+    "element": "Dark",
+    "stats": {
+      "attack": 800,
+      "defense": 600,
+      "soldiers": 4000,
+      "speed": 60,
+      "critRate": 0.08,
+      "critDamage": 0.5
+    },
+    "skill": {
+      "name": "A-Class Magic",
+      "desc": "Deal 300% DMG to the enemy with the highest attack power with a simultaneous attack by all {{Dark",
+      "source": {
+        "level": "wiki-data"
+      }
+    },
+    "forms": [
+      {
+        "role": "h",
+        "asset": "/archive/cards/mage-emilie/Mage Emilie_H.png",
+        "sourceFile": "Cards/UR/Dark/Mage Emilie/Mage Emilie_H.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "main",
+        "asset": "/archive/cards/mage-emilie/Mage Emilie.png",
+        "sourceFile": "Cards/UR/Dark/Mage Emilie/Mage Emilie.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "icon",
+        "asset": "/archive/cards/mage-emilie/Mage Emilie_icon.png",
+        "sourceFile": "Cards/UR/Dark/Mage Emilie/Mage Emilie_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "guildIcon",
+        "asset": "/archive/cards/mage-emilie/Mage Emilie_G_icon.png",
+        "sourceFile": "Cards/UR/Dark/Mage Emilie/Mage Emilie_G_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      }
+    ],
+    "quotesRef": "mage-emilie",
+    "source": {
+      "level": "wiki-data",
+      "sourceNote": "assets=direct（归档文件）；stats/skill=wiki-data"
+    }
+  },
+  {
+    "cardKey": "seir",
+    "legacyId": "wiki-seir",
+    "name": {
+      "en": "Seir",
+      "cn": "Seir"
+    },
+    "rarity": "UR",
+    "element": "Light",
+    "stats": {
+      "attack": 800,
+      "defense": 600,
+      "soldiers": 4000,
+      "speed": 60,
+      "critRate": 0.08,
+      "critDamage": 0.5
+    },
+    "skill": {
+      "name": "True Desire",
+      "desc": "All {{Light",
+      "source": {
+        "level": "wiki-data"
+      }
+    },
+    "forms": [
+      {
+        "role": "h",
+        "asset": "/archive/cards/seir/Seir_H.png",
+        "sourceFile": "Cards/UR/Light/Seir/Seir_H.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "xIcon",
+        "asset": "/archive/cards/seir/Seir_X_icon.png",
+        "sourceFile": "Cards/UR/Light/Seir/Seir_X_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "guildIcon",
+        "asset": "/archive/cards/seir/Seir_G_icon.png",
+        "sourceFile": "Cards/UR/Light/Seir/Seir_G_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "x",
+        "asset": "/archive/cards/seir/Seir_X.png",
+        "sourceFile": "Cards/UR/Light/Seir/Seir_X.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "main",
+        "asset": "/archive/cards/seir/Seir.png",
+        "sourceFile": "Cards/UR/Light/Seir/Seir.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "icon",
+        "asset": "/archive/cards/seir/Seir_icon.png",
+        "sourceFile": "Cards/UR/Light/Seir/Seir_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "hIcon",
+        "asset": "/archive/cards/seir/Seir_H_icon.png",
+        "sourceFile": "Cards/UR/Light/Seir/Seir_H_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      }
+    ],
+    "quotesRef": "seir",
+    "source": {
+      "level": "wiki-data",
+      "sourceNote": "assets=direct（归档文件）；stats/skill=wiki-data"
+    }
+  },
+  {
+    "cardKey": "madeline",
+    "legacyId": "wiki-madeline",
+    "name": {
+      "en": "Madeline",
+      "cn": "Madeline"
+    },
+    "rarity": "UR",
+    "element": "Passion",
+    "stats": {
+      "attack": 800,
+      "defense": 600,
+      "soldiers": 4000,
+      "speed": 60,
+      "critRate": 0.08,
+      "critDamage": 0.5
+    },
+    "skill": {
+      "name": "Elemental Calm",
+      "desc": "All {{Passion",
+      "source": {
+        "level": "wiki-data"
+      }
+    },
+    "forms": [
+      {
+        "role": "h",
+        "asset": "/archive/cards/madeline/Madeline_H.png",
+        "sourceFile": "Cards/UR/Passion/Madeline/Madeline_H.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "guildIcon",
+        "asset": "/archive/cards/madeline/Madeline_G_icon.png",
+        "sourceFile": "Cards/UR/Passion/Madeline/Madeline_G_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "x",
+        "asset": "/archive/cards/madeline/Madeline_X.png",
+        "sourceFile": "Cards/UR/Passion/Madeline/Madeline_X.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "xIcon",
+        "asset": "/archive/cards/madeline/Madeline_X_icon.png",
+        "sourceFile": "Cards/UR/Passion/Madeline/Madeline_X_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "hIcon",
+        "asset": "/archive/cards/madeline/Madeline_H_icon.png",
+        "sourceFile": "Cards/UR/Passion/Madeline/Madeline_H_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "main",
+        "asset": "/archive/cards/madeline/Madeline.png",
+        "sourceFile": "Cards/UR/Passion/Madeline/Madeline.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "icon",
+        "asset": "/archive/cards/madeline/Madeline_icon.png",
+        "sourceFile": "Cards/UR/Passion/Madeline/Madeline_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      }
+    ],
+    "quotesRef": "madeline",
+    "source": {
+      "level": "wiki-data",
+      "sourceNote": "assets=direct（归档文件）；stats/skill=wiki-data"
+    }
+  },
+  {
+    "cardKey": "sjofn",
+    "legacyId": "wiki-sjofn",
+    "name": {
+      "en": "Sjofn",
+      "cn": "Sjofn"
+    },
+    "rarity": "SR",
+    "element": "Passion",
+    "stats": {
+      "attack": 3950,
+      "defense": 4000,
+      "soldiers": 3700,
+      "speed": 80,
+      "critRate": 0.08,
+      "critDamage": 0.5
+    },
+    "skill": {
+      "name": "Tainted Love",
+      "desc": "Inflict sleep on all enemies for 3 turn(s)",
+      "source": {
+        "level": "wiki-data"
+      }
+    },
+    "forms": [
+      {
+        "role": "h",
+        "asset": "/archive/cards/sjofn/Sjofn_H.png",
+        "sourceFile": "Cards/SR/Passion/Sjofn/Sjofn_H.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "icon",
+        "asset": "/archive/cards/sjofn/Sjofn_icon.png",
+        "sourceFile": "Cards/SR/Passion/Sjofn/Sjofn_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "main",
+        "asset": "/archive/cards/sjofn/Sjofn.png",
+        "sourceFile": "Cards/SR/Passion/Sjofn/Sjofn.png",
+        "width": 640,
+        "height": 896,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      },
+      {
+        "role": "hIcon",
+        "asset": "/archive/cards/sjofn/Sjofn_H_icon.png",
+        "sourceFile": "Cards/SR/Passion/Sjofn/Sjofn_H_icon.png",
+        "width": 128,
+        "height": 128,
+        "source": {
+          "level": "direct",
+          "verifiedAt": "2026-08-03"
+        }
+      }
+    ],
+    "quotesRef": "sjofn",
+    "source": {
+      "level": "wiki-data",
+      "sourceNote": "assets=direct（归档文件）；stats/skill=wiki-data"
+    }
+  }
+]

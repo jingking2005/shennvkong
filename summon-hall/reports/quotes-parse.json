@@ -1,0 +1,103 @@
+[
+  {
+    "cardKey": "fenrir",
+    "file": "Cards/UR/Cool/Fenrir/Fenrir Quotes.txt",
+    "ok": true,
+    "keys": [
+      "description",
+      "login",
+      "meet",
+      "friendship",
+      "friendshipMax",
+      "friendshipEvent",
+      "battleStart",
+      "battleEnd",
+      "rebirth"
+    ],
+    "unknownKeys": [],
+    "sourceNote": "英文原版引文（direct）"
+  },
+  {
+    "cardKey": "aisha",
+    "file": "Cards/LR/Cool/Aisha/Aisha Quotes.txt",
+    "ok": true,
+    "keys": [
+      "description",
+      "meet",
+      "friendship",
+      "friendshipMax",
+      "friendshipEvent",
+      "battleStart",
+      "battleEnd",
+      "rebirth"
+    ],
+    "unknownKeys": [],
+    "sourceNote": "英文原版引文（direct）"
+  },
+  {
+    "cardKey": "mage-emilie",
+    "file": "Cards/UR/Dark/Mage Emilie/Mage Emilie Quotes.txt",
+    "ok": true,
+    "keys": [
+      "description",
+      "meet",
+      "friendship",
+      "friendshipMax",
+      "friendshipEvent",
+      "battleStart",
+      "battleEnd"
+    ],
+    "unknownKeys": [],
+    "sourceNote": "英文原版引文（direct）"
+  },
+  {
+    "cardKey": "seir",
+    "file": "Cards/UR/Light/Seir/Seir Quotes.txt",
+    "ok": true,
+    "keys": [
+      "description",
+      "meet",
+      "friendship",
+      "friendshipMax",
+      "friendshipEvent",
+      "battleStart",
+      "battleEnd",
+      "rebirth"
+    ],
+    "unknownKeys": [],
+    "sourceNote": "英文原版引文（direct）"
+  },
+  {
+    "cardKey": "madeline",
+    "file": "Cards/UR/Passion/Madeline/Madeline Quotes.txt",
+    "ok": true,
+    "keys": [
+      "description",
+      "meet",
+      "friendship",
+      "friendshipMax",
+      "friendshipEvent",
+      "battleStart",
+      "battleEnd",
+      "rebirth"
+    ],
+    "unknownKeys": [],
+    "sourceNote": "英文原版引文（direct）"
+  },
+  {
+    "cardKey": "sjofn",
+    "file": "Cards/SR/Passion/Sjofn/Sjofn Quotes.txt",
+    "ok": true,
+    "keys": [
+      "description",
+      "meet",
+      "friendship",
+      "friendshipMax",
+      "friendshipEvent",
+      "battleStart",
+      "battleEnd"
+    ],
+    "unknownKeys": [],
+    "sourceNote": "英文原版引文（direct）"
+  }
+]

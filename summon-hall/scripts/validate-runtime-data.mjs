@@ -94,6 +94,31 @@ if (existsSync(dataDir)) {
   }
 }
 
+// ── cards.runtime.json（OC-04）──
+const runtimePath = join(dataDir, 'cards.runtime.json');
+if (existsSync(runtimePath)) {
+  const cards = JSON.parse(readFileSync(runtimePath, 'utf8'));
+  checkIdUnique(cards, 'cardKey', 'cards.runtime.json');
+  const quotesPath = join(dataDir, 'card-quotes.json');
+  const quotes = existsSync(quotesPath) ? JSON.parse(readFileSync(quotesPath, 'utf8')) : {};
+  for (const c of cards) {
+    const label = `cards.runtime.json:${c.cardKey}`;
+    if (!RARITIES.has(c.rarity)) err(`${label}: rarity 非法 "${c.rarity}"`);
+    if (!c.element) err(`${label}: element 为空`);
+    if (!c.forms?.length) err(`${label}: forms 为空`);
+    const urls = new Set();
+    for (const f of c.forms ?? []) {
+      if (urls.has(f.asset)) err(`${label}: form asset 重复 "${f.asset}"`);
+      urls.add(f.asset);
+      checkAssetUrl(f.asset, label);
+      checkProvenance(f.source, label);
+    }
+    if (c.quotesRef && !quotes[c.quotesRef]) err(`${label}: quotesRef 悬空 "${c.quotesRef}"`);
+    checkProvenance(c.source, label);
+  }
+  note(`cards.runtime.json: ${cards.length} 条，引文 ${Object.keys(quotes).length} 份`);
+}
+
 // ── stages.json 引用链（OC-05 生成）──
 const stagesPath = join(dataDir, 'stages.json');
 if (existsSync(stagesPath)) {

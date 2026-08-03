@@ -1,0 +1,67 @@
+{
+  "fenrir": {
+    "raw": "Description: This Icy Werewolf was chained due to her vicious powers. She hates the collar because it makes her look like a dog.\n\nLogin: You're here to free me!?\nWell, hurry up, already!\n\nMeet: Hmph! I'm not your lap dog!\nI answer to no one!\n\nFriendship: I'd tear you to bits if it\nweren't for this collar!\n\nFriendshipMax: I'd help you if you'd just\ntake this collar off.\n\nFriendshipEvent: I hate how dogs serve\nhumans.\n \nBut you're not half bad, so\nI'd be willing to serve you.\n\nBattleStart: Grrr... Feel my fangs!\n\nBattleEnd: Stupid collar...\n\nRebirth: Tsk, I broke out of the chains,\nbut I can't break this collar!\n \nInsolent fool! Know that I shall\nnever give up!\n \nI'll grow stronger, rip off this\ncollar, and maul you to death!\n",
+    "description": "This Icy Werewolf was chained due to her vicious powers. She hates the collar because it makes her look like a dog.",
+    "login": "You're here to free me!?\nWell, hurry up, already!",
+    "meet": "Hmph! I'm not your lap dog!\nI answer to no one!",
+    "friendship": "I'd tear you to bits if it\nweren't for this collar!",
+    "friendshipMax": "I'd help you if you'd just\ntake this collar off.",
+    "friendshipEvent": "I hate how dogs serve\nhumans.\n \nBut you're not half bad, so\nI'd be willing to serve you.",
+    "battleStart": "Grrr... Feel my fangs!",
+    "battleEnd": "Stupid collar...",
+    "rebirth": "Tsk, I broke out of the chains,\nbut I can't break this collar!\n \nInsolent fool! Know that I shall\nnever give up!\n \nI'll grow stronger, rip off this\ncollar, and maul you to death!"
+  },
+  "aisha": {
+    "raw": "Description: This merchant sells many strange wares and items of unknown origin. Buyer beware!\n\nLogin: \n\nMeet: Welcome, Milord! I have many\nunusual wares again today.\n\nFriendship: Do I have a magic lamp?\nWhy, of course I do!\n\nFriendshipMax: I bear no responsibility for my\nwares once they're yours!\n\nFriendshipEvent: Thanks for your business.\nYou're my best customer!\n \nI'll come again soon, Milord.\nJust you wait\n\nBattleStart: Check out my wares!\n\nBattleEnd: I can't sell this stuff now!\n\nRebirth: Where do I source my wares?\nHee hee, that's a secret.\n \nYou may wonder about that,\nbut don't worry. Just buy!\n \nI risk my life to get this stuff,\nso don't let it go to waste!\n",
+    "description": "This merchant sells many strange wares and items of unknown origin. Buyer beware!",
+    "meet": "Welcome, Milord! I have many\nunusual wares again today.",
+    "friendship": "Do I have a magic lamp?\nWhy, of course I do!",
+    "friendshipMax": "I bear no responsibility for my\nwares once they're yours!",
+    "friendshipEvent": "Thanks for your business.\nYou're my best customer!\n \nI'll come again soon, Milord.\nJust you wait",
+    "battleStart": "Check out my wares!",
+    "battleEnd": "I can't sell this stuff now!",
+    "rebirth": "Where do I source my wares?\nHee hee, that's a secret.\n \nYou may wonder about that,\nbut don't worry. Just buy!\n \nI risk my life to get this stuff,\nso don't let it go to waste!"
+  },
+  "mage-emilie": {
+    "raw": "Description: Emilie has found being a mage rather tedious, but she still wants to be an archmage.\n\nLogin: \n\nMeet: Time to do some real work.\nI'm a full-fledged mage now!\n\nFriendship: Find lost cats and babysit?! Is\nthat all mages ever do?!\n\nFriendshipMax: If I pull off this job, I just might\nqualify to be an archmage!\n\nFriendshipEvent: Bring on those jobs, whatever\nthey may be!\n \nSo, what's next? Huh?! An\nS-class job?! B-But...\n\nBattleStart: I'll be an archmage soon!\n\nBattleEnd: I-I'll probably get fired now.\n\nRebirth: \n",
+    "description": "Emilie has found being a mage rather tedious, but she still wants to be an archmage.",
+    "meet": "Time to do some real work.\nI'm a full-fledged mage now!",
+    "friendship": "Find lost cats and babysit?! Is\nthat all mages ever do?!",
+    "friendshipMax": "If I pull off this job, I just might\nqualify to be an archmage!",
+    "friendshipEvent": "Bring on those jobs, whatever\nthey may be!\n \nSo, what's next? Huh?! An\nS-class job?! B-But...",
+    "battleStart": "I'll be an archmage soon!",
+    "battleEnd": "I-I'll probably get fired now."
+  },
+  "seir": {
+    "raw": "Description: This demon is also a knight with a white steed. She loves riding out to greet people.\n\nLogin: \n\nMeet: I've come to greet you, Milord!\nI'm so glad you asked!\n\nFriendship: Where to now? My trusty\nsteed will take us anywhere!\n\nFriendshipMax: After I take you where you\nwant, let's hang out!\n\nFriendshipEvent: I'm so glad you put your trust\nin me! I'll take you anywhere!\n \nBut first, do you mind if we\nhave a little chat?\n\nBattleStart: Speedy curbside service!\n\nBattleEnd: Oops, I think I'm lost.\n\nRebirth: Umm... Must you be in such\na rush?\n \nI've been waiting oh so long\nto greet you.\n \nCan we be alone, just the\ntwo of us, if only for this day?\n",
+    "description": "This demon is also a knight with a white steed. She loves riding out to greet people.",
+    "meet": "I've come to greet you, Milord!\nI'm so glad you asked!",
+    "friendship": "Where to now? My trusty\nsteed will take us anywhere!",
+    "friendshipMax": "After I take you where you\nwant, let's hang out!",
+    "friendshipEvent": "I'm so glad you put your trust\nin me! I'll take you anywhere!\n \nBut first, do you mind if we\nhave a little chat?",
+    "battleStart": "Speedy curbside service!",
+    "battleEnd": "Oops, I think I'm lost.",
+    "rebirth": "Umm... Must you be in such\na rush?\n \nI've been waiting oh so long\nto greet you.\n \nCan we be alone, just the\ntwo of us, if only for this day?"
+  },
+  "madeline": {
+    "raw": "Description: This wandering white  mage travels around  and heals people all  over the world.\n\nLogin: \n\nMeet: I'm not suspicious. I'm just \na white mage passing by.\n\nFriendship: Hey, stay still.\nI'm healing you now.\n\nFriendshipMax: If you get hurt in a fight\nI'll heal you right away.\n\nFriendshipEvent: I want to travel around the \nworld, meet different people.\n \nOn my way back, I'll make \nsure to stop by this kingdom.\n\nBattleStart: All of you, don't get hurt.\n\nBattleEnd: I still need to help the others...\n\nRebirth: You want me to stay here in \nyour kingdom? Sorry, I can't.\n \nI want to heal the injuries and\nillnesses of all the people. \n \nBut I think I can spend time\nwith you while I'm still here.\n",
+    "description": "This wandering white  mage travels around  and heals people all  over the world.",
+    "meet": "I'm not suspicious. I'm just \na white mage passing by.",
+    "friendship": "Hey, stay still.\nI'm healing you now.",
+    "friendshipMax": "If you get hurt in a fight\nI'll heal you right away.",
+    "friendshipEvent": "I want to travel around the \nworld, meet different people.\n \nOn my way back, I'll make \nsure to stop by this kingdom.",
+    "battleStart": "All of you, don't get hurt.",
+    "battleEnd": "I still need to help the others...",
+    "rebirth": "You want me to stay here in \nyour kingdom? Sorry, I can't.\n \nI want to heal the injuries and\nillnesses of all the people. \n \nBut I think I can spend time\nwith you while I'm still here."
+  },
+  "sjofn": {
+    "raw": "Description: The finger puppets this goddess of love uses have the power to turn people into lovers.\n\nLogin: \n\nMeet: Who do you want to fall in\nlove with you? I'll help!\n\nFriendship: And we have a new couple!\nThese puppets are lovers!\n\nFriendshipMax: We'll be together forever\nlike these puppets!\n\nFriendshipEvent: You want to be my lover?\nHee hee, you're funny!\n \nBut I can make your dream\ncome true with my puppets.\n\nBattleStart: Any maidens you like?\n\nBattleEnd: Don't destroy this love.\n\nRebirth: \n",
+    "description": "The finger puppets this goddess of love uses have the power to turn people into lovers.",
+    "meet": "Who do you want to fall in\nlove with you? I'll help!",
+    "friendship": "And we have a new couple!\nThese puppets are lovers!",
+    "friendshipMax": "We'll be together forever\nlike these puppets!",
+    "friendshipEvent": "You want to be my lover?\nHee hee, you're funny!\n \nBut I can make your dream\ncome true with my puppets.",
+    "battleStart": "Any maidens you like?",
+    "battleEnd": "Don't destroy this love."
+  }
+}

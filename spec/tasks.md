@@ -56,7 +56,7 @@ OC-00（本文件）→ OC-01 稳定性 → OC-02 数据基础设施 → OC-03 �
 - **验收**：地图页用 AreaMap；战斗页用 BattleBG；manifest 可复现生成
 - **预估**：2h
 
-## OC-04：卡牌 catalog、形态、icon 与引文
+## OC-04：卡牌 catalog、形态、icon 与引文 ✅ 已完成（2026-08-03）
 
 - **所有者**：OpenCode
 - **可修改文件**：新增 `scripts/build-card-catalog.mjs`、`src/data/cards.runtime.json`、`card-quotes.json`、测试；`src/data.ts`、`src/card.ts` 必要接口
