@@ -2277,7 +2277,7 @@ class SummonHall {
         if (cand && target && cand.cardId === target.cardId && cand.instId !== target.instId) {
           this.evolvePick = instId;
         } else {
-          this.flashTeamMsg('必须选择同名卡作为进化素材');
+          this.flashTeamMsg('必须选择同名卡作为升星素材');
         }
         return;
       }
@@ -2297,7 +2297,7 @@ class SummonHall {
       return;
     }
     // 详情弹层按钮：强化/进化 → 关闭详情进入选择模式（主卡记在 detailInstKeep）
-    if (id === 'enhanceStart') { this.enhanceMode = true; this.evolveMode = false; this.enhancePicks.clear(); this.detailInstKeep = this.detailInst; this.detailInst = null; return; }
+    if (id === 'enhanceStart') { this.enhanceMode = true; this.evolveMode = false; this.enhancePicks.clear(); this.detailInstKeep = this.detailInst; this.detailInst = null; this.page = 'team'; return; }
     if (id === 'enhanceGo') {
       const target = this.detailInstKeep;
       if (!target || this.enhancePicks.size === 0) { this.flashTeamMsg('请先点选狗粮卡'); return; }
@@ -2318,12 +2318,12 @@ class SummonHall {
       saveDB(this.db);
       return;
     }
-    if (id === 'evolveStart') { this.evolveMode = true; this.enhanceMode = false; this.evolvePick = null; this.detailInstKeep = this.detailInst; this.detailInst = null; return; }
+    if (id === 'evolveStart') { this.evolveMode = true; this.enhanceMode = false; this.evolvePick = null; this.detailInstKeep = this.detailInst; this.detailInst = null; this.page = 'team'; return; }
     if (id === 'evolveGo') {
       const target = this.detailInstKeep;
       if (!target || !this.evolvePick) { this.flashTeamMsg('请先点选同名素材卡'); return; }
       const r = EvolveCard(this.db, target, this.evolvePick);
-      if (r.ok) this.flashTeamMsg(`进化成功！继承 ATK+${r.inheritedAtk} HP+${r.inheritedHp}，进阶 ${r.newEvoStage}`);
+      if (r.ok) this.flashTeamMsg(`升星成功！${'★'.repeat(r.newEvoStage)} 继承 ATK+${r.inheritedAtk} HP+${r.inheritedHp}`);
       else this.flashTeamMsg(r.reason || '进化失败');
       saveDB(this.db);
       this.evolvePick = null; this.evolveMode = false;
@@ -2436,7 +2436,7 @@ class SummonHall {
       if (picked) { ctx.strokeStyle = '#ff8c6a'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (isDetail) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (o.locked) this.text('🔒', x + icw / 2 - 14, y - ich / 2 + 16, 14, '#fff', 'center');
-      this.text(`Lv.${o.lv}${o.evoStage > 0 ? ' +' + o.evoStage : ''}`, x, y + ich / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
+      this.text(`Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, x, y + ich / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
       this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `invpc:${o.instId}` });
     });
 
@@ -2499,7 +2499,7 @@ class SummonHall {
     engravedText(ctx, card.name, dx + 130, dy + 385, 16);
     this.text(`${card.rarity} · ${card.element} · COST ${card.cardCost}`, dx + 130, dy + 410, 12, '#cfc4a8', 'center', 'bold');
     const ix = dx + 290;
-    engravedText(ctx, `Lv.${o.lv}${o.evoStage > 0 ? ` (进化+${o.evoStage})` : ''}`, ix + 160, dy + 44, 20);
+    engravedText(ctx, `Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, ix + 160, dy + 44, 20);
     let ry = dy + 88;
     const rowsS: [string, string][] = [
       ['稀有度', card.rarity], ['元素', card.element], ['攻击力', String(cb?.atk ?? card.stats.attack)],
@@ -2507,7 +2507,7 @@ class SummonHall {
       ['技能', card.skillName || '—'], ['获得', isFresh(o) ? '今天' : '较早'],
     ];
     for (const [l, v] of rowsS) { this.text(l, ix, ry, 15, '#e8a0c0', 'left', 'bold'); this.text(v, ix + 120, ry, 15, '#f0e6cc', 'left', 'bold'); ry += 32; }
-    if (o.atkBonus > 0 || o.hpBonus > 0) { this.text(`进化继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30; }
+    if (o.atkBonus > 0 || o.hpBonus > 0) { this.text(`升星继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30; }
     if (card.skillDesc) {
       this.wrapText(card.skillDesc, ix, ry, 380, 20, 12, '#b8c8d8');
       ry += Math.ceil(card.skillDesc.length / 31) * 20 + 8;
@@ -2521,13 +2521,18 @@ class SummonHall {
       }
     }
 
-    const bw = 150, bh = 46, by = dy + dh - 66;
-    glassButton(ctx, dx + 40, by, bw, bh, '划至队伍', { kind: 'green', hover: this.hover === 'invToTeam', fontSize: 16 });
-    glassButton(ctx, dx + 40 + (bw + 12), by, bw, bh, o.locked ? '解锁' : '锁定', { kind: 'gray', hover: this.hover === 'lockCard', fontSize: 16 });
-    glassButton(ctx, dx + 40 + (bw + 12) * 2, by, bw, bh, '出售', { kind: 'red', hover: this.hover === 'sellCard', fontSize: 16 });
-    this.buttons.push({ x: dx + 40, y: by, w: bw, h: bh, id: 'invToTeam' });
-    this.buttons.push({ x: dx + 40 + (bw + 12), y: by, w: bw, h: bh, id: 'lockCard' });
-    this.buttons.push({ x: dx + 40 + (bw + 12) * 2, y: by, w: bw, h: bh, id: 'sellCard' });
+    // 操作按钮两排：上排 强化/升星/划至队伍，下排 锁定/出售
+    const bw = 150, bh = 46, by = dy + dh - 66, by2 = by - 56;
+    glassButton(ctx, dx + 40, by2, bw, bh, '强化', { kind: 'green', hover: this.hover === 'enhanceStart', fontSize: 16 });
+    glassButton(ctx, dx + 40 + (bw + 12), by2, bw, bh, '升星', { kind: 'blue', hover: this.hover === 'evolveStart', fontSize: 16 });
+    glassButton(ctx, dx + 40 + (bw + 12) * 2, by2, bw, bh, '划至队伍', { kind: 'gray', hover: this.hover === 'invToTeam', fontSize: 16 });
+    glassButton(ctx, dx + 40, by, bw, bh, o.locked ? '解锁' : '锁定', { kind: 'gray', hover: this.hover === 'lockCard', fontSize: 16 });
+    glassButton(ctx, dx + 40 + (bw + 12), by, bw, bh, '出售', { kind: 'red', hover: this.hover === 'sellCard', fontSize: 16 });
+    this.buttons.push({ x: dx + 40, y: by2, w: bw, h: bh, id: 'enhanceStart' });
+    this.buttons.push({ x: dx + 40 + (bw + 12), y: by2, w: bw, h: bh, id: 'evolveStart' });
+    this.buttons.push({ x: dx + 40 + (bw + 12) * 2, y: by2, w: bw, h: bh, id: 'invToTeam' });
+    this.buttons.push({ x: dx + 40, y: by, w: bw, h: bh, id: 'lockCard' });
+    this.buttons.push({ x: dx + 40 + (bw + 12), y: by, w: bw, h: bh, id: 'sellCard' });
     glassButton(ctx, dx + 20, dy + 14, 90, 42, '✕', { kind: 'gray', hover: this.hover === 'closeInvDetail', fontSize: 16 });
     this.buttons.push({ x: dx + 20, y: dy + 14, w: 90, h: 42, id: 'closeInvDetail' });
   }
@@ -2718,7 +2723,7 @@ class SummonHall {
       if (picked) { ctx.strokeStyle = '#6fce9a'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (isDetail) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (o.locked) this.text('🔒', x + icw / 2 - 12, y - ich / 2 + 16, 14, '#fff', 'center');
-      this.text(`Lv.${o.lv}${o.evoStage > 0 ? ' +' + o.evoStage : ''}`, x, y + ich / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
+      this.text(`Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, x, y + ich / 2 - 8, 10, '#ffe9a8', 'center', 'bold');
       this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `inv:${o.instId}` });
     });
 
@@ -2757,7 +2762,7 @@ class SummonHall {
       this.buttons.push({ x: W / 2 + 250, y: 340, w: 120, h: 36, id: 'enhancePotion' });
     }
     if (this.evolveMode) {
-      this.text(`进化模式：点选一张同名卡作为素材${this.evolvePick ? '（已选）' : ''}`, 250, 348, 13, '#ff5ce8', 'left', 'bold');
+      this.text(`升星模式：点选一张同名卡作为素材（最高 5 星）${this.evolvePick ? '（已选）' : ''}`, 250, 348, 13, '#ff5ce8', 'left', 'bold');
       glassButton(ctx, W / 2 - 90, 340, 180, 36, '确认进化', { kind: 'blue', hover: this.hover === 'evolveGo', fontSize: 14 });
       this.buttons.push({ x: W / 2 - 90, y: 340, w: 180, h: 36, id: 'evolveGo' });
     }
@@ -2805,7 +2810,7 @@ class SummonHall {
     this.text(`${card.rarity} · ${card.element} · COST ${card.cardCost}`, dx + 130, dy + 404, 12, '#cfc4a8', 'center', 'bold');
     // 右：信息
     const ix = dx + 280;
-    engravedText(ctx, `Lv.${o.lv}${o.evoStage > 0 ? ` (进化+${o.evoStage})` : ''}`, ix + 180, dy + 40, 20);
+    engravedText(ctx, `Lv.${o.lv}${o.evoStage > 0 ? ' ' + '★'.repeat(o.evoStage) : ''}`, ix + 180, dy + 40, 20);
     const rows: [string, string][] = [
       ['攻击力', String(cb?.atk ?? card.stats.attack)],
       ['生命力', String(cb?.hpMax ?? 0)],
@@ -2820,7 +2825,7 @@ class SummonHall {
       ry += 34;
     }
     if (o.atkBonus > 0 || o.hpBonus > 0) {
-      this.text(`进化继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30;
+      this.text(`升星继承：ATK+${o.atkBonus}  HP+${o.hpBonus}`, ix, ry, 13, '#6fce9a', 'left', 'bold'); ry += 30;
     }
     // 强化药水持有量
     const potions = this.db.inventory.materials.upgradePotion || 0;
@@ -2834,7 +2839,7 @@ class SummonHall {
     const bw = 150, bh = 46, by = dy + dh - 66;
     const bx0 = dx + 40;
     glassButton(ctx, bx0, by, bw, bh, '强化', { kind: 'green', hover: this.hover === 'enhanceStart', fontSize: 17 });
-    glassButton(ctx, bx0 + bw + 12, by, bw, bh, '进化', { kind: 'blue', hover: this.hover === 'evolveStart', fontSize: 17 });
+    glassButton(ctx, bx0 + bw + 12, by, bw, bh, '升星', { kind: 'blue', hover: this.hover === 'evolveStart', fontSize: 17 });
     glassButton(ctx, bx0 + (bw + 12) * 2, by, bw, bh, o.locked ? '解锁' : '锁定', { kind: 'gray', hover: this.hover === 'lockCard', fontSize: 17 });
     glassButton(ctx, bx0 + (bw + 12) * 3, by, bw, bh, '出售', { kind: 'red', hover: this.hover === 'sellCard', fontSize: 17 });
     this.buttons.push({ x: bx0, y: by, w: bw, h: bh, id: 'enhanceStart' });

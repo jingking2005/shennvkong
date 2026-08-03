@@ -351,6 +351,9 @@ export interface EvolveResult {
  * - 素材卡 8% 属性永久继承（满级进化更多，12%）
  * - 进化次数 +1，提升上限
  */
+/** 升星上限：同名卡合成，最高 5 星 */
+export const MAX_STAR = 5;
+
 export function EvolveCard(db: DB, instA: string, instB: string, inheritRate = 0.08): EvolveResult {
   const inv = db.inventory;
   const a = inv.cards.find(c => c.instId === instA);
@@ -359,6 +362,7 @@ export function EvolveCard(db: DB, instA: string, instB: string, inheritRate = 0
   if (!a || !b) { res.reason = '卡牌不存在'; return res; }
   if (a.instId === b.instId) { res.reason = '不能与自己合成'; return res; }
   if (a.cardId !== b.cardId) { res.reason = '必须同名卡'; return res; }
+  if (a.evoStage >= MAX_STAR) { res.reason = '已达 5 星上限'; return res; }
 
   const card = getCard(a.cardId)!;
   // 满级进化继承更多
