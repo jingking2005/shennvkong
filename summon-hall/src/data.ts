@@ -43,6 +43,7 @@ interface RawCard {
 }
 
 import rawCards from './cards.json';
+import { scaledStats } from './data/stat-scale';
 
 function toCard(r: RawCard): Card | null {
   const w = r.wiki;
@@ -55,14 +56,8 @@ function toCard(r: RawCard): Card | null {
     cardCost: r.cardCost,
     skillName: w.skillName || '',
     skillDesc: w.skillDesc || '',
-    stats: {
-      attack: r.baseStats?.attack ?? 0,
-      defense: r.baseStats?.defense ?? 0,
-      soldiers: r.baseStats?.soldiers ?? 0,
-      speed: r.baseStats?.speed ?? 0,
-      critRate: r.baseStats?.critRate ?? 0,
-      critDamage: r.baseStats?.critDamage ?? 0,
-    },
+    // 数值梯度：wiki 原值跨稀有度平坦，经 stat-scale 重构为严格 N→VR 分层（original-fill）
+    stats: scaledStats(r.rarity, r.baseStats),
     imageDir: w.imageDir,
     imageFile: w.imageFile,
   };
