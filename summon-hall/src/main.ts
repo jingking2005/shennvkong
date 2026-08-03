@@ -12,7 +12,8 @@ import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchR
 import {
   ExploreStage, EvolveCard, EnhanceCard, UseEnhancePotion, runBattleTurn, raidAttack,
   claimRaidReward, claimAllRaidRewards, tickBattlePt, tickEnergy, openChest,
-  ownedToCombatant, leaderAtkBonus, type Combatant, type ExploreResult, type SkillFx,
+  ownedToCombatant, leaderAtkBonus, canClaimLogin, claimDailyLogin, LOGIN_REWARDS,
+  type Combatant, type ExploreResult, type SkillFx,
   type ChestReward,
 } from './logic';
 import { eventMapBg, battleBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST } from './assets';
@@ -130,6 +131,7 @@ class SummonHall {
   private pillarV = 0;               // 光柱强度
   private pillarColor = '#ffe14d';
   private showRates = false;         // 提供比率浮层
+  private showLogin = false;         // 每日签到浮层
   private cardDetail: Card | null = null; // 卡牌详情浮层
   private rateCards: Card[] = [];    // 提供比率浮层展示的卡
   private meta = new Map<string, BannerMeta>();
@@ -209,6 +211,8 @@ class SummonHall {
     this.fp = this.db.user.friendPt;
     this.buildTeam();
     this.syncBgm();
+    // 每日首次进入自动弹出签到
+    if (canClaimLogin(this.db)) this.showLogin = true;
 
     requestAnimationFrame(t => this.loop(t));
   }
@@ -470,6 +474,24 @@ class SummonHall {
       return;
     }
     if (this.showRecharge) return; // 弹窗打开时屏蔽下层
+
+    // 每日签到浮层
+    if (id === 'openLogin') { this.showLogin = true; return; }
+    if (id === 'closeLogin' || id === 'closeLoginBg') { this.showLogin = false; return; }
+    if (id === 'loginClaim') {
+      const r = claimDailyLogin(this.db);
+      if (r.ok && r.reward) {
+        this.jewels = this.db.user.gems;
+        this.fp = this.db.user.friendPt;
+        saveDB(this.db);
+        this.flashTeamMsg(`第 ${r.day} 天签到：${r.reward.label}`);
+        this.showLogin = false;
+      } else {
+        this.flashTeamMsg(r.reason ?? '领取失败');
+      }
+      return;
+    }
+    if (this.showLogin) return; // 签到浮层打开时屏蔽下层
 
     // 商店购买
     if (id.startsWith('shopBuy:') && this.page === 'shop') {
@@ -1294,6 +1316,67 @@ class SummonHall {
 
     // 卡牌详情浮层（最顶层）
     if (this.cardDetail) this.renderCardDetail(this.cardDetail);
+    // 每日签到浮层（最顶层）
+    if (this.showLogin) this.renderLoginOverlay();
+  }
+
+  /** 每日签到浮层：7 日表 + 领取按钮 */
+  private renderLoginOverlay(): void {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(2,3,8,0.72)';
+    ctx.fillRect(0, 0, W, H);
+    this.buttons.push({ x: 0, y: 0, w: W, h: H, id: 'closeLoginBg' });
+
+    const dw = 620, dh = 420, dx = W / 2 - dw / 2, dy = H / 2 - dh / 2;
+    metalDialog(ctx, dx, dy, dw, dh);
+    this.text('每日签到', W / 2, dy + 40, 26, '#f5e0a0', 'center', 'bold', true);
+    const u = this.db.user;
+    const canClaim = canClaimLogin(this.db);
+    // 当前表位置：可领时为下一个位置；已领时为今日位置
+    const idx = ((u.loginStreak - (canClaim ? 0 : 1)) % 7 + 7) % 7;
+
+    // 7 日格子（4+3 两行）
+    const cw = 132, ch = 120, gap = 12;
+    LOGIN_REWARDS.forEach((r, i) => {
+      const row = i < 4 ? 0 : 1;
+      const col = i < 4 ? i : i - 4;
+      const gx = dx + (dw - (4 * cw + 3 * gap)) / 2 + col * (cw + gap) + (row === 1 ? (cw + gap) / 2 : 0);
+      const gy = dy + 70 + row * (ch + gap);
+      const isCur = i === idx;
+      const claimed = canClaim ? i < idx : i <= idx;
+      this.rr(gx, gy, cw, ch, 10);
+      ctx.fillStyle = claimed ? '#1a2416' : (isCur ? '#2a2038' : '#141020');
+      ctx.fill();
+      ctx.strokeStyle = isCur ? '#ffd24d' : (claimed ? '#4a6a3a' : '#3a3450');
+      ctx.lineWidth = isCur ? 2.5 : 1.2;
+      this.rr(gx, gy, cw, ch, 10); ctx.stroke();
+      this.text(`第 ${i + 1} 天`, gx + cw / 2, gy + 20, 12, isCur ? '#ffd24d' : '#8892a8', 'center', 'bold');
+      this.wrapText(r.label, gx + 8, gy + 44, cw - 16, 14, 12, claimed ? '#6a8a5a' : '#e8d5a8', 'bold');
+      if (claimed) this.text('✓', gx + cw / 2, gy + ch - 14, 20, '#6fce9a', 'center', 'bold');
+      if (isCur && canClaim) {
+        ctx.save();
+        ctx.globalAlpha = 0.5 + 0.4 * Math.sin(this.last / 300);
+        ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 2;
+        this.rr(gx - 3, gy - 3, cw + 6, ch + 6, 12); ctx.stroke();
+        ctx.restore();
+      }
+    });
+
+    // 连续天数
+    this.text(`已连续签到 ${u.loginStreak} 天`, W / 2, dy + dh - 92, 13, '#cfc4a8', 'center');
+
+    // 领取 / 关闭
+    if (canClaim) {
+      glassButton(ctx, W / 2 - 110, dy + dh - 70, 220, 50, '领 取 奖 励', {
+        kind: 'green', hover: this.hover === 'loginClaim', fontSize: 18,
+      });
+      this.buttons.push({ x: W / 2 - 110, y: dy + dh - 70, w: 220, h: 50, id: 'loginClaim' });
+    } else {
+      glassButton(ctx, W / 2 - 90, dy + dh - 70, 180, 50, '关 闭', {
+        kind: 'gray', hover: this.hover === 'closeLogin', fontSize: 17,
+      });
+      this.buttons.push({ x: W / 2 - 90, y: dy + dh - 70, w: 180, h: 50, id: 'closeLogin' });
+    }
   }
 
   private renderCardDetail(card: Card): void {
@@ -3065,6 +3148,11 @@ class SummonHall {
     this.pill(W - 190, 64, 170, 34, '#e8b23b', '#ffe9a8');
     this.text('❋ 商 店', W - 105, 82, 15, '#1a1206', 'center', 'bold');
     this.buttons.push({ x: W - 190, y: 64, w: 170, h: 34, id: 'exchange' });
+    // 签到入口（未签到时金色呼吸提示）
+    const canLogin = canClaimLogin(this.db);
+    this.pill(W - 340, 64, 136, 34, canLogin ? '#3a2a08' : '#1a1626', canLogin ? '#ffd24d' : '#4a4460');
+    this.text(canLogin ? '✦ 签到有礼' : '每日签到', W - 272, 82, 13, canLogin ? '#ffd24d' : '#8892a8', 'center', 'bold');
+    this.buttons.push({ x: W - 340, y: 64, w: 136, h: 34, id: 'openLogin' });
 
     // ── 左侧：当前卡池大立绘 banner ──
     const bx = 20, by = 108, bw = 760, bh = 520;

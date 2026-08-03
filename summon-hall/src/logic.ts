@@ -111,6 +111,54 @@ export const AP_RECOVER_MS = 6 * 60 * 1000;
 /** 每点行动力恢复间隔（毫秒）：3 分钟一点 */
 export const ENERGY_RECOVER_MS = 3 * 60 * 1000;
 
+// ─────────────────────────── 每日签到 ───────────────────────────
+
+export interface LoginReward {
+  gold?: number; gems?: number; friendPt?: number;
+  tickets?: Record<string, number>;
+  label: string;
+}
+
+/** 7 日签到表（循环）；第 7 天为大奖 */
+export const LOGIN_REWARDS: LoginReward[] = [
+  { gold: 5000, label: '金币 ×5000' },
+  { gems: 50, label: '宝石 ×50' },
+  { friendPt: 2000, label: '友情点 ×2000' },
+  { gems: 100, label: '宝石 ×100' },
+  { tickets: { fate: 1 }, label: '命运召唤券 ×1' },
+  { gems: 150, label: '宝石 ×150' },
+  { gems: 200, tickets: { legend: 1 }, label: '宝石 ×200 + 传说券 ×1' },
+];
+
+function todayStr(now: number): string {
+  return new Date(now).toISOString().slice(0, 10);
+}
+
+/** 今日是否可签到 */
+export function canClaimLogin(db: DB, now = Date.now()): boolean {
+  return db.user.loginLastClaim !== todayStr(now);
+}
+
+/**
+ * 领取今日签到奖励。连续签到（昨天领过）streak+1，断签重置为 1。
+ * 表位置 = (streak-1) % 7。
+ */
+export function claimDailyLogin(db: DB, now = Date.now()): { ok: boolean; reward?: LoginReward; day?: number; reason?: string } {
+  const u = db.user;
+  const today = todayStr(now);
+  if (u.loginLastClaim === today) return { ok: false, reason: '今日已签到' };
+  const yesterday = todayStr(now - 86400000);
+  u.loginStreak = u.loginLastClaim === yesterday ? u.loginStreak + 1 : 1;
+  u.loginLastClaim = today;
+  const idx = (u.loginStreak - 1) % LOGIN_REWARDS.length;
+  const r = LOGIN_REWARDS[idx];
+  if (r.gold) u.gold += r.gold;
+  if (r.gems) u.gems += r.gems;
+  if (r.friendPt) u.friendPt += r.friendPt;
+  if (r.tickets) for (const [k, v] of Object.entries(r.tickets)) u.tickets[k] = (u.tickets[k] ?? 0) + v;
+  return { ok: true, reward: r, day: idx + 1 };
+}
+
 /**
  * 结算 AP 随时间恢复：每 AP_RECOVER_MS 恢复 1 点，最多 battlePtMax。
  * 返回当前 AP 与下次恢复倒计时（秒）。

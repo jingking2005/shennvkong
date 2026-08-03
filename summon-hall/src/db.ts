@@ -60,6 +60,10 @@ export interface User {
   monthCardUntil: number;
   /** 月卡每日领取日期（YYYY-MM-DD），当天已领则不再发放 */
   monthCardLastClaim: string | null;
+  /** 签到：连续签到天数（决定 7 日表位置） */
+  loginStreak: number;
+  /** 签到：上次领取日期（YYYY-MM-DD）；断签则 streak 重置 */
+  loginLastClaim: string | null;
 }
 
 /** 玩家持有的卡实例（库存项） */
@@ -228,6 +232,8 @@ export function loadDB(): DB | null {
     }
     if (typeof db.user.monthCardUntil !== 'number') db.user.monthCardUntil = 0;
     if (typeof db.user.monthCardLastClaim !== 'string') db.user.monthCardLastClaim = null;
+    if (typeof db.user.loginStreak !== 'number') db.user.loginStreak = 0;
+    if (typeof db.user.loginLastClaim !== 'string') db.user.loginLastClaim = null;
     if (!db.inventory.materials) db.inventory.materials = {};
     if (db.inventory.materials.upgradePotion === undefined) db.inventory.materials.upgradePotion = 0;
     // 关卡迁移：补齐新增关卡
@@ -274,6 +280,7 @@ export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
       gold: 78000, gems: 3000, friendPt: 9999,
       tickets: { fate: 3, legend: 3, oracle: 3, friend: 30, 'lr-guaranteed': 1, collab: 0, element: 1 },
       paidGems: 0, paidTiers: {}, monthCardUntil: Date.now() + 30 * 86400000, monthCardLastClaim: null,
+      loginStreak: 0, loginLastClaim: null,
     },
     inventory: inv,
     stages,
