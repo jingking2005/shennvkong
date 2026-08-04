@@ -7,6 +7,18 @@ import { drawCard, preloadImage, getImage, RARITY_COLOR } from './card';
 import { BANNERS, Gacha, rateTable, bannerShowcase, type Banner, type Pull } from './gacha';
 import { cardsByRarity, getCard, SUMMON_CARDS, type Card, type Rarity } from './data';
 import { Ease, Tweener } from './ease';
+import { RevealFxV3 } from './reveal-fx-v3';
+import { preloadAllTex, preloadTex, getTex, drawCoverTex } from './textures';
+
+/** Fisher–Yates 洗牌（用于资源随机映射） */
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 import { glassButton, metalDialog, engravedText, roundRectPath } from './ui';
 import { seedDB, saveDB, loadDB, makeOwnedCard, type DB, type Stage, type WitchRaidBoss, type OwnedCard } from './db';
 import {
@@ -155,6 +167,17 @@ class SummonHall {
   private flashColor = '#ffe14d';
   private pillarV = 0;               // 光柱强度
   private pillarColor = '#ffe14d';
+  /** LR/VR 揭晓前景特效（v3 移植；legacy 走旧逻辑） */
+  private revealFx = new RevealFxV3();
+  private revealFxVer: 'v3' | 'legacy' = localStorage.getItem('vc_reveal_fx') === 'legacy' ? 'legacy' : 'v3';
+  /** VC 归档纹理：卡池选项卡背景 / 选中大图 / 中间栏背景（随机映射） */
+  private bannerCourse = new Map<string, string>();
+  private bannerBtn = new Map<string, string>();
+  private bannerCampaign = new Map<string, string>();
+  /** LR/VR 揭示壁纸过渡强度（AniBG_003） */
+  private revealAniA = 0;
+  /** 普通遭遇是否显示魔女 logo（随机） */
+  private encLogoShow = false;
   private showRates = false;         // 提供比率浮层
   private showLogin = false;         // 每日签到浮层
   private naviLoader = new RotationLoader(6); // 看板娘轮播（懒加载）
@@ -249,6 +272,18 @@ class SummonHall {
 
     this.bg.resize(W, H);
     this.bg.setHallCarousel(EVENT_MAP_BGS); // 大厅背景：活动地图轮播
+    preloadAllTex();
+
+    // 随机映射：6 张选项卡背景 / 10 张选中大图 / 3 张中间栏背景
+    const courses = shuffle(['course1', 'course2', 'course3', 'course4', 'course5', 'course6']);
+    const btns = shuffle(['gbtn_beginner', 'gbtn_duel', 'gbtn_event', 'gbtn_guild', 'gbtn_guild2',
+      'gbtn_guildcamp', 'gbtn_hell', 'gbtn_thor', 'gbtn_tower', 'gbtn_weapon']);
+    const camps = shuffle(['campaign1', 'campaign2', 'campaign3']);
+    BANNERS.forEach((b, i) => {
+      this.bannerCourse.set(b.id, courses[i % courses.length]);
+      this.bannerBtn.set(b.id, btns[i % btns.length]);
+      this.bannerCampaign.set(b.id, camps[i % camps.length]);
+    });
     const saved = loadDB();
     if (saved) this.db = saved;
     this.gacha.restoreCounters(this.db.user.gachaPity as never);
@@ -557,6 +592,14 @@ class SummonHall {
     // 全局 HUD（任意页优先）
     if (id === 'toggleMusic') { audio.toggleMute(); return; }
     // 抽卡快速跳过：不再逐张揭示，直接展示全部结果（VR 卡不可跳过，必须完整演完动画）
+    if (id === 'fxToggle' && this.phase.kind === 'reveal') {
+      // 特效版本切换（还原空间：v3 ⇄ legacy，立即生效）
+      this.revealFxVer = this.revealFxVer === 'v3' ? 'legacy' : 'v3';
+      localStorage.setItem('vc_reveal_fx', this.revealFxVer);
+      this.revealFx.reset();
+      this.flashTeamMsg(this.revealFxVer === 'v3' ? '已切换：特效 FX v3' : '已切换：旧版特效');
+      return;
+    }
     if (id === 'skipAll' && (this.phase.kind === 'reveal' || this.phase.kind === 'summon')) {
       if (this.phase.kind === 'reveal' && this.isVrCard(this.phase.pulls[this.phase.idx])) {
         this.flashTeamMsg('VR 出现！圣光礼花不可跳过');
@@ -922,10 +965,10 @@ class SummonHall {
     return ['LR', 'X', 'VR'].includes(top) ? 2.6 : top === 'UR' ? 2.0 : top === 'SR' ? 1.4 : 1.0;
   }
 
-  /** 单卡揭示时长：极品卡明显更长（VR 6s 不可跳过、LR 5s、UR 3s，可跳过） */
+  /** 单卡揭示时长：极品卡明显更长（LR/VR 均 5s，可跳过；VR 演出最重） */
   private revealDur(rarity: string): number {
     const r = RANK[rarity] ?? 1;
-    if (r >= 7) return 6.0;  // VR 圣光礼花（不可跳过）
+    if (r >= 7) return 5.0;  // VR 圣光礼花（不可跳过）
     if (r >= 6) return 5.0;  // X 同 LR 档
     if (r >= 5) return 5.0;  // LR 太阳花瓣
     if (r >= 4) return 3.0;  // UR 桃心光束
@@ -962,6 +1005,11 @@ class SummonHall {
     if (!pull) return;
     const col = RARITY_COLOR[pull.card.rarity];
     const rank = RANK[pull.card.rarity];
+    // v3 特效：切卡时重置（含点击跳过/自动推进）
+    this.revealFx.reset();
+    this.revealFx.drawBack = (c, x, y, w, h, col2, t2, p2) => this.drawCardBack(c, x, y, w, h, col2, t2, p2);
+    this.revealFx.drawFront = (c, card, x, y, w, h) => drawCard(c, card, x, y, w, h, { rainbowT: (this.last / 1000 * 0.35) % 1, showMeta: true });
+    this.revealFx.onFlash = v => { this.flashV = Math.max(this.flashV, v); this.flashColor = col; };
     this.pillarV = 1;
     this.pillarColor = col;
     // 稀有揭示音：UR→se_040；LR/X/VR→se_017
@@ -1149,6 +1197,16 @@ class SummonHall {
     } else if (this.phase.kind === 'reveal') {
       this.phase.t += dt;
       const pulls = this.phase.pulls;
+      // v3 前景特效推进（仅 LR/X/VR；旧版不启用）
+      const fxCard = pulls[this.phase.idx];
+      if (this.revealFxVer === 'v3' && fxCard && RANK[fxCard.card.rarity] >= 5) {
+        const start = this.revealStartAt(pulls, this.phase.idx);
+        const dur = this.revealDur(fxCard.card.rarity);
+        const omenEnd = 0.18;
+        const local = Math.min(1, Math.max(0, (this.phase.t - start) / dur));
+        const revealLocal = Math.max(0, (local - omenEnd) / (1 - omenEnd));
+        this.revealFx.update(dt, revealLocal, RANK[fxCard.card.rarity] >= 7 ? 'VR' : 'LR');
+      }
       // 按稀有度变速推进索引
       let idx = 0;
       for (let i = 0; i < pulls.length; i++) {
@@ -1168,6 +1226,7 @@ class SummonHall {
 
   /** 普通遭遇战：单 BOSS */
   private startBattle(raid: WitchRaidBoss | null = null): void {
+    this.encLogoShow = !raid && Math.random() < 0.5; // 普通遭遇 50% 显示魔女 logo
     const team = this.teamCombatants();
     if (team.length === 0) return;
     let enemies: Combatant[];
@@ -1505,6 +1564,23 @@ class SummonHall {
 
     this.bg.render(ctx);
 
+    // 召唤系统：VC 归档壁纸 BG_SpLoginBonus 铺底（极慢呼吸缩放 0.03x 周期 ~26s）
+    if (this.page === 'summon') {
+      const sp = getTex('bg_sp_login');
+      if (sp) {
+        const t = this.last / 1000;
+        const sc = 1.035 + 0.035 * Math.sin(t * 0.24);
+        ctx.save();
+        ctx.translate(W / 2, H / 2);
+        ctx.scale(sc, sc);
+        ctx.translate(-W / 2, -H / 2);
+        drawCoverTex(ctx, sp, 0, 0, W, H, 0.9);
+        ctx.restore();
+        ctx.fillStyle = 'rgba(6,4,16,0.30)';
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+
     // 活动地图 / 出击 / 战斗 / 战绩：叠加归档场景背景（召唤页仍用神殿）
     if (this.page === 'event' || this.page === 'records') {
       drawCover(ctx, loadAssetImage(eventMapBg(this.eventMapIndex)), W, H, 1);
@@ -1758,14 +1834,18 @@ class SummonHall {
     ctx.fillRect(0, 55, W, 1);
     // 体力（行动力）
     this.pill(16, 12, 158, 32, '#0d0a16', '#6fce9a');
-    this.text(`⚔ ${u.energy}/${u.energyMax}`, 95, 29, 13, '#8fe8a8', 'center', 'bold');
+    this.drawHudIcon('icon_energy', 26, 18, 20);
+    this.text(`${u.energy}/${u.energyMax}`, 110, 29, 13, '#8fe8a8', 'center', 'bold');
     // 金币 / 宝石 / 召唤券
     this.pill(186, 12, 168, 32, '#0d0a16', '#c8a040');
-    this.text(`🪙 ${u.gold.toLocaleString()}`, 270, 29, 13, '#ffd24d', 'center', 'bold');
+    this.drawHudIcon('icon_gold', 196, 18, 20);
+    this.text(u.gold.toLocaleString(), 288, 29, 13, '#ffd24d', 'center', 'bold');
     this.pill(366, 12, 138, 32, '#0d0a16', '#b45cff');
-    this.text(`💎 ${u.gems.toLocaleString()}`, 435, 29, 13, '#e0b0ff', 'center', 'bold');
+    this.drawHudIcon('icon_gems', 376, 18, 20);
+    this.text(u.gems.toLocaleString(), 452, 29, 13, '#e0b0ff', 'center', 'bold');
     this.pill(516, 12, 108, 32, '#0d0a16', '#ff8c8c');
-    this.text(`🎟 ${u.tickets.fate || 0}`, 570, 29, 13, '#ffb0b0', 'center', 'bold');
+    this.drawHudIcon('icon_ticket', 526, 18, 20);
+    this.text(String(u.tickets[this.banner.id] || 0), 588, 29, 13, '#ffb0b0', 'center', 'bold');
 
     // 右上角：音乐 | 充值
     const bw = 56, bh = 40, gap = 10;
@@ -1779,6 +1859,13 @@ class SummonHall {
     });
     this.buttons.push({ x: x1, y, w: bw, h: bh, id: 'toggleMusic' });
     this.buttons.push({ x: x1 + bw + gap, y, w: bw, h: bh, id: 'openRecharge' });
+  }
+
+  /** HUD 顶部资源条图标（VC 归档 128x128，等比缩至 s×s） */
+  private drawHudIcon(name: string, x: number, y: number, s: number): void {
+    const img = getTex(name);
+    if (!img) return;
+    this.ctx.drawImage(img, x, y, s, s);
   }
 
   private renderRecharge(): void {
@@ -1856,9 +1943,17 @@ class SummonHall {
     const ctx = this.ctx;
     this.buttons = [];
 
-    // 深青氛围叠层（参考 VC 战绩截图）
-    ctx.fillStyle = 'rgba(8, 28, 36, 0.55)';
-    ctx.fillRect(0, 0, W, H);
+    // 战绩壁纸 Deck_Bg_test（cover + 深青叠层）
+    const deckBg = getTex('deck_bg');
+    if (deckBg) {
+      drawCoverTex(ctx, deckBg, 0, 0, W, H, 0.9);
+      ctx.fillStyle = 'rgba(8, 28, 36, 0.5)';
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      // 深青氛围叠层（参考 VC 战绩截图）
+      ctx.fillStyle = 'rgba(8, 28, 36, 0.55)';
+      ctx.fillRect(0, 0, W, H);
+    }
 
     // 返回
     glassButton(ctx, 24, 70, 110, 40, '‹ 返回', {
@@ -2073,6 +2168,13 @@ class SummonHall {
   private renderMap(): void {
     const ctx = this.ctx;
     this.buttons = [];
+    // 出击壁纸 Deck_Bg_test（cover + 压暗）
+    const deckBg = getTex('deck_bg');
+    if (deckBg) {
+      drawCoverTex(ctx, deckBg, 0, 0, W, H, 0.85);
+      ctx.fillStyle = 'rgba(6,4,16,0.4)';
+      ctx.fillRect(0, 0, W, H);
+    }
     // 顶部标题（行动力由全局 HUD 统一显示）
     const regionLabel = this.activeStage.regionId === 'r2' ? '神界地图 3' : '神界地图 2';
     this.pill(W / 2 - 200, 64, 400, 44, '#0d0a16', '#c8b285');
@@ -3306,8 +3408,16 @@ class SummonHall {
   private renderShop(): void {
     const ctx = this.ctx;
     this.buttons = [];
-    ctx.fillStyle = 'rgba(8,6,18,0.55)';
-    ctx.fillRect(0, 0, W, H);
+    // 商店壁纸 BG_Shop（cover + 压暗）
+    const shopBg = getTex('bg_shop');
+    if (shopBg) {
+      drawCoverTex(ctx, shopBg, 0, 0, W, H, 0.92);
+      ctx.fillStyle = 'rgba(6,4,16,0.45)';
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      ctx.fillStyle = 'rgba(8,6,18,0.55)';
+      ctx.fillRect(0, 0, W, H);
+    }
     this.text('商 店', 60, 84, 28, '#f5e0a0', 'left', 'bold', true);
     const u = this.db.user;
 
@@ -3687,6 +3797,30 @@ class SummonHall {
     const boss = b.enemies[0];
     const E = ENCOUNTER;
     this.buttons.push(...drawExploreChrome(ctx, this.exploreChromeData(), this.hover));
+
+    // 遭遇横幅（归档 logo）：强敌→WitchHunt3+WitchGate 壁纸；BOSS→Weapon Engage；普通魔女→Enemy
+    const arch = b.raid?.archWitch;
+    if (arch) {
+      const wg = getTex('witchgate_bg');
+      if (wg) drawCoverTex(ctx, wg, 0, 0, W, H, 0.85);
+      const lw = getTex('logo_witchhunt3');
+      if (lw) {
+        const lw2 = Math.min(560, lw.naturalWidth * (200 / lw.naturalHeight));
+        drawCoverTex(ctx, lw, (W - lw2) / 2, 58, lw2, 200, 0.95);
+      }
+    } else if (b.raid) {
+      const lw = getTex('weapon_engage');
+      if (lw) {
+        const lw2 = Math.min(520, lw.naturalWidth * (220 / lw.naturalHeight));
+        drawCoverTex(ctx, lw, (W - lw2) / 2, 48, lw2, 220, 0.92);
+      }
+    } else if (this.encLogoShow) {
+      const lw = getTex('logo_enemy');
+      if (lw) {
+        const lw2 = Math.min(480, lw.naturalWidth * (150 / lw.naturalHeight));
+        drawCoverTex(ctx, lw, (W - lw2) / 2, 58, lw2, 150, 0.92);
+      }
+    }
 
     // 敌卡（居中上部）
     drawBattleCard(ctx, boss.card, E.enemy.cx, E.enemy.cy, E.enemy.cw, E.enemy.ch,
@@ -4218,6 +4352,12 @@ class SummonHall {
     const meta = this.meta.get(this.banner.id);
     const t = this.last / 1000;
 
+    // 当前卡池主题壁纸（命运/友情/金色→BG_gacha；LR 确定→AniBG_002；VR 确定→AniBG_001）
+    const theme = this.banner.id === 'lr-guaranteed' ? 'anibg2'
+      : this.banner.id === 'collab' ? 'anibg1' : 'bg_gacha';
+    const timg = getTex(theme);
+    if (timg) drawCoverTex(ctx, timg, 0, 0, W, H, 0.28);
+
     // ── 顶栏下方：所持卡片数 / 签到 / 商店 ──
     this.cardCount = this.db.inventory.cards.length;
     this.pill(20, 64, 250, 32, '#0d0a16', '#c8b285');
@@ -4241,9 +4381,20 @@ class SummonHall {
     this.rr(bx, by, bw, bh, 12); ctx.clip();
     ctx.fillStyle = '#0d0a16';
     ctx.fillRect(bx, by, bw, bh);
+    // 选中卡池弹大图（抽卡背景文件夹 gbtn_*，cover 放大铺满）
+    const btn = this.bannerBtn.get(this.banner.id);
+    const bimg = btn ? getTex(btn) : null;
+    if (bimg) drawCoverTex(ctx, bimg, bx, by, bw, bh, 0.92);
     const portrait = meta?.portrait ?? null;
     const pImg = portrait ? this.imgOf(portrait) : null;
-    if (pImg) {
+    if (pImg && bimg) {
+      // 有大图背景时：立绘缩小置右下角
+      const sc = 150 / pImg.width;
+      const dw = 150, dh = pImg.height * sc;
+      ctx.globalAlpha = 0.96;
+      ctx.drawImage(pImg, bx + bw - dw - 22, by + bh - dh - 66, dw, dh);
+      ctx.globalAlpha = 1;
+    } else if (pImg) {
       const breathe = 1 + Math.sin(t * 0.6) * 0.015;
       const sc = Math.max(bw / pImg.width, bh / pImg.height) * breathe;
       const dw = pImg.width * sc, dh = pImg.height * sc;
@@ -4313,11 +4464,26 @@ class SummonHall {
     const tagline = meta?.tagline ?? '';
     this.wrapText(tagline, bx + 20, by + bh - 178, bw - 40, 16, 14, '#f0e6cc', 'bold');
 
-    // 四按钮（2×2）：上排 单抽(钻) / 十连(钻)，下排 单抽(券) / 十连(券)
+    // 四按钮（2×2）：上排 单抽(钻) / 十连(钻)，下排 单抽(券) / 十连(券）
     const tickets = meta?.tickets ?? 0;
     const btnY = by + bh - 74;
     const b1 = btnY - 68, b2 = btnY;
     const bw2 = 272;
+    // 中间栏背景：img_campaign 三图随机匹配（命运→VR 确定召唤）
+    const camp = this.bannerCampaign.get(this.banner.id);
+    const cimg = camp ? getTex(camp) : null;
+    if (cimg) {
+      const cy0 = by + bh - 210, ch = 210;
+      ctx.save();
+      this.rr(bx, cy0, bw, ch, 12); ctx.clip();
+      drawCoverTex(ctx, cimg, bx, cy0, bw, ch, 0.9);
+      const g2 = ctx.createLinearGradient(0, cy0, 0, by + bh);
+      g2.addColorStop(0, 'rgba(6,4,14,0.35)');
+      g2.addColorStop(1, 'rgba(6,4,14,0.8)');
+      ctx.fillStyle = g2;
+      ctx.fillRect(bx, cy0, bw, ch);
+      ctx.restore();
+    }
     this.summonButton(bx + 16, b1, bw2, 58, `用 💎 ${this.banner.costSingle}`, `召唤 1 次`, this.jewels >= this.banner.costSingle, 'pull1');
     this.summonButton(bx + 296, b1, bw2, 58, `用 💎 ${this.banner.costTen}`, `进行 10 连召唤`, this.jewels >= this.banner.costTen, 'pull10');
     this.summonButton(bx + 16, b2, bw2, 58, `用 1 张召唤券`, `召唤 1 次`, tickets > 0, 'pull1ticket');
@@ -4479,12 +4645,16 @@ class SummonHall {
     if (!enabled) ctx.globalAlpha = 0.45;
     // 玻璃胶囊主体
     glassButton(ctx, x, y, w, h, '', { kind: 'green', hover: hov && enabled });
+    // 按钮小图标（券/宝石，VC 归档）
+    const icon = l1.includes('券') ? 'icon_ticket' : 'icon_gems';
+    const iimg = getTex(icon);
+    if (iimg) ctx.drawImage(iimg, x + 18, y + h / 2 - 9, 18, 18);
     // 两行文字
     ctx.font = `bold 14px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#d8ffd8';
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
-    ctx.fillText(l1, x + w / 2, y + h / 2 - 11);
+    ctx.fillText(l1.replace('💎 ', '').replace('🎟 ', ''), x + w / 2, y + h / 2 - 11);
     ctx.font = `bold 17px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
     ctx.fillStyle = '#ffffff';
     if (hov && enabled) { ctx.shadowColor = 'rgba(255,255,255,0.7)'; ctx.shadowBlur = 8; }
@@ -4500,8 +4670,11 @@ class SummonHall {
     const m = this.meta.get(b.id);
     ctx.save();
     this.rr(x, y, w, h, 10); ctx.clip();
-    // 立绘缩略背景
-    ctx.fillStyle = '#0d0a16'; ctx.fillRect(x, y, w, h);
+    // 选项卡背景：Elemental Hall 六图随机匹配
+    const cname = this.bannerCourse.get(b.id);
+    const cimg = cname ? getTex(cname) : null;
+    if (cimg) drawCoverTex(ctx, cimg, x, y, w, h, 0.85);
+    else { ctx.fillStyle = '#0d0a16'; ctx.fillRect(x, y, w, h); }
     const pm = m?.portrait;
     if (pm) {
       drawCard(ctx, pm, x + w - 56, y + h / 2, 62, h - 18, { showName: false, showBadge: false });
@@ -4858,6 +5031,19 @@ class SummonHall {
     // ── UR 专属：桃心背景 + 光束 ──
     else if (rank === 4) this.drawUrHearts(ctx, local, revealLocal);
 
+    // LR/VR 揭示：壁纸动态过渡到 AniBG_003（渐入叠加，v3 模式）
+    if (isLR && this.revealFxVer === 'v3') {
+      const ani = getTex('anibg3');
+      if (ani) {
+        const a = Math.min(1, revealLocal * 1.4);
+        drawCoverTex(ctx, ani, 0, 0, W, H, a * 0.88);
+        if (a > 0) {
+          ctx.fillStyle = `rgba(4,2,10,${(1 - a * 0.7) * 0.2})`;
+          ctx.fillRect(0, 0, W, H);
+        }
+      }
+    }
+
     // 光柱
     const pillar = Math.max(0, this.pillarV);
     if (pillar > 0 || (highCard && local < 0.35)) {
@@ -4901,8 +5087,7 @@ class SummonHall {
     }
 
     // 前兆文字
-    if (highCard && local < omenEnd + 0.05) {
-      const op = Math.sin((local / Math.max(0.01, omenEnd)) * Math.PI);
+    if (highCard && local < omenEnd + 0.05) {      const op = Math.sin((local / Math.max(0.01, omenEnd)) * Math.PI);
       ctx.save();
       ctx.globalAlpha = Math.max(0, op);
       const omenTxt = rank >= 7 ? '✦ 圣 光 降 临 ✦' : isLR ? '✦ 仙 神 下 凡 ✦' : '★ 稀有反应 ★';
@@ -4910,8 +5095,9 @@ class SummonHall {
       ctx.restore();
     }
 
-    // 放射光束 + 白爆（翻出瞬间）
-    if (highCard && revealLocal > 0 && revealLocal < 0.55) {
+    // 放射光束 + 白爆（翻出瞬间；v3 模式由新特效接管）
+    const useFxV3 = this.revealFxVer === 'v3' && rank >= 5;
+    if (highCard && !useFxV3 && revealLocal > 0 && revealLocal < 0.55) {
       const burstP = revealLocal / 0.55;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -4936,8 +5122,10 @@ class SummonHall {
       ctx.restore();
     }
 
-    // ── 卡片入场：模仿 ducdat anim-draw-in（从下方翻转入场 + 透视）──
-    if (revealLocal > 0) {
+    // ── 卡片入场：v3 移植（LR/X/VR）走新前景特效；旧版走 ducdat anim-draw-in ──
+    if (useFxV3) {
+      this.renderRevealFxV3(ctx, cur, col, rank, revealLocal);
+    } else if (revealLocal > 0) {
       // 0~0.35: 从底部翻起（rotateX 模拟）；0.35~1: 弹跳落定
       const flipP = Math.min(1, revealLocal / 0.35);
       const settleP = revealLocal > 0.35 ? Math.min(1, (revealLocal - 0.35) / 0.45) : 0;
@@ -5094,11 +5282,13 @@ class SummonHall {
       }
     }
 
-    // RARE 字标
+    // RARE 字标（v3 模式显示品质名，与顶部大字呼应）
     if (highCard && revealLocal > 0.5) {
       const rareP = Math.min(1, (revealLocal - 0.5) / 0.28);
       const pop = Ease.outBack(rareP);
-      const label = `${cur.card.rarity} RARE`;
+      const label = useFxV3
+        ? (rank >= 7 ? 'VERY RARE' : 'LEGEND RARE')
+        : `${cur.card.rarity} RARE`;
       ctx.save();
       ctx.translate(W / 2, H / 2 + 210);
       ctx.scale(Math.max(0.02, pop), Math.max(0.02, pop));
@@ -5133,6 +5323,28 @@ class SummonHall {
       kind: 'blue', hover: this.hover === 'skipAll', fontSize: 17,
     });
     this.buttons.push({ x: W - 176, y: H / 2 - 26, w: 156, h: 52, id: 'skipAll' });
+  }
+
+  /** v3 移植前景特效：卡片入场 + 粒子 + 光效（叠加在生产背景之上） */
+  private renderRevealFxV3(ctx: CanvasRenderingContext2D, cur: Pull, col: string, rank: number, revealLocal: number): void {
+    const rarity = rank >= 7 ? 'VR' : 'LR';
+    this.revealFx.render(ctx, cur.card, revealLocal, rarity, col);
+    // 特效版本切换开关（还原空间：localStorage vc_reveal_fx）
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    this.rr(12, 12, 110, 30, 6);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1;
+    this.rr(12, 12, 110, 30, 6);
+    ctx.stroke();
+    ctx.fillStyle = '#d8d2e8';
+    ctx.font = '12px "PingFang SC", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('特效 FX v3 ▾', 67, 27);
+    ctx.restore();
+    this.buttons.push({ x: 12, y: 12, w: 110, h: 30, id: 'fxToggle' });
   }
 
   /** VR 圣光场景：夜晚月亮 + 圣光柱照亮全场 + 七彩玻璃辉光（卡片从月亮下方缓缓升起，礼花持久） */
