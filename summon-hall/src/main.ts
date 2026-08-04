@@ -4856,31 +4856,22 @@ class SummonHall {
     const shakeAmp = 3 + bright * 14;
     const sx = (Math.random() - 0.5) * shakeAmp;
     const sy = (Math.random() - 0.5) * shakeAmp;
-    // 极品：幂次自旋（p^5 × 720°）；普通：微抖旋转
-    const rotate = high
-      ? Math.pow(p, 5) * 720 * (Math.PI / 180)
-      : mid
-        ? Math.pow(p, 4) * 180 * (Math.PI / 180) + (Math.random() - 0.5) * 0.04
-        : (Math.random() - 0.5) * 0.06;
     const cardScale = 1 + p * 0.28;
     const cardY = floorY - 190 + Math.sin(t * 2.2) * (8 - p * 6);
 
     ctx.save();
     ctx.translate(W / 2 + sx, cardY + sy);
-    ctx.rotate(rotate);
     ctx.scale(cardScale, cardScale);
-    // 增亮层：用 lighter 叠一层白卡背
-    this.drawCardBack(ctx, 0, 0, 150, 214, col, t, p);
-    if (bright > 0.05) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, bright * 1.4);
-      ctx.fillStyle = '#ffffff';
-      this.rr(-75, -107, 150, 214, 8); ctx.fill();
-      // 外发光
-      ctx.shadowColor = col;
-      ctx.shadowBlur = 30 + bright * 80;
-      this.rr(-75, -107, 150, 214, 8); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-    }
+    // 能量光球（无卡背）：随进度加速增亮变大，越到爆破越白
+    const orbR = 24 + p * 50;
+    const og = ctx.createRadialGradient(0, 0, 0, 0, 0, orbR * 2.4);
+    og.addColorStop(0, '#ffffff');
+    og.addColorStop(0.3, col);
+    og.addColorStop(1, col + '00');
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.5 + bright * 0.5;
+    ctx.fillStyle = og;
+    ctx.beginPath(); ctx.arc(0, 0, orbR * 2.4, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
 
     // 爆破前兆：进度条光环
