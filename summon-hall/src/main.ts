@@ -292,6 +292,7 @@ class SummonHall {
     });
     const saved = loadDB();
     if (saved) this.db = saved;
+    this.applyWikiReplicaTeam();
     this.gacha.restoreCounters(this.db.user.gachaPity as never);
     this.buildMeta();
     this.activeStage = this.db.stages[0];
@@ -349,6 +350,32 @@ class SummonHall {
       default: break;
     }
     saveDB(this.db);
+  }
+
+  /**
+   * 官方复刻迁移（一次性）：发放 5 张 wiki 复刻卡（Fenrir/Aegis/Odin/Ymir/Lilith），
+   * 并替换出阵列表为这 5 张；用 user.wikiReplicaV1 标记防止重复发放。
+   */
+  private applyWikiReplicaTeam(): void {
+    const u = this.db.user as { wikiReplicaV1?: boolean };
+    if (u.wikiReplicaV1) return;
+    const REPLICA_IDS = ['wiki-fenrir', 'wiki-aegis', 'wiki-odin', 'wiki-ymir', 'wiki-lilith'];
+    const team: string[] = [];
+    for (const cardId of REPLICA_IDS) {
+      if (!getCard(cardId)) continue;
+      let owned = this.db.inventory.cards.find(c => c.cardId === cardId);
+      if (!owned) {
+        owned = makeOwnedCard(cardId, 1);
+        this.db.inventory.cards.push(owned);
+      }
+      team.push(owned.instId);
+    }
+    if (team.length) {
+      this.teamInstIds = team;
+      this.saveTeam();
+      u.wikiReplicaV1 = true;
+      saveDB(this.db);
+    }
   }
 
   /** 队伍编成：无存档时取库存前 5 张高稀有卡作为出击队；有存档时恢复队伍 */
@@ -3982,7 +4009,7 @@ class SummonHall {
       const fs = (d.crit ? 44 : 34) * pop;
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.font = `bold ${fs.toFixed(1)}px "Cinzel", "PingFang SC", system-ui, sans-serif`;
+      ctx.font = `bold ${fs.toFixed(1)}px "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
       ctx.textAlign = 'center';
       ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(0,0,0,0.8)';
       ctx.strokeText(d.v, d.x, d.y - dy);
@@ -3992,7 +4019,7 @@ class SummonHall {
       if ((d.em ?? 1) > 1.05 || (d.em ?? 1) < 0.95) {
         const weak = (d.em ?? 1) > 1.05;
         const label = weak ? 'WEAK' : 'RESIST';
-        ctx.font = 'bold 15px "Cinzel", "PingFang SC", system-ui, sans-serif';
+        ctx.font = 'bold 15px "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif';
         ctx.lineWidth = 4; ctx.strokeStyle = weak ? '#6a4a08' : 'rgba(0,0,0,0.8)';
         ctx.strokeText(label, d.x, d.y - dy - fs * 0.8);
         ctx.fillStyle = weak ? '#ffd24d' : '#b8c0d0';
@@ -4253,7 +4280,7 @@ class SummonHall {
     ctx.save();
     ctx.translate(W / 2, 200);
     ctx.scale(Math.max(0.02, pop), Math.max(0.02, pop));
-    ctx.font = 'bold 90px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif';
+    ctx.font = 'bold 90px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.lineWidth = 12; ctx.strokeStyle = '#6a4a08';
     ctx.strokeText('VICTORY', 0, 0);
@@ -4586,7 +4613,7 @@ class SummonHall {
   private speechBubble(x: number, y: number, w: number, line: string): void {
     const ctx = this.ctx;
     ctx.save();
-    ctx.font = '12px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif';
+    ctx.font = '12px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif';
     const lines: string[] = [];
     let cur = '';
     for (const ch of line) {
@@ -4643,7 +4670,7 @@ class SummonHall {
     ctx.stroke();
     ctx.shadowBlur = 0;
     // 文字
-    ctx.font = `bold ${r * 0.34}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+    ctx.font = `bold ${r * 0.34}px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.7)';
     ctx.strokeText(label, cx, cy + 2);
@@ -4665,12 +4692,12 @@ class SummonHall {
     const iimg = getTex(icon);
     if (iimg) ctx.drawImage(iimg, x + 18, y + h / 2 - 9, 18, 18);
     // 两行文字
-    ctx.font = `bold 14px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+    ctx.font = `bold 14px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#d8ffd8';
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
     ctx.fillText(l1.replace('💎 ', '').replace('🎟 ', ''), x + w / 2, y + h / 2 - 11);
-    ctx.font = `bold 17px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+    ctx.font = `bold 17px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
     ctx.fillStyle = '#ffffff';
     if (hov && enabled) { ctx.shadowColor = 'rgba(255,255,255,0.7)'; ctx.shadowBlur = 8; }
     ctx.fillText(l2, x + w / 2, y + h / 2 + 12);
@@ -4765,7 +4792,7 @@ class SummonHall {
   private wrapText(str: string, x: number, y: number, maxW: number, lh: number, size: number, color: string, weight = 'normal'): void {
     const ctx = this.ctx;
     ctx.save();
-    ctx.font = `${weight} ${size}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+    ctx.font = `${weight} ${size}px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillStyle = color;
     let line = '', yy = y;
@@ -5305,7 +5332,7 @@ class SummonHall {
       ctx.save();
       ctx.translate(W / 2, H / 2 + 210);
       ctx.scale(Math.max(0.02, pop), Math.max(0.02, pop));
-      ctx.font = `bold ${isLR ? 52 : 42}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+      ctx.font = `bold ${isLR ? 52 : 42}px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.lineWidth = 10; ctx.strokeStyle = '#4a2a08';
       ctx.strokeText(label, 0, 0);
@@ -5352,7 +5379,7 @@ class SummonHall {
     this.rr(12, 12, 110, 30, 6);
     ctx.stroke();
     ctx.fillStyle = '#d8d2e8';
-    ctx.font = '12px "PingFang SC", system-ui, sans-serif';
+    ctx.font = '12px "Kaiti SC", "STKaiti", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('特效 FX v3 ▾', 67, 27);
@@ -5618,7 +5645,7 @@ class SummonHall {
     align: CanvasTextAlign = 'left', weight = 'normal', glow = false): void {
     const ctx = this.ctx;
     ctx.save();
-    ctx.font = `${weight} ${size}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+    ctx.font = `${weight} ${size}px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
     ctx.textAlign = align;
     ctx.textBaseline = 'middle';
     if (glow) { ctx.shadowColor = color; ctx.shadowBlur = 20; }

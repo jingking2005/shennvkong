@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { scaledStats } from './stat-scale';
-import { SUMMON_CARDS } from '../data';
+import { SUMMON_CARDS, WIKI_EXACT_IDS } from '../data';
 
 describe('数值梯度（original-fill）', () => {
   const ORDER = ['N', 'R', 'SR', 'UR', 'LR', 'X', 'VR'] as const;
@@ -18,9 +18,10 @@ describe('数值梯度（original-fill）', () => {
     }
   });
 
-  it('全卡池实卡：高稀有度最低攻 > 低稀有度最高攻', () => {
+  it('全卡池实卡：高稀有度最低攻 > 低稀有度最高攻（官方复刻卡除外）', () => {
     const byR = new Map<string, number[]>();
     for (const c of SUMMON_CARDS) {
+      if (WIKI_EXACT_IDS.has(c.id)) continue;
       byR.set(c.rarity, [...(byR.get(c.rarity) || []), c.stats.attack]);
     }
     const present = ORDER.filter(r => byR.has(r));
