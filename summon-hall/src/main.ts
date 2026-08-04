@@ -172,7 +172,6 @@ class SummonHall {
   private revealFxVer: 'v3' | 'legacy' = localStorage.getItem('vc_reveal_fx') === 'legacy' ? 'legacy' : 'v3';
   /** VC 归档纹理：卡池选项卡背景 / 选中大图 / 中间栏背景（随机映射） */
   private bannerCourse = new Map<string, string>();
-  private bannerBtn = new Map<string, string>();
   private bannerCampaign = new Map<string, string>();
   /** LR/VR 揭示壁纸过渡强度（AniBG_003） */
   private revealAniA = 0;
@@ -274,14 +273,11 @@ class SummonHall {
     this.bg.setHallCarousel(EVENT_MAP_BGS); // 大厅背景：活动地图轮播
     preloadAllTex();
 
-    // 随机映射：6 张选项卡背景 / 10 张选中大图 / 3 张中间栏背景
+    // 随机映射：6 张选项卡背景 / 3 张卡池主视觉
     const courses = shuffle(['course1', 'course2', 'course3', 'course4', 'course5', 'course6']);
-    const btns = shuffle(['gbtn_beginner', 'gbtn_duel', 'gbtn_event', 'gbtn_guild', 'gbtn_guild2',
-      'gbtn_guildcamp', 'gbtn_hell', 'gbtn_thor', 'gbtn_tower', 'gbtn_weapon']);
     const camps = shuffle(['campaign1', 'campaign2', 'campaign3']);
     BANNERS.forEach((b, i) => {
       this.bannerCourse.set(b.id, courses[i % courses.length]);
-      this.bannerBtn.set(b.id, btns[i % btns.length]);
       this.bannerCampaign.set(b.id, camps[i % camps.length]);
     });
     const saved = loadDB();
@@ -4356,7 +4352,7 @@ class SummonHall {
     const theme = this.banner.id === 'lr-guaranteed' ? 'anibg2'
       : this.banner.id === 'collab' ? 'anibg1' : 'bg_gacha';
     const timg = getTex(theme);
-    if (timg) drawCoverTex(ctx, timg, 0, 0, W, H, 0.28);
+    if (timg) drawCoverTex(ctx, timg, 0, 0, W, H, 0.55);
 
     // ── 顶栏下方：所持卡片数 / 签到 / 商店 ──
     this.cardCount = this.db.inventory.cards.length;
@@ -4379,20 +4375,20 @@ class SummonHall {
     const bx = 326, by = 108, bw = 584, bh = 520;
     ctx.save();
     this.rr(bx, by, bw, bh, 12); ctx.clip();
-    ctx.fillStyle = '#0d0a16';
+    // 半透明底：让当前卡池主题壁纸透出来（壁纸全屏可见）
+    ctx.fillStyle = 'rgba(8,6,18,0.55)';
     ctx.fillRect(bx, by, bw, bh);
-    // 选中卡池弹大图（抽卡背景文件夹 gbtn_*，cover 放大铺满）
-    const btn = this.bannerBtn.get(this.banner.id);
-    const bimg = btn ? getTex(btn) : null;
-    if (bimg) drawCoverTex(ctx, bimg, bx, by, bw, bh, 0.92);
+    // 卡池主视觉：img_campaign 三图随机（contain 适配——上不及标题区、下不及召唤按钮）
+    const camp = this.bannerCampaign.get(this.banner.id);
+    const cimg = camp ? getTex(camp) : null;
     const portrait = meta?.portrait ?? null;
     const pImg = portrait ? this.imgOf(portrait) : null;
-    if (pImg && bimg) {
-      // 有大图背景时：立绘缩小置右下角
-      const sc = 150 / pImg.width;
-      const dw = 150, dh = pImg.height * sc;
-      ctx.globalAlpha = 0.96;
-      ctx.drawImage(pImg, bx + bw - dw - 22, by + bh - dh - 66, dw, dh);
+    if (cimg) {
+      const ix = bx + 16, iy0 = by + 140, iw = bw - 32, ih = by + bh - 190 - iy0;
+      const sc = Math.min(iw / cimg.naturalWidth, ih / cimg.naturalHeight);
+      const dw = cimg.naturalWidth * sc, dh = cimg.naturalHeight * sc;
+      ctx.globalAlpha = 0.95;
+      ctx.drawImage(cimg, ix + (iw - dw) / 2, iy0 + (ih - dh) / 2, dw, dh);
       ctx.globalAlpha = 1;
     } else if (pImg) {
       const breathe = 1 + Math.sin(t * 0.6) * 0.015;
@@ -4434,14 +4430,6 @@ class SummonHall {
       bx + bw - 20, by + 32, 13, '#ffe14d', 'right', 'bold');
     this.text('离线演示配置 · 非原版概率', bx + bw - 20, by + 50, 10, '#b8aec8', 'right');
 
-    // 精选缩略卡（点详情；右对齐最多 4 张，不越出 banner）
-    const show = bannerShowcase(this.banner, 1).slice(0, 4);
-    show.forEach((c, i) => {
-      const cx = bx + bw - 46 - i * 58, cy = by + 182;
-      drawCard(ctx, c, cx, cy, 52, 74, { showName: false, showBadge: true });
-      this.buttons.push({ x: cx - 26, y: cy - 37, w: 52, h: 74, id: 'rates' });
-    });
-
     // 保底进度条（多档：UR/LR 各一行胶囊，固定行距）
     const tiers = this.gacha.pityProgressAll(this.banner);
     tiers.forEach((t, i) => {
@@ -4469,21 +4457,6 @@ class SummonHall {
     const btnY = by + bh - 74;
     const b1 = btnY - 68, b2 = btnY;
     const bw2 = 272;
-    // 中间栏背景：img_campaign 三图随机匹配（命运→VR 确定召唤）
-    const camp = this.bannerCampaign.get(this.banner.id);
-    const cimg = camp ? getTex(camp) : null;
-    if (cimg) {
-      const cy0 = by + bh - 210, ch = 210;
-      ctx.save();
-      this.rr(bx, cy0, bw, ch, 12); ctx.clip();
-      drawCoverTex(ctx, cimg, bx, cy0, bw, ch, 0.9);
-      const g2 = ctx.createLinearGradient(0, cy0, 0, by + bh);
-      g2.addColorStop(0, 'rgba(6,4,14,0.35)');
-      g2.addColorStop(1, 'rgba(6,4,14,0.8)');
-      ctx.fillStyle = g2;
-      ctx.fillRect(bx, cy0, bw, ch);
-      ctx.restore();
-    }
     this.summonButton(bx + 16, b1, bw2, 58, `用 💎 ${this.banner.costSingle}`, `召唤 1 次`, this.jewels >= this.banner.costSingle, 'pull1');
     this.summonButton(bx + 296, b1, bw2, 58, `用 💎 ${this.banner.costTen}`, `进行 10 连召唤`, this.jewels >= this.banner.costTen, 'pull10');
     this.summonButton(bx + 16, b2, bw2, 58, `用 1 张召唤券`, `召唤 1 次`, tickets > 0, 'pull1ticket');
