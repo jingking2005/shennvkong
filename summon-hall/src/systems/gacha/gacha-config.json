@@ -1,83 +1,258 @@
 {
   "_provenance": "original-fill",
-  "_note": "离线演示配置：全部概率/保底为原创填充值，非 Nubee 原版数据。十连必出 SR（softPity）；常驻池 45 抽保底 UR；高级/确定池 80 抽保底 LR。",
+  "_note": "离线演示配置：全部概率/保底为原创填充值，非 Nubee 原版数据。友情 N50/R30/SR15/UR4/LR1；命运之门 SR85/UR10/LR5、80抽保底LR；金色传说全稀有度 VR0.5/LR5、50抽保底LR；LR确定 10连必出LR、LR权重10；VR确定 10连必出VR、VR10/LR20。",
   "banners": [
     {
-      "id": "fate", "name": "命运之门", "sub": "常驻 · 全稀有度", "accent": "#8b7ff0",
-      "costSingle": 300, "costTen": 3000,
+      "id": "fate",
+      "name": "命运之门",
+      "sub": "常驻 · SR 以上",
+      "accent": "#8b7ff0",
+      "costSingle": 300,
+      "costTen": 3000,
       "pool": [
-        { "rarity": "N", "weight": 40 }, { "rarity": "R", "weight": 36 },
-        { "rarity": "SR", "weight": 17 }, { "rarity": "UR", "weight": 5.5 },
-        { "rarity": "LR", "weight": 1.3 }, { "rarity": "X", "weight": 0.18 },
-        { "rarity": "VR", "weight": 0.02 }
+        {
+          "rarity": "SR",
+          "weight": 85
+        },
+        {
+          "rarity": "UR",
+          "weight": 10
+        },
+        {
+          "rarity": "LR",
+          "weight": 5
+        }
       ],
       "softPity": "SR",
       "hardPities": [
-        { "rarity": "UR", "threshold": 45 },
-        { "rarity": "LR", "threshold": 80 }
+        {
+          "rarity": "LR",
+          "threshold": 80
+        }
       ]
     },
     {
-      "id": "legend", "name": "金色传说", "sub": "UR↑ · LR/X 限定", "accent": "#e8b23b",
-      "costSingle": 500, "costTen": 5000,
+      "id": "legend",
+      "name": "金色传说",
+      "sub": "全稀有度 · 50抽保底 LR",
+      "accent": "#e8b23b",
+      "costSingle": 500,
+      "costTen": 5000,
       "pool": [
-        { "rarity": "SR", "weight": 45 }, { "rarity": "UR", "weight": 33 },
-        { "rarity": "LR", "weight": 15 }, { "rarity": "X", "weight": 5.5 },
-        { "rarity": "VR", "weight": 1.5 }
+        {
+          "rarity": "N",
+          "weight": 30
+        },
+        {
+          "rarity": "R",
+          "weight": 29.5
+        },
+        {
+          "rarity": "SR",
+          "weight": 24
+        },
+        {
+          "rarity": "UR",
+          "weight": 10
+        },
+        {
+          "rarity": "LR",
+          "weight": 5
+        },
+        {
+          "rarity": "X",
+          "weight": 1
+        },
+        {
+          "rarity": "VR",
+          "weight": 0.5
+        }
       ],
       "softPity": "UR",
-      "hardPities": [{ "rarity": "LR", "threshold": 80 }]
+      "hardPities": [
+        {
+          "rarity": "LR",
+          "threshold": 50
+        }
+      ]
     },
     {
-      "id": "oracle", "name": "神谕召唤", "sub": "限时 · X/VR UP", "accent": "#ff6ea8",
-      "costSingle": 600, "costTen": 6000,
+      "id": "oracle",
+      "name": "神谕召唤",
+      "sub": "限时 · X/VR UP",
+      "accent": "#ff6ea8",
+      "costSingle": 600,
+      "costTen": 6000,
       "pool": [
-        { "rarity": "R", "weight": 30 }, { "rarity": "SR", "weight": 36 },
-        { "rarity": "UR", "weight": 23 }, { "rarity": "LR", "weight": 8 },
-        { "rarity": "X", "weight": 2.5 }, { "rarity": "VR", "weight": 0.5 }
+        {
+          "rarity": "R",
+          "weight": 30
+        },
+        {
+          "rarity": "SR",
+          "weight": 36
+        },
+        {
+          "rarity": "UR",
+          "weight": 23
+        },
+        {
+          "rarity": "LR",
+          "weight": 8
+        },
+        {
+          "rarity": "X",
+          "weight": 2.5
+        },
+        {
+          "rarity": "VR",
+          "weight": 0.5
+        }
       ],
       "softPity": "SR",
-      "hardPities": [{ "rarity": "X", "threshold": 40 }],
+      "hardPities": [
+        {
+          "rarity": "X",
+          "threshold": 40
+        }
+      ],
       "up": []
     },
     {
-      "id": "friend", "name": "友情召唤", "sub": "友情点 · 日常", "accent": "#6fce9a",
-      "costSingle": 100, "costTen": 1000,
+      "id": "friend",
+      "name": "友情召唤",
+      "sub": "友情点 · N~LR",
+      "accent": "#6fce9a",
+      "costSingle": 100,
+      "costTen": 1000,
       "pool": [
-        { "rarity": "N", "weight": 60 }, { "rarity": "R", "weight": 32 },
-        { "rarity": "SR", "weight": 7.6 }, { "rarity": "UR", "weight": 0.4 }
+        {
+          "rarity": "N",
+          "weight": 50
+        },
+        {
+          "rarity": "R",
+          "weight": 30
+        },
+        {
+          "rarity": "SR",
+          "weight": 15
+        },
+        {
+          "rarity": "UR",
+          "weight": 4
+        },
+        {
+          "rarity": "LR",
+          "weight": 1
+        }
       ],
       "softPity": "R"
     },
     {
-      "id": "lr-guaranteed", "name": "LR 确定召唤", "sub": "10连必出 LR", "accent": "#ff5c8a",
-      "costSingle": 0, "costTen": 8000,
+      "id": "lr-guaranteed",
+      "name": "LR 确定召唤",
+      "sub": "10连必出 LR",
+      "accent": "#ff5c8a",
+      "costSingle": 0,
+      "costTen": 8000,
       "pool": [
-        { "rarity": "UR", "weight": 60 }, { "rarity": "LR", "weight": 30 },
-        { "rarity": "X", "weight": 8 }, { "rarity": "VR", "weight": 2 }
+        {
+          "rarity": "N",
+          "weight": 12
+        },
+        {
+          "rarity": "R",
+          "weight": 20
+        },
+        {
+          "rarity": "SR",
+          "weight": 32
+        },
+        {
+          "rarity": "UR",
+          "weight": 25
+        },
+        {
+          "rarity": "LR",
+          "weight": 10
+        },
+        {
+          "rarity": "VR",
+          "weight": 0.5
+        },
+        {
+          "rarity": "X",
+          "weight": 0.5
+        }
       ],
       "softPity": "UR",
-      "hardPities": [{ "rarity": "LR", "threshold": 10 }]
+      "hardPities": [
+        {
+          "rarity": "LR",
+          "threshold": 10
+        }
+      ]
     },
     {
-      "id": "collab", "name": "VR 确定召唤", "sub": "50连必出 VR · LR 常出", "accent": "#3ef0e0",
-      "costSingle": 2000, "costTen": 20000,
+      "id": "collab",
+      "name": "VR 确定召唤",
+      "sub": "10连必出 VR",
+      "accent": "#3ef0e0",
+      "costSingle": 2000,
+      "costTen": 20000,
       "pool": [
-        { "rarity": "UR", "weight": 40 }, { "rarity": "LR", "weight": 40 },
-        { "rarity": "X", "weight": 15 }, { "rarity": "VR", "weight": 5 }
+        {
+          "rarity": "N",
+          "weight": 6
+        },
+        {
+          "rarity": "R",
+          "weight": 12
+        },
+        {
+          "rarity": "SR",
+          "weight": 25
+        },
+        {
+          "rarity": "UR",
+          "weight": 25
+        },
+        {
+          "rarity": "LR",
+          "weight": 20
+        },
+        {
+          "rarity": "VR",
+          "weight": 10
+        },
+        {
+          "rarity": "X",
+          "weight": 2
+        }
       ],
-      "softPity": "LR",
+      "softPity": "UR",
       "hardPities": [
-        { "rarity": "VR", "threshold": 50 }
+        {
+          "rarity": "VR",
+          "threshold": 10
+        }
       ],
       "up": []
     },
     {
-      "id": "element", "name": "元素精选召唤", "sub": "全部 X 卡 · 经验狗粮", "accent": "#ffb42e",
-      "costSingle": 400, "costTen": 4000,
+      "id": "element",
+      "name": "元素精选召唤",
+      "sub": "全部 X 卡 · 经验狗粮",
+      "accent": "#ffb42e",
+      "costSingle": 400,
+      "costTen": 4000,
       "poolSource": "all",
       "pool": [
-        { "rarity": "X", "weight": 100 }
+        {
+          "rarity": "X",
+          "weight": 100
+        }
       ],
       "softPity": "X"
     }

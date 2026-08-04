@@ -20,12 +20,31 @@ describe('配置加载', () => {
     }
   });
 
-  it('保底阈值符合需求：常驻 UR 45 / LR 80，高级池 LR 80', () => {
-    expect(fate.hardPities).toEqual([
-      { rarity: 'UR', threshold: 45 },
-      { rarity: 'LR', threshold: 80 },
-    ]);
-    expect(legend.hardPities).toEqual([{ rarity: 'LR', threshold: 80 }]);
+  it('保底阈值符合需求：命运之门 LR 80，金色传说 LR 50', () => {
+    expect(fate.hardPities).toEqual([{ rarity: 'LR', threshold: 80 }]);
+    expect(legend.hardPities).toEqual([{ rarity: 'LR', threshold: 50 }]);
+  });
+
+  it('各池概率符合配置规格', () => {
+    const w = (id: string, r: string) =>
+      BANNERS.find(b => b.id === id)!.pool.find(e => e.rarity === r)?.weight ?? 0;
+    // 友情：N50 R30 SR15 UR4 LR1
+    expect(w('friend', 'N')).toBe(50); expect(w('friend', 'R')).toBe(30);
+    expect(w('friend', 'SR')).toBe(15); expect(w('friend', 'UR')).toBe(4);
+    expect(w('friend', 'LR')).toBe(1);
+    // 命运之门：仅 SR/UR/LR = 85/10/5
+    expect(fate.pool.map(e => e.rarity)).toEqual(['SR', 'UR', 'LR']);
+    expect(w('fate', 'SR')).toBe(85); expect(w('fate', 'UR')).toBe(10);
+    expect(w('fate', 'LR')).toBe(5);
+    // 金色传说：全稀有度，VR 0.5 / LR 5
+    expect(w('legend', 'VR')).toBe(0.5); expect(w('legend', 'LR')).toBe(5);
+    // LR 确定：10连必出 LR，LR 权重 10
+    expect(w('lr-guaranteed', 'LR')).toBe(10);
+    expect(BANNERS.find(b => b.id === 'lr-guaranteed')!.hardPities)
+      .toEqual([{ rarity: 'LR', threshold: 10 }]);
+    // VR 确定：10连必出 VR，VR 10 / LR 20
+    expect(w('collab', 'VR')).toBe(10); expect(w('collab', 'LR')).toBe(20);
+    expect(collab.hardPities).toEqual([{ rarity: 'VR', threshold: 10 }]);
   });
 });
 
@@ -46,17 +65,6 @@ describe('保底机制', () => {
     }
   });
 
-  it('45 抽内必出 ≥UR（硬保底）', () => {
-    const g = new Gacha(99);
-    let sinceUr = 0;
-    for (let i = 0; i < 400; i++) {
-      const p = g.pullOne(fate);
-      sinceUr++;
-      if (RARITY_RANK[p.card.rarity] >= RARITY_RANK.UR) sinceUr = 0;
-      expect(sinceUr).toBeLessThanOrEqual(45);
-    }
-  });
-
   it('80 抽内必出 ≥LR（硬保底）', () => {
     const g = new Gacha(2024);
     let sinceLr = 0;
@@ -72,8 +80,8 @@ describe('保底机制', () => {
     const g = new Gacha(5);
     g.pullTen(fate);
     const prog = g.pityProgressAll(fate);
-    expect(prog.length).toBe(2);
-    expect(prog[0].rarity).toBe('UR');
+    expect(prog.length).toBe(1);
+    expect(prog[0].rarity).toBe('LR');
     expect(prog[0].current).toBeGreaterThanOrEqual(0);
   });
 });
@@ -84,26 +92,24 @@ describe('VR 确定召唤（原魔界联动）', () => {
     expect(collab.costTen).toBe(20000);
   });
 
-  it('50 抽内必出 ≥VR（硬保底）', () => {
+  it('10 抽内必出 ≥VR（硬保底）', () => {
     const g = new Gacha(31);
     let sinceVr = 0;
     for (let i = 0; i < 500; i++) {
       const p = g.pullOne(collab);
       sinceVr++;
       if (RARITY_RANK[p.card.rarity] >= RARITY_RANK.VR) sinceVr = 0;
-      expect(sinceVr).toBeLessThanOrEqual(50);
+      expect(sinceVr).toBeLessThanOrEqual(10);
     }
   });
 
-  it('十连必出 ≥LR（softPity）且 LR 权重高（LR+X+VR ≈ 60%）', () => {
+  it('十连必出 ≥UR（softPity），且每轮十连必含 VR（硬保底 10）', () => {
     const g = new Gacha(77);
     for (let round = 0; round < 15; round++) {
       const pulls = g.pullTen(collab);
-      expect(pulls.some(p => RARITY_RANK[p.card.rarity] >= RARITY_RANK.LR)).toBe(true);
+      expect(pulls.some(p => RARITY_RANK[p.card.rarity] >= RARITY_RANK.UR)).toBe(true);
+      expect(pulls.some(p => RARITY_RANK[p.card.rarity] >= RARITY_RANK.VR)).toBe(true);
     }
-    const lrWeight = collab.pool.reduce((s, e) => s + (RARITY_RANK[e.rarity] >= RARITY_RANK.LR ? e.weight : 0), 0);
-    const total = collab.pool.reduce((s, e) => s + e.weight, 0);
-    expect(lrWeight / total).toBeGreaterThan(0.5);
   });
 });
 
