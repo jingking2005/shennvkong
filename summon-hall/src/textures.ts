@@ -34,8 +34,8 @@ export const VC_TEX = [
   'course1', 'course2', 'course3', 'course4', 'course5', 'course6',
   'gbtn_beginner', 'gbtn_duel', 'gbtn_event', 'gbtn_guild', 'gbtn_guild2',
   'gbtn_guildcamp', 'gbtn_hell', 'gbtn_thor', 'gbtn_tower', 'gbtn_weapon',
-  'bg_sp_login', 'bg_gacha', 'anibg1', 'anibg2', 'anibg3',
-  'bg_shop', 'deck_bg', 'logo_enemy', 'weapon_engage', 'logo_witchhunt3', 'witchgate_bg',
+  'bg_gacha', 'anibg1', 'anibg2', 'anibg3', 'anibg4',
+  'bg_shop', 'logo_enemy', 'weapon_engage', 'logo_witchhunt3', 'witchgate_bg',
   'campaign1', 'campaign2', 'campaign3',
   'icon_ticket', 'icon_gold', 'icon_energy', 'icon_gems',
 ];

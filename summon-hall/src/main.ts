@@ -1576,23 +1576,6 @@ class SummonHall {
 
     this.bg.render(ctx);
 
-    // 召唤系统：VC 归档壁纸 BG_SpLoginBonus 铺底（极慢呼吸缩放 0.03x 周期 ~26s）
-    if (this.page === 'summon') {
-      const sp = getTex('bg_sp_login');
-      if (sp) {
-        const t = this.last / 1000;
-        const sc = 1.035 + 0.035 * Math.sin(t * 0.24);
-        ctx.save();
-        ctx.translate(W / 2, H / 2);
-        ctx.scale(sc, sc);
-        ctx.translate(-W / 2, -H / 2);
-        drawCoverTex(ctx, sp, 0, 0, W, H, 0.9);
-        ctx.restore();
-        ctx.fillStyle = 'rgba(6,4,16,0.30)';
-        ctx.fillRect(0, 0, W, H);
-      }
-    }
-
     // 活动地图 / 出击 / 战斗 / 战绩：叠加归档场景背景（召唤页仍用神殿）
     if (this.page === 'event' || this.page === 'records') {
       drawCover(ctx, loadAssetImage(eventMapBg(this.eventMapIndex)), W, H, 1);
@@ -1955,17 +1938,9 @@ class SummonHall {
     const ctx = this.ctx;
     this.buttons = [];
 
-    // 战绩壁纸 Deck_Bg_test（cover + 深青叠层）
-    const deckBg = getTex('deck_bg');
-    if (deckBg) {
-      drawCoverTex(ctx, deckBg, 0, 0, W, H, 0.9);
-      ctx.fillStyle = 'rgba(8, 28, 36, 0.5)';
-      ctx.fillRect(0, 0, W, H);
-    } else {
-      // 深青氛围叠层（参考 VC 战绩截图）
-      ctx.fillStyle = 'rgba(8, 28, 36, 0.55)';
-      ctx.fillRect(0, 0, W, H);
-    }
+    // 深青氛围叠层（参考 VC 战绩截图）
+    ctx.fillStyle = 'rgba(8, 28, 36, 0.55)';
+    ctx.fillRect(0, 0, W, H);
 
     // 返回
     glassButton(ctx, 24, 70, 110, 40, '‹ 返回', {
@@ -2180,13 +2155,6 @@ class SummonHall {
   private renderMap(): void {
     const ctx = this.ctx;
     this.buttons = [];
-    // 出击壁纸 Deck_Bg_test（cover + 压暗）
-    const deckBg = getTex('deck_bg');
-    if (deckBg) {
-      drawCoverTex(ctx, deckBg, 0, 0, W, H, 0.85);
-      ctx.fillStyle = 'rgba(6,4,16,0.4)';
-      ctx.fillRect(0, 0, W, H);
-    }
     // 顶部标题（行动力由全局 HUD 统一显示）
     const regionLabel = this.activeStage.regionId === 'r2' ? '神界地图 3' : '神界地图 2';
     this.pill(W / 2 - 200, 64, 400, 44, '#0d0a16', '#c8b285');
@@ -4422,11 +4390,11 @@ class SummonHall {
     const meta = this.meta.get(this.banner.id);
     const t = this.last / 1000;
 
-    // 当前卡池主题壁纸（命运/友情/金色→BG_gacha；LR 确定→AniBG_002；VR 确定→AniBG_001）
-    const theme = this.banner.id === 'lr-guaranteed' ? 'anibg2'
-      : this.banner.id === 'collab' ? 'anibg1' : 'bg_gacha';
+    // 当前卡池主题壁纸（全屏铺开：默认 AniBG_002；元素精选→BG_gacha；神谕→AniBG_001）
+    const theme = this.banner.id === 'element' ? 'bg_gacha'
+      : this.banner.id === 'oracle' ? 'anibg1' : 'anibg2';
     const timg = getTex(theme);
-    if (timg) drawCoverTex(ctx, timg, 0, 0, W, H, 0.55);
+    if (timg) drawCoverTex(ctx, timg, 0, 0, W, H, 0.92);
 
     // ── 顶栏下方：所持卡片数 / 签到 / 商店 ──
     this.cardCount = this.db.inventory.cards.length;
@@ -5078,14 +5046,21 @@ class SummonHall {
     // ── UR 专属：桃心背景 + 光束 ──
     else if (rank === 4) this.drawUrHearts(ctx, local, revealLocal);
 
-    // LR/VR 揭示：壁纸动态过渡到 AniBG_003（渐入叠加，v3 模式）
+    // LR/VR 揭示：AniBG_004 月亮先入 → 闪光 → 转换 AniBG_003（v3 模式）
     if (isLR && this.revealFxVer === 'v3') {
+      const moon = getTex('anibg4');
       const ani = getTex('anibg3');
-      if (ani) {
-        const a = Math.min(1, revealLocal * 1.4);
-        drawCoverTex(ctx, ani, 0, 0, W, H, a * 0.88);
-        if (a > 0) {
-          ctx.fillStyle = `rgba(4,2,10,${(1 - a * 0.7) * 0.2})`;
+      const T = 0.42; // 月亮段占比
+      if (revealLocal < T) {
+        if (moon) drawCoverTex(ctx, moon, 0, 0, W, H, Math.min(1, revealLocal / (T * 0.55)) * 0.92);
+      } else {
+        const k = (revealLocal - T) / (1 - T); // 0..1 转换段
+        if (ani) drawCoverTex(ctx, ani, 0, 0, W, H, Math.min(1, k * 2.6) * 0.92);
+        if (moon) drawCoverTex(ctx, moon, 0, 0, W, H, Math.max(0, 1 - k * 2.6) * 0.92);
+        // 切换瞬间白闪
+        const fl = Math.max(0, 1 - Math.abs(k - 0.1) / 0.1);
+        if (fl > 0) {
+          ctx.fillStyle = `rgba(255,250,230,${fl * 0.85})`;
           ctx.fillRect(0, 0, W, H);
         }
       }
