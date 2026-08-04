@@ -41,6 +41,8 @@ export interface User {
   paidGems: number;
   /** 商店：各档位已购次数（首充双倍按档判定，key 如 gem60/gem300…） */
   paidTiers: Record<string, number>;
+  /** 商店：累计充值大礼包已领取档位（key 为门槛宝石数字符串，如 '99'/'999'…） */
+  paidPacks: Record<string, boolean>;
   /** 月卡到期时间戳（0/缺省 = 无） */
   monthCardUntil: number;
   /** 月卡每日领取日期（YYYY-MM-DD），当天已领则不再发放 */
@@ -233,6 +235,7 @@ export function loadDB(): DB | null {
         ? { gem60: 1, gem300: 1, gem980: 1, gem1980: 1, gem3280: 1, gem6480: 1 }
         : {};
     }
+    if (!db.user.paidPacks || typeof db.user.paidPacks !== 'object') db.user.paidPacks = {};
     if (typeof db.user.monthCardUntil !== 'number') db.user.monthCardUntil = 0;
     if (typeof db.user.monthCardLastClaim !== 'string') db.user.monthCardLastClaim = null;
     if (typeof db.user.loginStreak !== 'number') db.user.loginStreak = 0;
@@ -282,7 +285,7 @@ export function seedDB(pickCards: (r: Rarity, n: number) => Card[]): DB {
       battlePt: 2000, battlePtMax: 2000, battlePtRecoverAt: Date.now(),
       gold: 78000, gems: 3000, friendPt: 9999,
       tickets: { fate: 3, legend: 3, oracle: 3, friend: 30, 'lr-guaranteed': 1, collab: 0, element: 1 },
-      paidGems: 0, paidTiers: {}, monthCardUntil: Date.now() + 30 * 86400000, monthCardLastClaim: null,
+      paidGems: 0, paidTiers: {}, paidPacks: {}, monthCardUntil: Date.now() + 30 * 86400000, monthCardLastClaim: null,
       loginStreak: 0, loginLastClaim: null,
     },
     inventory: inv,

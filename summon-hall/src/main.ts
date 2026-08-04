@@ -98,6 +98,15 @@ interface BattleFx {
 
 const RANK: Record<string, number> = { N: 1, R: 2, SR: 3, UR: 4, LR: 5, X: 6, VR: 7 };
 
+/** 商店：累计充值大礼包（按 paidGems 累计宝石数达标领取，每档一次） */
+const PAID_PACKS: { threshold: number; gems: number; gold: number; tickets: number; potions: number }[] = [
+  { threshold: 99, gems: 300, gold: 30000, tickets: 1, potions: 0 },
+  { threshold: 999, gems: 1500, gold: 150000, tickets: 5, potions: 5 },
+  { threshold: 9999, gems: 8000, gold: 800000, tickets: 15, potions: 15 },
+  { threshold: 99999, gems: 50000, gold: 5000000, tickets: 50, potions: 50 },
+  { threshold: 999999, gems: 300000, gold: 30000000, tickets: 100, potions: 200 },
+];
+
 /** 是否"本日新增"（2 小时内获得的卡显示 NEW） */
 function isFresh(o: { gainedAt?: number }): boolean {
   return !!o.gainedAt && Date.now() - o.gainedAt < 2 * 3600000;
@@ -178,6 +187,7 @@ class SummonHall {
   /** 普通遭遇是否显示魔女 logo（随机） */
   private encLogoShow = false;
   private showRates = false;         // 提供比率浮层
+  private showPaidPacks = false;     // 累计充值大礼包浮层
   private showLogin = false;         // 每日签到浮层
   private naviLoader = new RotationLoader(6); // 看板娘轮播（懒加载）
   private cardDetail: Card | null = null; // 卡牌详情浮层
@@ -631,6 +641,12 @@ class SummonHall {
       return;
     }
     if (this.showLogin) return; // 签到浮层打开时屏蔽下层
+
+    // 累计充值大礼包浮层
+    if (id === 'openPaidPacks') { this.showPaidPacks = true; return; }
+    if (id === 'closePaidPacks' || id === 'closePaidPacksBg') { this.showPaidPacks = false; return; }
+    if (id.startsWith('paidPack:')) { this.claimPaidPack(Number(id.slice(9))); return; }
+    if (this.showPaidPacks) return; // 浮层打开时屏蔽下层
 
     // 商店购买
     if (id.startsWith('shopBuy:') && this.page === 'shop') {
@@ -2409,6 +2425,26 @@ class SummonHall {
     this.flashTeamMsg('购买失败，请重试');
   }
 
+  /** 累计充值大礼包领取：达标且未领则发放（宝石+金币+命运召唤券+强化药水） */
+  private claimPaidPack(threshold: number): void {
+    const u = this.db.user;
+    const pack = PAID_PACKS.find(p => p.threshold === threshold);
+    if (!pack) return;
+    if (u.paidGems < pack.threshold) { this.flashTeamMsg(`累计充值满 ${pack.threshold.toLocaleString()} 宝石可领取`); return; }
+    if (u.paidPacks[String(pack.threshold)]) { this.flashTeamMsg('该档位大礼包已领取'); return; }
+    u.paidPacks[String(pack.threshold)] = true;
+    u.gems += pack.gems;
+    u.gold += pack.gold;
+    u.tickets.fate = (u.tickets.fate ?? 0) + pack.tickets;
+    if (pack.potions > 0) {
+      this.db.inventory.materials.upgradePotion = (this.db.inventory.materials.upgradePotion ?? 0) + pack.potions;
+    }
+    this.jewels = u.gems;
+    saveDB(this.db);
+    this.flashTeamMsg(`累充大礼包：💎+${pack.gems.toLocaleString()} 金币+${pack.gold.toLocaleString()} 召唤券+${pack.tickets}`
+      + (pack.potions > 0 ? ` 强化药水+${pack.potions}` : ''));
+  }
+
   /** 月卡每日领取：当日未领则发宝石并标记。silent=true 时（如购买月卡）只补发不弹说明 */
   private monthCardClaim(showMsg: boolean): void {
     const u = this.db.user;
@@ -3249,10 +3285,6 @@ class SummonHall {
       if (picked) { ctx.strokeStyle = '#ff8c6a'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (isDetail) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (o.locked) this.text('🔒', x + icw / 2 - 14, y - ich / 2 + 16, 14, '#fff', 'center');
-      if (evolvable.has(o.instId)) {
-        this.pill(x + icw / 2 - 50, y + ich / 2 - 26, 48, 15, '#3a2a08', '#ffd24d');
-        this.text('可升星', x + icw / 2 - 26, y + ich / 2 - 14, 9, '#ffd24d', 'center', 'bold');
-      }
       this.drawLvStars(x, y + ich / 2 - 8, o.lv, o.evoStage);
       this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `invpc:${o.instId}` });
     });
@@ -3420,6 +3452,7 @@ class SummonHall {
     // 顶部：远程宝石余额
     this.pill(56, 108, 340, 34, '#1a1030', '#b45cff');
     this.text(`💎 ${u.gems.toLocaleString()}  · 累计充值 ${u.paidGems.toLocaleString()}`, 230, 128, 15, '#e0b0ff', 'center', 'bold');
+    this.buttons.push({ x: 56, y: 108, w: 340, h: 34, id: 'openPaidPacks' });
     const mcActive = u.monthCardUntil > Date.now();
     const mcDays = Math.ceil((u.monthCardUntil - Date.now()) / 86400000);
     this.pill(410, 108, 250, 34, mcActive ? '#123020' : '#302018', mcActive ? '#6fce9a' : '#c8a040');
@@ -3490,7 +3523,52 @@ class SummonHall {
     this.buttons.push({ x: 56, y: dy2, w: 360, h: 46, id: 'shopBuy:restore' });
     this.text('（此为本地模拟商店，无真实支付）', W - 56, dy2 + 30, 12, '#8892a8', 'right');
 
+    if (this.showPaidPacks) this.renderPaidPacks();
     if (this.teamMsg && this.teamMsgT < 2.5) this.renderToast();
+  }
+
+  /** 累计充值大礼包浮层：5 档（99/999/9999/99999/999999 宝石），达标可领，每档一次 */
+  private renderPaidPacks(): void {
+    const ctx = this.ctx;
+    const u = this.db.user;
+    ctx.save();
+    ctx.fillStyle = 'rgba(2,2,8,0.78)';
+    ctx.fillRect(0, 0, W, H);
+    this.buttons.push({ x: 0, y: 0, w: W, h: H, id: 'closePaidPacksBg' });
+    const ox = W / 2 - 360, oy = 120, ow = 720, oh = 520;
+    ctx.fillStyle = '#0d0a16';
+    this.rr(ox, oy, ow, oh, 14); ctx.fill();
+    ctx.strokeStyle = '#b45cff'; ctx.lineWidth = 2;
+    this.rr(ox, oy, ow, oh, 14); ctx.stroke();
+    this.text('累计充值 · 大礼包', ox + ow / 2, oy + 36, 22, '#e0b0ff', 'center', 'bold', true);
+    this.text(`当前累计充值：${u.paidGems.toLocaleString()} 宝石`, ox + ow / 2, oy + 62, 13, '#cfc4a8', 'center');
+
+    let ry = oy + 86;
+    for (const p of PAID_PACKS) {
+      const claimed = !!u.paidPacks[String(p.threshold)];
+      const reached = u.paidGems >= p.threshold;
+      const rh = 68;
+      this.rr(ox + 28, ry, ow - 56, rh, 10);
+      ctx.fillStyle = claimed ? '#141020' : reached ? '#1c1430' : '#100d1a';
+      ctx.fill();
+      ctx.strokeStyle = claimed ? '#4a4460' : reached ? '#b45cff' : '#332b48';
+      ctx.lineWidth = 1.5;
+      this.rr(ox + 28, ry, ow - 56, rh, 10); ctx.stroke();
+      this.text(`满 ${p.threshold.toLocaleString()}`, ox + 52, ry + 26, 17, reached ? '#ffd24d' : '#8892a8', 'left', 'bold');
+      const parts = [`💎${p.gems.toLocaleString()}`, `金币${p.gold.toLocaleString()}`, `召唤券×${p.tickets}`];
+      if (p.potions > 0) parts.push(`强化药水×${p.potions}`);
+      this.text(parts.join(' · '), ox + 52, ry + 50, 12, claimed ? '#6a6478' : '#f0e6cc', 'left');
+      glassButton(ctx, ox + ow - 168, ry + 16, 128, 36,
+        claimed ? '已领取 ✓' : reached ? '领 取' : '未达成', {
+          kind: claimed || !reached ? 'gray' : 'green',
+          hover: this.hover === `paidPack:${p.threshold}` && reached && !claimed, fontSize: 14,
+        });
+      this.buttons.push({ x: ox + ow - 168, y: ry + 16, w: 128, h: 36, id: `paidPack:${p.threshold}` });
+      ry += rh + 12;
+    }
+    glassButton(ctx, ox + ow / 2 - 70, oy + oh - 44, 140, 32, '关 闭', { kind: 'blue', hover: this.hover === 'closePaidPacks', fontSize: 13 });
+    this.buttons.push({ x: ox + ow / 2 - 70, y: oy + oh - 44, w: 140, h: 32, id: 'closePaidPacks' });
+    ctx.restore();
   }
 
   private renderToast(): void {
@@ -3620,10 +3698,6 @@ class SummonHall {
       if (picked) { ctx.strokeStyle = '#6fce9a'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (isDetail) { ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3; this.rr(x - icw / 2, y - ich / 2, icw, ich, 8); ctx.stroke(); }
       if (o.locked) this.text('🔒', x + icw / 2 - 12, y - ich / 2 + 16, 14, '#fff', 'center');
-      if (evolvable.has(o.instId)) {
-        this.pill(x + icw / 2 - 52, y + ich / 2 - 26, 48, 15, '#3a2a08', '#ffd24d');
-        this.text('可升星', x + icw / 2 - 28, y + ich / 2 - 14, 9, '#ffd24d', 'center', 'bold');
-      }
       this.drawLvStars(x, y + ich / 2 - 8, o.lv, o.evoStage);
       this.buttons.push({ x: x - icw / 2, y: y - ich / 2, w: icw, h: ich, id: `inv:${o.instId}` });
     });
