@@ -819,9 +819,9 @@ export class RevealFxV3 {
         fill = lg;
       }
       ctx.fillStyle = fill;
-      ctx.font = 'bold 54px "Cinzel", "Songti SC", "PingFang SC", serif';
+      ctx.font = 'bold 54px "Cinzel", "Kaiti SC", "STKaiti", "Kaiti SC", "STKaiti", serif';
       ctx.fillText(S.label.split('').join(' '), 0, 0);
-      ctx.font = '20px "Songti SC", "PingFang SC", serif';
+      ctx.font = '20px "Kaiti SC", "STKaiti", "Kaiti SC", "STKaiti", serif';
       ctx.shadowBlur = 12;
       ctx.fillStyle = S.col.main;
       ctx.fillText(S.sub, 0, 44);

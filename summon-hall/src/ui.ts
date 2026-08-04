@@ -110,7 +110,7 @@ export function glassButton(
   ctx.stroke();
 
   // 文字（亮字 + 深色投影，悬停发光）
-  ctx.font = `bold ${opts.fontSize ?? 16}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+  ctx.font = `bold ${opts.fontSize ?? 16}px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (opts.hover) {
@@ -190,7 +190,7 @@ export function engravedText(
   str: string, x: number, y: number, size: number,
 ): void {
   ctx.save();
-  ctx.font = `bold ${size}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+  ctx.font = `bold ${size}px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   // 底部亮线（雕刻高光）

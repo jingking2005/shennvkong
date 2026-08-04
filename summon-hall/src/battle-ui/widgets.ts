@@ -14,7 +14,7 @@ type Ctx = CanvasRenderingContext2D;
 
 function text(ctx: Ctx, s: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign = 'center', bold = false, stroke = false): void {
   ctx.save();
-  ctx.font = `${bold ? 'bold ' : ''}${size}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+  ctx.font = `${bold ? 'bold ' : ''}${size}px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
   ctx.textAlign = align; ctx.textBaseline = 'middle';
   if (stroke) { ctx.lineWidth = Math.max(2, size / 7); ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.strokeText(s, x, y); }
   ctx.fillStyle = color; ctx.fillText(s, x, y);
@@ -181,7 +181,7 @@ export function drawBattleCard(ctx: Ctx, card: Card, cx: number, cy: number, w: 
   // 左上：稀有度字标（紫底白字）
   if (opts.rarityTag) {
     ctx.save();
-    ctx.font = 'bold 13px "Cinzel", "PingFang SC", system-ui, sans-serif';
+    ctx.font = 'bold 13px "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif';
     const tw = ctx.measureText(opts.rarityTag).width + 10;
     roundRectPath(ctx, x + 3, y + 3, tw, 20, 3);
     ctx.fillStyle = COLORS.rareTagBg; ctx.fill();
@@ -192,7 +192,7 @@ export function drawBattleCard(ctx: Ctx, card: Card, cx: number, cy: number, w: 
   // 右上：Lv 黑底标签
   if (opts.lv !== undefined) {
     ctx.save();
-    ctx.font = 'bold 12px "Cinzel", "PingFang SC", system-ui, sans-serif';
+    ctx.font = 'bold 12px "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif';
     const s = `Lv.${opts.lv}`;
     const tw = ctx.measureText(s).width + 10;
     roundRectPath(ctx, x + w - tw - 3, y + 3, tw, 19, 3);
@@ -257,7 +257,7 @@ export function drawVictory(ctx: Ctx, entries: VictoryEntry[], hover: string | n
 
   // VICTORY 金色立体字（左上）
   ctx.save();
-  ctx.font = `bold ${V.titleSize}px "Cinzel", "PingFang SC", "Cinzel", "PingFang SC", system-ui, sans-serif`;
+  ctx.font = `bold ${V.titleSize}px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
   ctx.textAlign = 'left'; ctx.textBaseline = 'top';
   ctx.lineWidth = 10; ctx.strokeStyle = '#6a4a08'; ctx.strokeText('VICTORY', V.titleX, V.titleY);
   const tg = ctx.createLinearGradient(0, V.titleY, 0, V.titleY + V.titleSize);
