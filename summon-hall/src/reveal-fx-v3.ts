@@ -13,6 +13,7 @@
 
 import type { Card } from './data';
 import { Ease } from './ease';
+import { drawElementCrystal, drawCandyTag } from './card';
 
 export type RevealFxRarity = 'VR' | 'LR';
 
@@ -772,6 +773,18 @@ export class RevealFxV3 {
     ctx.globalAlpha = cardA;
     this.drawFront?.(ctx, card, 0, 0, CFG.card.w, CFG.card.h);
     ctx.restore();
+
+    /* 实体化后：元素水晶 + 形态糖果以全透明叠加（不受幽灵渐显影响，清晰可见） */
+    if (solidP > 0) {
+      const w = CFG.card.w, h = CFG.card.h;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(breathe, breathe);
+      ctx.globalAlpha = Ease.outCubic(solidP);
+      drawElementCrystal(ctx, -w / 2 + 6, -h / 2 + 6, w, card.element, 52);
+      drawCandyTag(ctx, w / 2 - 6, h / 2 - 6, w, card.rarity, 40);
+      ctx.restore();
+    }
 
     /* 最后一秒：卡片周边一圈圣光（扩散光环）+ 收拢描边 */
     if (solidP > 0) {

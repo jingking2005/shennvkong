@@ -71,6 +71,10 @@ export interface OwnedCard {
   evoFailStacks?: number;
   /** 已装备的装备实例 id（来自 inventory.equips） */
   equipInstId?: string;
+  /** 技能等级 1..10（默认 1；用同稀有度卡喂养升级） */
+  skillLv?: number;
+  /** 技能经验（升级到下一级的累计余量） */
+  skillExp?: number;
 }
 
 /** 玩家持有的装备实例（装备库，独立于卡库） */
@@ -246,6 +250,18 @@ export function loadDB(): DB | null {
     if (!Array.isArray(db.stages)) db.stages = [];
     for (const def of STAGE_DEFS) {
       if (!db.stages.some(s => s.stageId === def.stageId)) db.stages.push(newStage(def));
+    }
+    // 形态体系迁移（v1 → v2 合卡重构）：旧存档星级全部重置为 0（UR 基础形态），
+    // 由玩家按官方形态体系重新合卡；一次性标记。
+    const u2 = db.user as { formSystemV1?: boolean };
+    if (!u2.formSystemV1) {
+      for (const c of db.inventory.cards) {
+        c.evoStage = 0;
+        c.evoFailStacks = 0;
+        c.atkBonus = 0;
+        c.hpBonus = 0;
+      }
+      u2.formSystemV1 = true;
     }
     const inst = parseInt(localStorage.getItem(LS_INST) || '0', 10);
     if (Number.isFinite(inst) && inst > instCounter) instCounter = inst;

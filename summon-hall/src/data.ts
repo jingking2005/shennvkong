@@ -13,6 +13,26 @@ export interface CardStats {
   critDamage: number;
 }
 
+/** 官方形态（wiki 复刻）：满级数值 + 反向推导的 Lv1 基础值 */
+export interface OfficialForm {
+  maxLv: number;
+  atk: number;
+  def: number;
+  soldiers: number;
+  baseAtk: number;
+  baseDef: number;
+  baseSoldiers: number;
+}
+
+/** 官方中文技能（按形态） */
+export interface OfficialSkill {
+  name?: string;
+  desc?: string;
+  descMax?: string;
+  skill2Name?: string;
+  skill2Desc?: string;
+}
+
 export interface Card {
   id: string;
   name: string;
@@ -24,6 +44,14 @@ export interface Card {
   stats: CardStats;
   imageDir: string;
   imageFile: string;
+  /** 进化（HUR）图文件名（wiki） */
+  evolvedFile?: string;
+  /** 觉醒/重生（XUR）图文件名（wiki） */
+  awakenFile?: string;
+  /** 官方形态数据（wiki 复刻）：UR/HUR/GUR/XUR → 满级值 + Lv1 基础值 */
+  officialForms?: Record<string, OfficialForm>;
+  /** 官方中文技能（按形态） */
+  skillsZh?: Record<string, OfficialSkill>;
 }
 
 interface RawCard {
@@ -35,29 +63,24 @@ interface RawCard {
   baseStats: any;
   /** 官方复刻标记：true 时 stats 直接采用 baseStats 原值（绕过 stat-scale 稀有度梯度） */
   wikiExact?: boolean;
+  /** 官方形态数据（wiki 复刻） */
+  officialForms?: Record<string, OfficialForm>;
+  /** 官方中文技能（按形态） */
+  skillsZh?: Record<string, OfficialSkill>;
   wiki?: {
     hasImage?: boolean;
     imageDir?: string;
     imageFile?: string;
+    evolvedFile?: string;
+    awakenFile?: string;
     skillName?: string;
     skillDesc?: string;
+    skillDescMax?: string;
   };
 }
 
 import rawCards from './cards.json';
 import { scaledStats } from './data/stat-scale';
-
-/** 官方复刻：直接采用 wiki 原值（卡牌 baseStats 即官方数值，跳过稀有度梯度） */
-function exactStats(b: any): CardStats {
-  return {
-    attack: Math.round(b?.attack || 0),
-    defense: Math.round(b?.defense || 0),
-    soldiers: Math.round(b?.soldiers || 0),
-    speed: b?.speed || 100,
-    critRate: b?.critRate ?? 0.08,
-    critDamage: b?.critDamage ?? 0.5,
-  };
-}
 
 function toCard(r: RawCard): Card | null {
   const w = r.wiki;
@@ -70,11 +93,24 @@ function toCard(r: RawCard): Card | null {
     cardCost: r.cardCost,
     skillName: w.skillName || '',
     skillDesc: w.skillDesc || '',
-    // 数值梯度：wiki 原值跨稀有度平坦，经 stat-scale 重构为严格 N→VR 分层（original-fill）
-    // 官方复刻卡（wikiExact）例外：直接采用 wiki 原值，不做梯度重构
-    stats: r.wikiExact ? exactStats(r.baseStats) : scaledStats(r.rarity, r.baseStats),
+    // 官方复刻（officialForms）：UR 档反向推导的 Lv1 基础值作为游戏基础数值
+    // （战斗/展示均按官方满级曲线）；无官方数据回退 stat-scale 稀有度梯度
+    stats: r.officialForms?.UR
+      ? {
+          attack: r.officialForms.UR.baseAtk,
+          defense: r.officialForms.UR.baseDef,
+          soldiers: r.officialForms.UR.baseSoldiers,
+          speed: r.baseStats?.speed || 100,
+          critRate: r.baseStats?.critRate ?? 0.08,
+          critDamage: r.baseStats?.critDamage ?? 0.5,
+        }
+      : scaledStats(r.rarity, r.baseStats),
     imageDir: w.imageDir,
     imageFile: w.imageFile,
+    evolvedFile: w.evolvedFile || undefined,
+    awakenFile: w.awakenFile || undefined,
+    officialForms: r.officialForms,
+    skillsZh: r.skillsZh,
   };
 }
 

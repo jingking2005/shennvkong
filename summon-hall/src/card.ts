@@ -47,6 +47,10 @@ export interface CardDrawOpts {
   isNew?: boolean;
   rainbowT?: number; // 0..1 虹彩相位（LR/X/VR）
   showMeta?: boolean; // COST / Lv.1 徽标（落定卡）
+  formTag?: string;   // 形态标签（HUR/GUR/XUR…）：替代稀有度徽标显示在左上角
+  elementIcon?: string; // 元素图标（Cool/Dark/Light/Passion）：左上角水晶
+  candyTag?: string;  // 字母糖果（UR/HUR/GUR/XUR…）：右上角形态糖果
+  iconSize?: number;  // 图标缩放基准（默认按卡宽）
 }
 
 export function drawCard(
@@ -55,7 +59,7 @@ export function drawCard(
   cx: number, cy: number, w: number, h: number,
   opts: CardDrawOpts = {},
 ): void {
-  const { showName = true, showBadge = true, isNew = false, rainbowT, showMeta = false } = opts;
+  const { showName = true, showBadge = true, isNew = false, rainbowT, showMeta = false, formTag, elementIcon, candyTag, iconSize } = opts;
   if (w <= 0 || h <= 0) return;
   const color = RARITY_COLOR[card.rarity] || '#888';
   const x = cx - w / 2, y = cy - h / 2;
@@ -124,9 +128,21 @@ export function drawCard(
   ctx.strokeStyle = 'rgba(255,233,168,0.3)';
   ctx.stroke();
 
-  // 稀有度徽标（玻璃质感）
+  // 稀有度徽标（玻璃质感）；官方形态卡：左上角元素水晶 + 右下角字母糖果
   if (showBadge) {
-    drawGlassRarityBadge(ctx, x + 6, y + 6, w, card.rarity, color, rainbowT);
+    if (elementIcon && candyTag) {
+      drawElementCrystal(ctx, x + 6, y + 6, w, elementIcon, iconSize);
+      drawCandyTag(ctx, x + w - 6, y + h - 6, w, candyTag, iconSize);
+    } else if (candyTag) {
+      drawCandyTag(ctx, x + w - 6, y + h - 6, w, candyTag, iconSize);
+      drawGlassRarityBadge(ctx, x + 6, y + 6, w, card.rarity, color, rainbowT);
+    } else if (elementIcon) {
+      drawElementCrystal(ctx, x + 6, y + 6, w, elementIcon, iconSize);
+    } else if (formTag) {
+      drawGlassRarityBadge(ctx, x + 6, y + 6, w, formTag, color, rainbowT);
+    } else {
+      drawGlassRarityBadge(ctx, x + 6, y + 6, w, card.rarity, color, rainbowT);
+    }
   }
 
   // NEW（红色锯齿贴纸）
@@ -199,8 +215,60 @@ export function drawCard(
   ctx.restore();
 }
 
-/** 左上角玻璃稀有度角标 */
-function drawGlassRarityBadge(
+/** 左上角元素水晶图标（官方素材：COOL/DARK/LIGHT/PASSION Crystal） */
+const UI_CACHE = new Map<string, HTMLImageElement>();
+export function uiImage(src: string): HTMLImageElement {
+  let img = UI_CACHE.get(src);
+  if (img) return img;
+  img = new Image();
+  img.src = src;
+  UI_CACHE.set(src, img);
+  return img;
+}
+
+export function drawElementCrystal(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, cardW: number,
+  element: string, iconSize?: number,
+): void {
+  const e = (element || '').toUpperCase();
+  const file = e === 'DARK' ? 'DARK Crystal.png'
+    : e === 'LIGHT' ? 'LIGHT Crystal.png'
+    : e === 'PASSION' ? 'PASSION Crystal.png'
+    : e === 'COOL' ? 'COOL Crystal.png' : '';
+  if (!file) return;
+  const img = uiImage(`/ui/${encodeURIComponent(file)}`);
+  if (!img.complete || !img.naturalWidth) return;
+  const size = iconSize ?? Math.max(22, Math.min(40, cardW * 0.16));
+  const r = size / img.naturalWidth;
+  const dw = img.naturalWidth * r, dh = img.naturalHeight * r;
+  ctx.save();
+  // 轻微外发光
+  ctx.shadowColor = 'rgba(255,255,255,0.35)';
+  ctx.shadowBlur = 6;
+  ctx.drawImage(img, x + 2, y + 2, dw, dh);
+  ctx.restore();
+}
+
+/** 右下角字母糖果（形态标签：UR/HUR/GUR/XUR…官方素材；xr,yr = 右下角锚点） */
+export function drawCandyTag(
+  ctx: CanvasRenderingContext2D,
+  xr: number, yr: number, cardW: number,
+  tag: string, iconSize?: number,
+): void {
+  const img = uiImage(`/ui/${encodeURIComponent(tag)}.png`);
+  if (!img.complete || !img.naturalWidth) return;
+  const h = iconSize ?? Math.max(20, Math.min(34, cardW * 0.14));
+  const r = h / img.naturalHeight;
+  const dw = img.naturalWidth * r, dh = img.naturalHeight * r;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 5;
+  ctx.drawImage(img, xr - dw, yr - dh, dw, dh);
+  ctx.restore();
+}
+
+/** 左上角玻璃稀有度角标 */function drawGlassRarityBadge(
   ctx: CanvasRenderingContext2D,
   x: number, y: number, cardW: number,
   rarity: string, color: string, rainbowT?: number,

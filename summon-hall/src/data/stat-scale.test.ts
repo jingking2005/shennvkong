@@ -1,9 +1,9 @@
 /**
- * 数值梯度测试：任意高稀有度卡严格强于任意低稀有度卡。
+ * 数值梯度测试：scaledStats 基准函数本身仍保证稀有度递增。
+ * （全卡池实卡已改为官方数值体系，不再适用梯度断言）
  */
 import { describe, expect, it } from 'vitest';
 import { scaledStats } from './stat-scale';
-import { SUMMON_CARDS, WIKI_EXACT_IDS } from '../data';
 
 describe('数值梯度（original-fill）', () => {
   const ORDER = ['N', 'R', 'SR', 'UR', 'LR', 'X', 'VR'] as const;
@@ -15,20 +15,6 @@ describe('数值梯度（original-fill）', () => {
       const hi = scaledStats(ORDER[i], { attack: 0, defense: 0 });
       expect(hi.attack).toBeGreaterThan(lo.attack);
       expect(hi.defense).toBeGreaterThan(lo.defense);
-    }
-  });
-
-  it('全卡池实卡：高稀有度最低攻 > 低稀有度最高攻（官方复刻卡除外）', () => {
-    const byR = new Map<string, number[]>();
-    for (const c of SUMMON_CARDS) {
-      if (WIKI_EXACT_IDS.has(c.id)) continue;
-      byR.set(c.rarity, [...(byR.get(c.rarity) || []), c.stats.attack]);
-    }
-    const present = ORDER.filter(r => byR.has(r));
-    for (let i = 1; i < present.length; i++) {
-      const loMax = Math.max(...byR.get(present[i - 1])!);
-      const hiMin = Math.min(...byR.get(present[i])!);
-      expect(hiMin).toBeGreaterThan(loMax);
     }
   });
 });

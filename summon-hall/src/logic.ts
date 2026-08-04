@@ -49,23 +49,34 @@ export function ownedToCombatant(o: OwnedCard, isLeader = false, db?: DB): Comba
   const card = getCard(o.cardId);
   if (!card) return null;
   const C = BATTLE_CONFIG;
+  const stage = Math.min(Math.max(0, o.evoStage), 3);
+  const form = FORM_STAGES[stage] as FormStage;
+  // 形态满级值 = UR 官方满级 × 形态倍率（HUR×1.2 / GUR×1.5 / XUR×2.0）
+  const maxAtk = formMaxStat(card, stage, 'atk');
+  const maxDef = formMaxStat(card, stage, 'def');
+  const maxSoldiers = formMaxStat(card, stage, 'soldiers');
+  const maxLvForm = cardMaxLv(card, stage);
+  // Lv1 基础值：反推（满级值 ÷ (1+(maxLv-1)×0.06)），保证升满正好 = 形态满级值（平均分配）
+  const baseAtk = Math.round(maxAtk / (1 + (maxLvForm - 1) * C.lvScalePerLv.value));
+  const baseDef = Math.round(maxDef / (1 + (maxLvForm - 1) * C.lvScalePerLv.value));
+  const baseSoldiers = Math.round(maxSoldiers / (1 + (maxLvForm - 1) * C.lvScalePerLv.value));
   const lvScale = 1 + (o.lv - 1) * C.lvScalePerLv.value;
-  const starScale = Math.pow(STAR_STAT_MULT, o.evoStage); // 每星全属性 ×1.2（复利）
-  const atk = Math.floor((Math.floor(card.stats.attack * lvScale) + o.atkBonus) * starScale);
+  const atk = Math.floor(Math.floor(baseAtk * lvScale) + o.atkBonus);
   const hpMax = Math.floor(
-    (Math.floor(
-      (card.stats.soldiers * C.hpSoldiersMult.value + card.stats.defense * C.hpDefenseMult.value + C.hpBase.value) * lvScale,
-    ) + o.hpBonus) * starScale,
+    Math.floor(
+      (baseSoldiers * C.hpSoldiersMult.value + baseDef * C.hpDefenseMult.value + C.hpBase.value) * lvScale,
+    ) + o.hpBonus,
   );
   const tier = RARITY_RANK[card.rarity];
   const fx = assignSkillFx(card.element, card.rarity);
   const cb: Combatant = {
     instId: o.instId, card, lv: o.lv,
-    atk, hp: hpMax, hpMax, def: card.stats.defense,
-    speed: Math.floor((card.stats.speed || 100) * starScale),
+    atk, hp: hpMax, hpMax, def: baseDef,
+    speed: Math.floor((card.stats.speed || 100) * (1 + (o.lv - 1) * 0.03)),
     element: card.element,
-    // 物品名/空技能名 → 用特效名（wiki 技能多为物品名，观赏性差）
-    skillName: card.skillName && card.skillName.length <= 16 ? card.skillName : FX_NAMES[fx],
+    // 官方中文技能名（按形态）→ 战斗显示；否则用英文名/特效名
+    skillName: card.skillsZh?.[form]?.name
+      ?? (card.skillName && card.skillName.length <= 16 ? card.skillName : FX_NAMES[fx]),
     procChance: Math.min(C.procMax.value, C.procBase.value + tier * C.procPerTier.value),
     skillMult: C.skillMultBase.value + tier * C.skillMultPerTier.value,
     skillFx: fx,
@@ -345,19 +356,95 @@ export function estimateTeamHP(db: DB): number {
   return Math.max(6000, hps.reduce((s, v) => s + v, 0) / hps.length);
 }
 
-// ─────────────────────────── 进化 ───────────────────────────
+// ─────────────────────────── 进化（官方形态体系）───────────────────────────
 
-/** 升星上限：同名卡合成，最高 10 星 */
+/** 旧升星体系上限（无官方数据卡仍按星级合卡） */
 export const MAX_STAR = 10;
-
-/** 每星属性倍率：n 星 = 基础 × 1.2^n（攻击/体力/速度，复利） */
+/** 每星属性倍率：n 星 = 基础 × 1.2^n（攻击/体力/速度，复利）（旧体系） */
 export const STAR_STAT_MULT = 1.2;
+
+/** 形态档位 → 官方形态键（evoStage 0-3） */
+export const FORM_STAGES = ['UR', 'HUR', 'GUR', 'XUR'] as const;
+export type FormStage = (typeof FORM_STAGES)[number];
+
+/** 形态属性倍率（用户规则）：HUR=UR×1.2 / GUR=UR×1.5 / XUR=UR×2.0 */
+export const FORM_MULT: Record<FormStage, number> = { UR: 1, HUR: 1.2, GUR: 1.5, XUR: 2 };
+
+/** 形态满级值 = UR 官方满级值 × 该形态倍率（HUR 满级 = UR满级×1.2 …） */
+export function formMaxStat(card: Card, stage: number, stat: 'atk' | 'def' | 'soldiers'): number {
+  const ur = card.officialForms?.UR;
+  const base = ur ? ur[stat] : card.stats[stat === 'atk' ? 'attack' : stat === 'def' ? 'defense' : 'soldiers'];
+  return Math.floor(base * FORM_MULT[FORM_STAGES[Math.min(Math.max(0, stage), 3)] as FormStage]);
+}
+
+/** 每档对应的星级视觉（H★=5星银 / G★=7星金 / X★=10星彩虹） */
+export const FORM_STAR_GLYPH: Record<FormStage, number> = { UR: 0, HUR: 5, GUR: 7, XUR: 10 };
+
+/** 官方形态显示名（按稀有度）：H档 N→HN / R→HR / SR→HSR / UR→HUR / LR→HLR；G档 SR→GSR / UR→GUR / LR→GLR；X档 SR→XSR / UR→XUR / LR→XLR */
+const H_NAME: Record<string, string> = { N: 'HN', R: 'HR', SR: 'HSR', UR: 'HUR', LR: 'HLR', X: 'HX', VR: 'HVR' };
+const G_NAME: Record<string, string> = { SR: 'GSR', UR: 'GUR', LR: 'GLR', VR: 'GVR' };
+const X_NAME: Record<string, string> = { SR: 'XSR', UR: 'XUR', LR: 'XLR' };
+
+/** 形态显示名（evoStage 0=基础稀有度名 / 1=H★ / 2=G★ / 3=X★） */
+export function formName(rarity: string, stage: number): string {
+  if (stage <= 0) return rarity;
+  if (stage === 1) return H_NAME[rarity] || `${rarity}★`;
+  if (stage === 2) return G_NAME[rarity] || `${rarity}★`;
+  if (stage === 3) return X_NAME[rarity] || `${rarity}★`;
+  return rarity;
+}
+
+/** 该卡官方形态档位数（0-4：无官方数据=1 档只有 UR） */
+export function formStageCount(card: Card): number {
+  const f = card.officialForms;
+  if (!f) return 1;
+  return FORM_STAGES.filter(s => f[s]).length;
+}
+
+/** 某档是否有官方数据 */
+export function hasForm(card: Card, stage: number): boolean {
+  const f = card.officialForms;
+  if (!f) return stage === 0;
+  return !!f[FORM_STAGES[stage] as FormStage];
+}
+
+/** 该档官方满级等级；无官方数据回退旧公式（rank×20 + stage×10） */
+export function formMaxLv(card: Card, stage: number): number {
+  return cardMaxLv(card, stage);
+}
+
+/**
+ * 官方形态合卡成功率（%）：基础 50% + 素材星级加成（同星素材每张 +25%，低星按比例）+ 同名加成（+15/张）。
+ *  → 3星主 + 2×3星 = 100%；3星主 + 2×0星 = 50%；同名卡额外加成。封顶 100。
+ */
+export function formEvolveRateDetail(mainStage: number, mats: { evoStage: number; cardId: string }[], mainCardId: string): number {
+  let starBonus = 0;
+  let sameNameBonus = 0;
+  for (const m of mats) {
+    if (mainStage > 0) {
+      const ratio = Math.min(1, m.evoStage / mainStage);
+      starBonus += Math.round(25 * ratio);
+    } else {
+      starBonus += 25;
+    }
+    if (m.cardId === mainCardId) sameNameBonus += 15;
+  }
+  return Math.min(100, 50 + starBonus + sameNameBonus);
+}
+
+/** 形态合卡成功率（%）：按目标档位递减（原创配置，非原版数值）
+ * →H★ 70% / →G★ 50% / →X★ 30%；加成卡与失败补偿可叠加上限 100。 */
+export function formEvolveRate(stage: number): number {
+  if (stage >= 3) return 30;
+  if (stage === 2) return 50;
+  return 70;
+}
 
 /**
  * 升星成功率（%）：两张同名卡、星级差 ≤1 可合，结果 = max(星级)+1。
  * 同星合成：(10-目标星)×10%（→1星90%、→2星80%、→3星70%…→9星10%）
  * 混星合成：再 -10%（如 1星+2星→3星 60%，3星+2星→4星 50%），保底 5%。
- * 规则为离线原创配置，非原版数值。
+ * 规则为离线原创配置，非原版数值。（旧体系保留：无官方数据卡仍按星级合卡）
  */
 export function evolveRate(starA: number, starB: number): number | null {
   if (Math.abs(starA - starB) > 1) return null;
@@ -393,15 +480,19 @@ export function evolveBoostRate(targetRarity: string, boosterRarity: string): nu
 
 /**
  * 预计算升星结果（不改动 db）；rng 注入便于测试。
- * 素材两种合法形态：
- *  - 同名卡×1（星级差 ≤1）：rate = evolveRate(主星, 素材星)，结果 = max+1
- *  - 同稀有度卡×2（无需同名）：rate = 同星基准 (10-(主星+1))×10%，结果 = 主星+1
+ *
+ * 【官方形态卡】（有 officialForms）：按形态档合卡
+ *   - 素材形态必须与主卡同档（如 HUR 主卡用 HUR 素材）
+ *   - 规则 A：1 张同名同形态卡 → 结果 = 下一形态档
+ *   - 规则 B：2 张同稀有度同形态卡（无需同名）→ 结果 = 下一形态档
+ *   - 成功率 formEvolveRate(目标档) + 加成卡 + 失败补偿
+ *
+ * 【无官方数据卡】：旧星级逻辑（同名卡×1 星级差≤1 / 同稀有度×2）
  */
 export function prepareEvolve(db: DB, instA: string, matInsts: string[], rng: () => number = Math.random, inheritRate = 0.08, boosterInsts: string[] = []): EvolvePrep {
   const a = db.inventory.cards.find(c => c.instId === instA);
   const res: EvolvePrep = { ok: false, rate: 0, boost: 0, bonus: 0, success: false, newEvoStage: 0, inheritedAtk: 0, inheritedHp: 0 };
   if (!a) { res.reason = '卡牌不存在'; return res; }
-  if (a.evoStage >= MAX_STAR) { res.reason = `已达 ${MAX_STAR} 星上限`; return res; }
   const mats = matInsts.map(id => db.inventory.cards.find(c => c.instId === id));
   if (mats.some(m => !m)) { res.reason = '素材卡不存在'; return res; }
   if (new Set(matInsts).size !== matInsts.length || matInsts.includes(instA)) { res.reason = '素材卡重复'; return res; }
@@ -413,26 +504,65 @@ export function prepareEvolve(db: DB, instA: string, matInsts: string[], rng: ()
   if (new Set(allIds).size !== allIds.length || boosterInsts.includes(instA)) { res.reason = '加成卡与素材重复'; return res; }
 
   let rate: number;
-  if (mats.length === 1) {
-    const b = mats[0]!;
-    if (b.cardId !== a.cardId) { res.reason = '单素材必须同名卡'; return res; }
-    const r = evolveRate(a.evoStage, b.evoStage);
-    if (r === null) { res.reason = '星级差超过 1 不能合成'; return res; }
-    rate = r;
-    res.newEvoStage = Math.max(a.evoStage, b.evoStage) + 1;
-  } else if (mats.length === 2) {
-    const rarA = cardA.rarity;
-    if (mats.some(m => getCard(m!.cardId)?.rarity !== rarA)) { res.reason = '双素材必须与主卡同稀有度'; return res; }
-    rate = evolveRate(a.evoStage, a.evoStage)!;
-    res.newEvoStage = a.evoStage + 1;
+  if (cardA.officialForms) {
+    // ── 官方形态合卡（素材放宽：同稀有度任意星级即可）──
+    const stage = Math.min(Math.max(0, a.evoStage), 3);
+    if (stage >= 3) { res.reason = `已达 ${formName(cardA.rarity, 3)} 上限`; return res; }
+    const targetStage = stage + 1;
+    if (!hasForm(cardA, targetStage)) {
+      res.reason = `该卡无 ${formName(cardA.rarity, targetStage)} 形态`;
+      return res;
+    }
+    // 素材校验：1 张同名（任意星级）或 2 张同稀有度（任意星级）
+    if (mats.length === 1) {
+      const b = mats[0]!;
+      if (b.cardId !== a.cardId) { res.reason = '单素材必须同名卡'; return res; }
+    } else if (mats.length === 2) {
+      const rarA = cardA.rarity;
+      if (mats.some(m => getCard(m!.cardId)?.rarity !== rarA)) { res.reason = '双素材必须与主卡同稀有度'; return res; }
+    } else {
+      res.reason = '需要 1 张同名卡或 2 张同稀有度卡'; return res;
+    }
+    // 成功率：基础 50% + 素材星级加成（同星素材每张 +25%，低星按比例）+ 同名加成
+    //   → 3星主 + 2×3星 = 100%；3星主 + 2×0星 = 50%（低）；同名卡额外 +15%
+    let starBonus = 0;
+    let sameNameBonus = 0;
+    for (const m of mats) {
+      if (stage > 0) {
+        const ratio = Math.min(1, m!.evoStage / stage);
+        starBonus += Math.round(25 * ratio);
+      } else {
+        // 0 星主卡：素材有星即全额（0星主卡素材同星）
+        starBonus += m!.evoStage >= 0 ? 25 : 0;
+      }
+      if (m!.cardId === a.cardId) sameNameBonus += 15;
+    }
+    rate = Math.min(100, 50 + starBonus + sameNameBonus);
+    res.newEvoStage = targetStage;
   } else {
-    res.reason = '需要 1 张同名卡或 2 张同稀有度卡'; return res;
+    // ── 旧星级逻辑（无官方数据）──
+    if (a.evoStage >= MAX_STAR) { res.reason = `已达 ${MAX_STAR} 星上限`; return res; }
+    if (mats.length === 1) {
+      const b = mats[0]!;
+      if (b.cardId !== a.cardId) { res.reason = '单素材必须同名卡'; return res; }
+      const r = evolveRate(a.evoStage, b.evoStage);
+      if (r === null) { res.reason = '星级差超过 1 不能合成'; return res; }
+      rate = r;
+      res.newEvoStage = Math.max(a.evoStage, b.evoStage) + 1;
+    } else if (mats.length === 2) {
+      const rarA = cardA.rarity;
+      if (mats.some(m => getCard(m!.cardId)?.rarity !== rarA)) { res.reason = '双素材必须与主卡同稀有度'; return res; }
+      rate = evolveRate(a.evoStage, a.evoStage)!;
+      res.newEvoStage = a.evoStage + 1;
+    } else {
+      res.reason = '需要 1 张同名卡或 2 张同稀有度卡'; return res;
+    }
   }
 
   // 继承：各素材均摊（总量与单素材一致；满级素材继承 ×1.5）
   for (const m of mats) {
     const mc = getCard(m!.cardId)!;
-    const mMax = m!.lv >= maxLv(mc.rarity, m!.evoStage);
+    const mMax = m!.lv >= cardMaxLv(mc, m!.evoStage);
     const ir = (mMax ? inheritRate * 1.5 : inheritRate) / mats.length;
     const mAtk = mc.stats.attack * (1 + (m!.lv - 1) * 0.06) + m!.atkBonus;
     const mHp = (mc.stats.soldiers * 100 + mc.stats.defense * 10 + 5000) * (1 + (m!.lv - 1) * 0.06) + m!.hpBonus;
@@ -468,8 +598,8 @@ export function evolveFailureStar(star: number): number {
 }
 
 /**
- * 应用升星结果：成功=主卡加星+继承、素材消耗+加成卡消耗+失败补偿清零；
- * 失败=主卡按保底规则降星（≥5 不往下掉）、素材+加成卡损毁、失败补偿 +1 累积。
+ * 应用升星结果：成功=主卡升形态/加星+继承、素材消耗+加成卡消耗+失败补偿清零；
+ * 失败=主卡保持当前形态（官方卡）/按保底规则降星（旧体系卡）、素材+加成卡损毁、失败补偿 +1 累积。
  */
 export function applyEvolve(db: DB, instA: string, matInsts: string[], prep: EvolvePrep, boosterInsts: string[] = []): void {
   const inv = db.inventory;
@@ -481,7 +611,11 @@ export function applyEvolve(db: DB, instA: string, matInsts: string[], prep: Evo
     a.evoStage = prep.newEvoStage;
     a.evoFailStacks = 0;
   } else {
-    a.evoStage = evolveFailureStar(a.evoStage);
+    // 官方形态卡：失败不掉档（素材损毁 + 补偿累积）；旧体系卡：按保底规则降星
+    const cardA = getCard(a.cardId);
+    if (!cardA?.officialForms) {
+      a.evoStage = evolveFailureStar(a.evoStage);
+    }
     a.evoFailStacks = (a.evoFailStacks ?? 0) + 1;
   }
   const drop = new Set([...matInsts, ...boosterInsts]);
@@ -491,6 +625,13 @@ export function applyEvolve(db: DB, instA: string, matInsts: string[], prep: Evo
 export function maxLv(rarity: string, evoStage: number): number {
   const base = RARITY_RANK[rarity as keyof typeof RARITY_RANK] || 1;
   return base * 20 + evoStage * 10;
+}
+
+/** 卡片在该形态档位的等级上限（官方形态卡用官方 maxLv，否则旧公式） */
+export function cardMaxLv(card: Card, stage: number): number {
+  const f = card.officialForms?.[FORM_STAGES[Math.min(Math.max(0, stage), 3)] as FormStage];
+  if (f?.maxLv) return f.maxLv;
+  return maxLv(card.rarity, stage);
 }
 
 // ─────────────────────────── 装备（X 级装备卡）───────────────────────────
@@ -602,7 +743,7 @@ export function EnhanceCard(db: DB, targetInst: string, fodderInsts: string[]): 
   res.lvBefore = target.lv;
   target.exp += expGain;
   const need = (lv: number) => lv * 40;
-  while (target.lv < maxLv(card.rarity, target.evoStage) && target.exp >= need(target.lv)) {
+  while (target.lv < cardMaxLv(card, target.evoStage) && target.exp >= need(target.lv)) {
     target.exp -= need(target.lv);
     target.lv += 1;
   }
@@ -626,7 +767,20 @@ export function autoFodder(db: DB, targetInst: string, teamInsts: Set<string>, m
 /** 一键升星：找可合成的同名素材（未锁定、不在队伍、星级差≤1；同星优先、等级高优先） */
 export function findDuplicate(db: DB, targetInst: string, teamInsts: Set<string>): OwnedCard | null {
   const target = db.inventory.cards.find(o => o.instId === targetInst);
-  if (!target || target.evoStage >= MAX_STAR) return null;
+  if (!target) return null;
+  const tcard = getCard(target.cardId);
+  // 官方形态卡：找同名素材（任意星级，且有下一形态可合）
+  if (tcard?.officialForms) {
+    if (!hasForm(tcard, Math.min(target.evoStage + 1, 3))) return null;
+    const cands = db.inventory.cards.filter(o =>
+      o.instId !== targetInst && o.cardId === target.cardId && !o.locked &&
+      !teamInsts.has(o.instId),
+    );
+    cands.sort((x, y) => (x.evoStage === target.evoStage ? 0 : 1) - (y.evoStage === target.evoStage ? 0 : 1) || y.lv - x.lv);
+    return cands[0] ?? null;
+  }
+  // 旧体系：同星级（或差1星）同名素材
+  if (target.evoStage >= MAX_STAR) return null;
   const cands = db.inventory.cards.filter(o =>
     o.instId !== targetInst && o.cardId === target.cardId && !o.locked &&
     !teamInsts.has(o.instId) && evolveRate(target.evoStage, o.evoStage) !== null,
@@ -654,20 +808,96 @@ export function UseEnhancePotion(db: DB, targetInst: string): EnhanceResult {
   if (potions < 1) { res.reason = '强化药水不足'; return res; }
   if (db.user.gold < POTION_GOLD) { res.reason = '金币不足'; return res; }
   const card = getCard(target.cardId)!;
-  if (target.lv >= maxLv(card.rarity, target.evoStage)) { res.reason = '已达等级上限'; return res; }
+  if (target.lv >= cardMaxLv(card, target.evoStage)) { res.reason = '已达等级上限'; return res; }
 
   inv.materials.upgradePotion = potions - 1;
   db.user.gold -= POTION_GOLD;
   res.lvBefore = target.lv;
   target.exp += POTION_EXP;
   const need = (lv: number) => lv * 40;
-  while (target.lv < maxLv(card.rarity, target.evoStage) && target.exp >= need(target.lv)) {
+  while (target.lv < cardMaxLv(card, target.evoStage) && target.exp >= need(target.lv)) {
     target.exp -= need(target.lv);
     target.lv += 1;
   }
   res.lvAfter = target.lv;
   res.expGain = POTION_EXP;
   res.goldSpent = POTION_GOLD;
+  res.ok = true;
+  return res;
+}
+
+// ─────────────────────────── 技能升级（用同稀有度卡喂养）───────────────────────────
+
+/** 技能等级上限 */
+export const MAX_SKILL_LV = 10;
+
+/** 素材稀有度 → 技能经验（N 少 → UR 多；20 张 SR 或 10 张 UR 可到 Lv10） */
+export const SKILL_EXP_BY_RARITY: Record<string, number> = {
+  N: 10, R: 25, SR: 50, UR: 100, LR: 150, X: 200, VR: 300,
+};
+
+/** 升级到下一技能等级所需经验（Lv1→2 最少，逐级递增；累计 1000 到 Lv10） */
+const SKILL_LV_NEED = [60, 70, 80, 90, 100, 120, 140, 160, 180];
+
+/** 技能 Lv → 当前级升到下一级所需经验；Lv10 封顶返回 0 */
+export function skillLvNeed(skillLv: number): number {
+  if (skillLv < 1) return SKILL_LV_NEED[0];
+  if (skillLv >= MAX_SKILL_LV) return 0;
+  return SKILL_LV_NEED[skillLv - 1];
+}
+
+/** 一张素材卡提供的技能经验 */
+export function skillExpOf(card: Card): number {
+  return SKILL_EXP_BY_RARITY[card.rarity] ?? 10;
+}
+
+export interface SkillLevelResult {
+  ok: boolean;
+  reason?: string;
+  expGain: number;
+  lvBefore: number;
+  lvAfter: number;
+}
+
+/**
+ * 升级技能：消耗同稀有度素材卡，经验按素材稀有度（N10/R25/SR50/UR100…）。
+ * 技能经验累计升级（Lv1→2 需 60，逐级递增；累计约 20 张 SR 或 10 张 UR 到 Lv10）。
+ * 素材卡被消耗（与强化狗粮一致）。
+ */
+export function LevelUpSkill(db: DB, targetInst: string, fodderInsts: string[]): SkillLevelResult {
+  const inv = db.inventory;
+  const target = inv.cards.find(c => c.instId === targetInst);
+  const res: SkillLevelResult = { ok: false, expGain: 0, lvBefore: 0, lvAfter: 0 };
+  if (!target) { res.reason = '目标卡不存在'; return res; }
+  const card = getCard(target.cardId);
+  if (!card) { res.reason = '卡牌不存在'; return res; }
+  const lv = Math.min(target.skillLv ?? 1, MAX_SKILL_LV);
+  if (lv >= MAX_SKILL_LV) { res.reason = '技能已达 Lv.10 上限'; return res; }
+  // 校验素材：存在、非目标、未锁定
+  const fodders = fodderInsts.map(id => inv.cards.find(c => c.instId === id));
+  if (fodders.some(f => !f)) { res.reason = '素材卡不存在'; return res; }
+  if (new Set(fodderInsts).size !== fodderInsts.length || fodderInsts.includes(targetInst)) {
+    res.reason = '素材卡重复'; return res;
+  }
+  if (fodders.some(f => f!.locked)) { res.reason = '素材卡已锁定'; return res; }
+  // 累计经验并升级
+  let exp = (target.skillExp ?? 0);
+  for (const f of fodders) {
+    const fc = getCard(f!.cardId);
+    if (fc) exp += skillExpOf(fc);
+  }
+  res.expGain = exp - (target.skillExp ?? 0);
+  let curLv = lv;
+  while (curLv < MAX_SKILL_LV && exp >= skillLvNeed(curLv)) {
+    exp -= skillLvNeed(curLv);
+    curLv += 1;
+  }
+  target.skillLv = curLv;
+  target.skillExp = exp;
+  // 消耗素材
+  inv.cards = inv.cards.filter(c => !fodderInsts.includes(c.instId));
+  res.lvBefore = lv;
+  res.lvAfter = curLv;
   res.ok = true;
   return res;
 }

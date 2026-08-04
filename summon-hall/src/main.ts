@@ -3,7 +3,7 @@
  */
 
 import { Background } from './background';
-import { drawCard, preloadImage, getImage, RARITY_COLOR } from './card';
+import { drawCard, preloadImage, getImage, RARITY_COLOR, drawElementCrystal, drawCandyTag } from './card';
 import { BANNERS, Gacha, rateTable, bannerShowcase, type Banner, type Pull } from './gacha';
 import { cardsByRarity, getCard, SUMMON_CARDS, type Card, type Rarity } from './data';
 import { Ease, Tweener } from './ease';
@@ -26,6 +26,8 @@ import {
   claimRaidReward, claimAllRaidRewards, tickBattlePt, tickEnergy, openChest,
   ownedToCombatant, leaderAtkBonus, canClaimLogin, claimDailyLogin, LOGIN_REWARDS,
   autoFodder, findDuplicate, evolveRate, evolveBoostRate, evolveFailureStar, prepareEvolve, applyEvolve, MAX_STAR, STAR_STAT_MULT,
+  formName, formEvolveRate, formStageCount, hasForm, formMaxLv, formMaxStat, FORM_STAGES, FORM_STAR_GLYPH, type FormStage,
+  LevelUpSkill, skillExpOf, skillLvNeed, MAX_SKILL_LV,
   equipDefFor, equipCard, unequipCard, addEquipToInventory, type EquipDef,
   type Combatant, type ExploreResult, type SkillFx, type EvolvePrep,
   type ChestReward, type ChestQuality, mulberry32,
@@ -33,6 +35,7 @@ import {
 import { eventMapBg, loadAssetImage, drawCover, ENHANCE_POTION, CHEST, EVENT_MAP_BGS, NAVI_SPRITES, naviSprite, naviName, RotationLoader } from './assets';
 import { runtimeByLegacyId, quotesFor } from './data/runtime-catalog';
 import { formOf, resolveImage } from './data/asset-resolver';
+import { wikiForms } from './data/form-data';
 import { stageVisual } from './data/stages-runtime';
 import { audio } from './audio';
 import {
@@ -44,6 +47,16 @@ import { BAT, ENCOUNTER, EXPLORE, COLORS } from './battle-ui/layout';
 
 const W = 1280;
 const H = 760;
+
+/** 形态颜色（UR/HUR/GUR/XUR 形态 tab 与标题徽标） */
+function infoCol(form: string): string {
+  switch (form) {
+    case 'HUR': return '#6fce9a';
+    case 'GUR': return '#ffd24d';
+    case 'XUR': return '#ff8cd8';
+    default: return '#c8b285'; // UR
+  }
+}
 
 /** 看板娘台词（随立绘轮播切换） */
 const NAVI_LINES = [
@@ -192,6 +205,9 @@ class SummonHall {
   private naviLoader = new RotationLoader(6); // 看板娘轮播（懒加载）
   private cardDetail: Card | null = null; // 卡牌详情浮层
   private detailForm: 'main' | 'h' | 'x' = 'main'; // 详情形态切换（runtime catalog 卡）
+  private detailWForm = 0;                        // 详情形态切换（wiki 复刻卡：UR/HUR/GUR/XUR 下标）
+  private skillLvUpOpen = false;                  // 技能升级素材选择浮层
+  private skillLvPicks: string[] = [];            // 技能升级所选素材 instId
   private rateCards: Card[] = [];    // 提供比率浮层展示的卡
   private meta = new Map<string, BannerMeta>();
   private cardCount = 250;           // 所持卡片数
@@ -293,6 +309,7 @@ class SummonHall {
     const saved = loadDB();
     if (saved) this.db = saved;
     this.applyWikiReplicaTeam();
+    this.grantDemoFormCards();
     this.gacha.restoreCounters(this.db.user.gachaPity as never);
     this.buildMeta();
     this.activeStage = this.db.stages[0];
@@ -376,6 +393,22 @@ class SummonHall {
       u.wikiReplicaV1 = true;
       saveDB(this.db);
     }
+  }
+
+  /**
+   * 示例卡迁移（一次性）：发放 Calamity / Elemental Queen（形态面板演示用），
+   * 用 user.demoFormsV1 标记防止重复发放；不动出阵列表。
+   */
+  private grantDemoFormCards(): void {
+    const u = this.db.user as { demoFormsV1?: boolean };
+    if (u.demoFormsV1) return;
+    for (const cardId of ['wiki-calamity', 'wiki-elemental-queen']) {
+      if (!getCard(cardId)) continue;
+      if (this.db.inventory.cards.some(c => c.cardId === cardId)) continue;
+      this.db.inventory.cards.push(makeOwnedCard(cardId, 1));
+    }
+    u.demoFormsV1 = true;
+    saveDB(this.db);
   }
 
   /** 队伍编成：无存档时取库存前 5 张高稀有卡作为出击队；有存档时恢复队伍 */
@@ -759,7 +792,12 @@ class SummonHall {
     if (id.startsWith('teamcard:')) {
       const i = parseInt(id.slice(9), 10);
       const c = this.teamCombatants()[i];
-      if (c) { this.cardDetail = c.card; this.detailForm = 'main'; }
+      if (c) {
+        this.cardDetail = c.card; this.detailForm = 'main';
+        const owned = this.db.inventory.cards.find(oc => oc.instId === c.instId);
+        this.detailInst = owned ? owned.instId : null;
+        this.detailWForm = owned ? Math.min(Math.max(0, owned.evoStage), 3) : 0;
+      }
       return;
     }
     // 探索框架按钮（出击/遭遇共用）：菜单 / 全恢复 / 部队
@@ -883,12 +921,35 @@ class SummonHall {
       const i = parseInt(id.slice(5), 10);
       const src = this.phase.kind === 'settle' ? this.phase.pulls : null;
       const c = src?.[i]?.card ?? this.rateCards[i];
-      if (c) { this.cardDetail = c; this.detailForm = 'main'; }
+      if (c) { this.cardDetail = c; this.detailForm = 'main'; this.detailWForm = 0; }
       return;
     }
     if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
-    if (id === 'closeDetail') { this.cardDetail = null; return; }
-    // settle 阶段按钮
+    if (id.startsWith('wform:')) {
+      const n = parseInt(id.slice(6), 10);
+      if (Number.isFinite(n)) this.detailWForm = n;
+      return;
+    }
+    // 技能升级浮层（详情面板可从任意页打开，统一在此处理）
+    if (id === 'skillLvUp') { this.skillLvUpOpen = !this.skillLvUpOpen; this.skillLvPicks = []; return; }
+    if (id === 'skillLvClose') { this.skillLvUpOpen = false; this.skillLvPicks = []; return; }
+    if (id.startsWith('skillPick:')) {
+      const instId = id.slice(10);
+      if (this.skillLvPicks.includes(instId)) this.skillLvPicks = this.skillLvPicks.filter(x => x !== instId);
+      else if (this.skillLvPicks.length < 10) this.skillLvPicks.push(instId);
+      return;
+    }
+    if (id === 'skillLvGo') {
+      const target = this.detailInst;
+      if (!target) return;
+      const r = LevelUpSkill(this.db, target, this.skillLvPicks);
+      if (r.ok) this.flashTeamMsg(`技能升级！Lv.${r.lvBefore} → Lv.${r.lvAfter}`);
+      else this.flashTeamMsg(r.reason || '升级失败');
+      this.skillLvUpOpen = false; this.skillLvPicks = [];
+      saveDB(this.db);
+      return;
+    }
+    if (id === 'closeDetail') { this.cardDetail = null; this.detailInst = null; this.detailEquipOpen = false; this.skillLvUpOpen = false; this.skillLvPicks = []; return; }
     if (this.phase.kind === 'settle') {
       if (this.cardDetail) return; // 详情打开时屏蔽
       if (id === 'settleOk') this.toHall();
@@ -1047,7 +1108,12 @@ class SummonHall {
     // v3 特效：切卡时重置（含点击跳过/自动推进）
     this.revealFx.reset();
     this.revealFx.drawBack = (c, x, y, w, h, col2, t2, p2) => this.drawCardBack(c, x, y, w, h, col2, t2, p2);
-    this.revealFx.drawFront = (c, card, x, y, w, h) => drawCard(c, card, x, y, w, h, { rainbowT: (this.last / 1000 * 0.35) % 1, showMeta: true });
+    this.revealFx.drawFront = (c, card, x, y, w, h) => drawCard(c, card, x, y, w, h, {
+      rainbowT: (this.last / 1000 * 0.35) % 1, showMeta: false,
+      elementIcon: card.element,
+      candyTag: card.rarity,
+      iconSize: w >= 200 ? 52 : undefined,
+    });
     this.revealFx.onFlash = v => { this.flashV = Math.max(this.flashV, v); this.flashColor = col; };
     this.pillarV = 1;
     this.pillarColor = col;
@@ -1126,9 +1192,14 @@ class SummonHall {
       }
       const endT = ea.prep.success ? 3.0 : 2.6;
       if (ea.t >= endT) {
+        const isOfficial = !!ea.tgtCard.officialForms;
         this.flashTeamMsg(ea.prep.success
-          ? `升星成功！${'★'.repeat(ea.prep.newEvoStage)} 继承 ATK+${ea.prep.inheritedAtk} HP+${ea.prep.inheritedHp}`
-          : `合成失败……素材损毁，主卡降至 ${evolveFailureStar(ea.tgtStar)} 星（下次成功率 +30%）`);
+          ? (isOfficial
+            ? `形态进化成功！${formName(ea.tgtCard.rarity, ea.prep.newEvoStage)} 继承 ATK+${ea.prep.inheritedAtk} HP+${ea.prep.inheritedHp}`
+            : `升星成功！${'★'.repeat(ea.prep.newEvoStage)} 继承 ATK+${ea.prep.inheritedAtk} HP+${ea.prep.inheritedHp}`)
+          : (isOfficial
+            ? `合成失败……素材损毁，主卡保持 ${formName(ea.tgtCard.rarity, ea.tgtStar)}（下次成功率 +30%）`
+            : `合成失败……素材损毁，主卡降至 ${evolveFailureStar(ea.tgtStar)} 星（下次成功率 +30%）`));
         this.evolveAnim = null;
         this.evolveMatSel = null;
         this.evolveMatPair = [];
@@ -1746,6 +1817,14 @@ class SummonHall {
     }
   }
 
+  /** wiki 复刻卡：按形态取卡图文件（UR→主图 / HUR、GUR→进化图 / XUR→觉醒图），无对应图回退主图 */
+  private wikiFormImageFile(card: Card, form: string): string {
+    if (form === 'HUR') return card.evolvedFile || card.imageFile;
+    if (form === 'GUR') return card.evolvedFile || card.awakenFile || card.imageFile;
+    if (form === 'XUR') return card.awakenFile || card.imageFile;
+    return card.imageFile;
+  }
+
   private renderCardDetail(card: Card): void {
     const ctx = this.ctx;
     const t = this.last / 1000;
@@ -1754,9 +1833,214 @@ class SummonHall {
     ctx.fillRect(0, 0, W, H);
     this.buttons.push({ x: 0, y: 0, w: W, h: H, id: 'closeDetail' });
 
-    // 左侧大卡（runtime catalog 卡按所选形态绘制归档原图，否则回退 wiki 卡面）
     const cw = 300, ch = 424;
     const cardX = W / 2 - 320, cardY = H / 2 - 20;
+    const wforms = wikiForms(card);
+
+    if (wforms.length) {
+      // ── wiki 复刻卡：形态切换面板 ──
+      // 按目标档位（detailWForm=stage）定位实际存在的形态条目；无匹配时回退最近的
+      const wantStage = this.detailWForm;
+      let fi = wforms.findIndex(w => w.stage === wantStage);
+      if (fi < 0) {
+        // 精确档位不存在（跳档/超上限）：取不超过目标档的最近一项，否则取首项
+        let best = 0, bestStage = -1;
+        for (let k = 0; k < wforms.length; k++) {
+          if (wforms[k].stage <= wantStage && wforms[k].stage > bestStage) { best = k; bestStage = wforms[k].stage; }
+        }
+        fi = best;
+      }
+      const info = wforms[fi];
+      // 形态显示名按稀有度换算（N→N/HN，R→R/HR，SR→SR/HSR/GSR，UR→UR/HUR/GUR/XUR）
+      const dispForm = (i: number) => formName(card.rarity, wforms[i].stage);
+      const wcw = 300, wch = 400;
+      const wx = W / 2 - 320, wy = 265;
+      // 左侧大卡（按形态取图）
+      const imgFile = this.wikiFormImageFile(card, info.form);
+      const img = imgFile ? loadAssetImage(`/images/${encodeURIComponent(card.imageDir)}/${encodeURIComponent(imgFile)}`) : null;
+      this.rr(wx - 4, wy - 4, wcw + 8, wch + 8, 10);
+      ctx.fillStyle = 'rgba(10,8,20,0.85)'; ctx.fill();
+      ctx.strokeStyle = '#c8b285'; ctx.lineWidth = 2; ctx.stroke();
+      if (img && img.complete && img.naturalWidth) {
+        const s = Math.min(wcw / img.naturalWidth, wch / img.naturalHeight);
+        const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+        ctx.save();
+        this.rr(wx, wy, wcw, wch, 8); ctx.clip();
+        ctx.drawImage(img, wx + (wcw - dw) / 2, wy + (wch - dh) / 2, dw, dh);
+        ctx.restore();
+        // 放大卡上叠加：左上元素水晶 + 右下字母糖果
+        drawElementCrystal(ctx, wx + 6, wy + 6, wcw, card.element, 56);
+        drawCandyTag(ctx, wx + wcw - 6, wy + wch - 6, wcw, dispForm(fi), 40);
+      } else {
+        drawCard(ctx, card, wx, wy, wcw, wch, {
+          isNew: false, rainbowT: (t * 0.3) % 1, showMeta: true,
+          elementIcon: card.element,
+          candyTag: dispForm(fi),
+        });
+      }
+      // 形态切换按钮（按稀有度显示 HN/HR/HSR/GUR…）
+      const bw = 74, gap = 10;
+      const total = wforms.length * bw + (wforms.length - 1) * gap;
+      let fx = wx + (wcw - total) / 2;
+      for (let i = 0; i < wforms.length; i++) {
+        const active = i === fi;
+        const fcol = infoCol(wforms[i].form);
+        this.pill(fx, wy + wch + 12, bw, 28, active ? fcol : '#0d0a16', '#c8b285');
+        this.text(dispForm(i), fx + bw / 2, wy + wch + 28, 15, active ? '#0a0a12' : '#e8d5a8', 'center', 'bold');
+        this.buttons.push({ x: fx, y: wy + wch + 12, w: bw, h: 28, id: `wform:${i}` });
+        fx += bw + gap;
+      }
+
+      // 右侧信息面板
+      const px = W / 2 + 10, py = H / 2 - 230, pw = 400, ph = 440;
+      metalDialog(ctx, px, py, pw, ph);
+      const col = RARITY_COLOR[card.rarity] || '#aaa';
+      engravedText(ctx, card.name, px + pw / 2, py + 36, 24);
+      this.pill(px + pw - 90, py + 16, 70, 26, col, col);
+      this.text(card.rarity, px + pw - 55, py + 30, 14, '#0a0a12', 'center', 'bold');
+
+      // 形态标题：最高等级
+      const fcol2 = infoCol(info.form);
+      this.pill(px + 24, py + 52, 150, 28, fcol2, fcol2);
+      this.text(`${dispForm(fi)} · Lv.${info.maxLv} MAX`, px + 24 + 75, py + 66, 15, '#0a0a12', 'center', 'bold');
+
+      // 当前等级 + 中文属性（持有卡打开时显示等级）
+      const ownedHere = this.detailInst ? this.db.inventory.cards.find(o => o.instId === this.detailInst) : null;
+      const curLv = ownedHere?.lv ?? 1;
+      this.text('等级', px + 40, py + 92, 15, '#a0e8c0', 'left', 'bold');
+      this.text(`Lv.${curLv}`, px + 160, py + 92, 15, '#f0e6cc', 'left', 'bold');
+      this.text('属性', px + 40, py + 122, 15, '#a0e8c0', 'left', 'bold');
+      this.text(this.elementZh(card.element), px + 160, py + 122, 15, '#f0e6cc', 'left', 'bold');
+
+      // 属性表（新体系：满级值 = UR 官方满级 × 形态倍率 HUR1.2/GUR1.5/XUR2.0）
+      const stageHere = info.stage;
+      const maxAtkHere = formMaxStat(card, stageHere, 'atk');
+      const maxDefHere = formMaxStat(card, stageHere, 'def');
+      const maxSoldiersHere = formMaxStat(card, stageHere, 'soldiers');
+      const rows: [string, string][] = [
+        ['攻击力', `${maxAtkHere}（MAX）`],
+        ['防御力', `${maxDefHere}（MAX）`],
+        ['士兵', `${maxSoldiersHere}（MAX）`],
+      ];
+      let ry = py + 156;
+      for (const [l, v] of rows) {
+        this.text(l, px + 40, ry, 17, '#e8a0c0', 'left', 'bold');
+        this.text(v, px + 160, ry, 17, '#f0e6cc', 'left', 'bold');
+        ry += 38;
+      }
+      // 当前等级实际数值（持有卡）
+      if (ownedHere) {
+        const cb = ownedToCombatant(ownedHere, false, this.db);
+        if (cb) {
+          this.text('当前战力', px + 40, ry, 14, '#6fce9a', 'left', 'bold');
+          this.text(`攻击 ${cb.atk} · 体力 ${cb.hpMax}`, px + 160, ry, 14, '#f0e6cc', 'left', 'bold');
+          ry += 32;
+        }
+      }
+
+      // 技能（当前形态）
+      ry += 6;
+      this.text('技 能', px + 40, ry, 13, '#c8b285', 'left', 'bold');
+      ry += 24;
+      this.text(info.skillName, px + 40, ry, 17, '#e8d5a8', 'left', 'bold');
+      const curSkillLv = Math.min(ownedHere?.skillLv ?? 1, 10);
+      this.text(`Lv.${curSkillLv}`, px + pw - 40, ry, 14, '#9ab', 'right');
+      ry += 26;
+      ry = this.wrapText(info.skillDesc, px + 40, ry, pw - 80, 20, 13, '#b8c8d8');
+      ry += 10;
+      if (info.skillDescMax) {
+        this.text('Lv.MAX', px + pw - 40, ry, 14, '#9ab', 'right');
+        ry = this.wrapText(info.skillDescMax, px + 40, ry, pw - 80, 20, 13, '#b8c8d8');
+        ry += 10;
+      }
+      // 技能升级入口（持有卡时）——显示当前技能等级提示
+      if (ownedHere && curSkillLv < 10) {
+        this.text(`技能 Lv.${curSkillLv}（可升级）`, px + 40, ry + 4, 13, '#ffd24d', 'left', 'bold');
+        ry += 20;
+      }
+      // XUR 重生技能 2
+      if (info.skill2Name) {
+        this.text(info.skill2Name, px + 40, ry, 15, '#ffb0c8', 'left', 'bold');
+        this.text('重生技', px + pw - 40, ry, 12, '#ff8cb0', 'right');
+        ry += 24;
+        ry = this.wrapText(info.skill2Desc || '', px + 40, ry, pw - 80, 20, 12, '#c8a8b8');
+      }
+
+      // 关闭按钮
+      glassButton(ctx, px + pw / 2 - 80, py + ph + 16, 160, 46, '关 闭', { kind: 'blue', hover: this.hover === 'closeDetail', fontSize: 17 });
+      this.buttons.push({ x: px + pw / 2 - 80, y: py + ph + 16, w: 160, h: 46, id: 'closeDetail' });
+
+      // 操作按钮行（持有卡打开时：一键强化 / 合卡 / 锁定 / 升级技能）
+      const owned = this.detailInst ? this.db.inventory.cards.find(o => o.instId === this.detailInst) : null;
+      if (owned) {
+        const oy2 = py + ph + 78;
+        const obw = 130, obh = 40, ogap = 14;
+        const canSkillUp = (owned.skillLv ?? 1) < 10;
+        const totalW = obw * 4 + ogap * 3;
+        let obx = px + (pw - totalW) / 2;
+        glassButton(ctx, obx, oy2, obw, obh, '一键强化', { kind: 'green', hover: this.hover === 'quickEnhance', fontSize: 15 });
+        this.buttons.push({ x: obx, y: oy2, w: obw, h: obh, id: 'quickEnhance' });
+        obx += obw + ogap;
+        const evoLabel = this.evolvableInsts().has(owned.instId) ? '合卡升星' : '合卡（缺素材）';
+        glassButton(ctx, obx, oy2, obw, obh, evoLabel, { kind: this.evolvableInsts().has(owned.instId) ? 'blue' : 'gray', hover: this.hover === 'quickEvolve', fontSize: 15 });
+        this.buttons.push({ x: obx, y: oy2, w: obw, h: obh, id: 'quickEvolve' });
+        obx += obw + ogap;
+        glassButton(ctx, obx, oy2, obw, obh, owned.locked ? '解锁' : '锁定', { kind: 'gray', hover: this.hover === 'lockCard', fontSize: 15 });
+        this.buttons.push({ x: obx, y: oy2, w: obw, h: obh, id: 'lockCard' });
+        obx += obw + ogap;
+        glassButton(ctx, obx, oy2, obw, obh, canSkillUp ? '升级技能' : '技能满级', { kind: canSkillUp ? 'blue' : 'gray', hover: canSkillUp && this.hover === 'skillLvUp', fontSize: 15 });
+        if (canSkillUp) this.buttons.push({ x: obx, y: oy2, w: obw, h: obh, id: 'skillLvUp' });
+      }
+
+      // 技能升级素材选择浮层
+      if (this.skillLvUpOpen && owned) {
+        const sx0 = 90, sy0 = 250, sw = W - 180, sh = 330;
+        this.rr(sx0, sy0, sw, sh, 14);
+        ctx.fillStyle = 'rgba(14,10,26,0.95)'; ctx.fill();
+        ctx.strokeStyle = '#ffd24d'; ctx.lineWidth = 2;
+        this.rr(sx0, sy0, sw, sh, 14); ctx.stroke();
+        const slv = Math.min(owned.skillLv ?? 1, 10);
+        this.text(`升级技能 Lv.${slv} → Lv.${Math.min(slv + 1, 10)}　需要 ${skillLvNeed(slv)} 技能经验`, sx0 + 30, sy0 + 34, 16, '#ffd24d', 'left', 'bold');
+        this.text('选择同稀有度素材卡（N:10 / R:25 / SR:50 / UR:100 技能经验）', sx0 + 30, sy0 + 60, 13, '#8892a8', 'left');
+        // 素材候选：同稀有度、未锁定、非自身、不在队伍
+        const pickSet = new Set(this.skillLvPicks);
+        const cands = this.db.inventory.cards.filter(o => {
+          if (o.instId === owned.instId || o.locked) return false;
+          const c = getCard(o.cardId);
+          return c?.rarity === card.rarity;
+        }).sort((x, y) => (pickSet.has(y.instId) ? 1 : 0) - (pickSet.has(x.instId) ? 1 : 0) || y.lv - x.lv);
+        const cw2 = 84, ch2 = 118, gx2 = 10, gy2 = 12;
+        const cols2 = Math.floor((sw - 60) / (cw2 + gx2));
+        cands.slice(0, cols2 * 3).forEach((o, i) => {
+          const oc = getCard(o.cardId); if (!oc) return;
+          const cx = sx0 + 30 + (i % cols2) * (cw2 + gx2) + cw2 / 2;
+          const cy2 = sy0 + 92 + Math.floor(i / cols2) * (ch2 + gy2) + ch2 / 2;
+          const sel = pickSet.has(o.instId);
+          ctx.save();
+          if (sel) { ctx.shadowColor = '#ffd24d'; ctx.shadowBlur = 14; }
+          drawCard(ctx, oc, cx, cy2, cw2, ch2, { showName: false, ...this.cardIconOpts(o) });
+          ctx.restore();
+          if (sel) { ctx.strokeStyle = '#ffd24d'; ctx.lineWidth = 3; this.rr(cx - cw2 / 2, cy2 - ch2 / 2, cw2, ch2, 7); ctx.stroke(); }
+          this.text(`${skillExpOf(oc)} exp`, cx, cy2 + ch2 / 2 + 10, 10, sel ? '#ffd24d' : '#cfc4a8', 'center', 'bold');
+          this.buttons.push({ x: cx - cw2 / 2, y: cy2 - ch2 / 2, w: cw2, h: ch2, id: `skillPick:${o.instId}` });
+        });
+        // 底部：已选经验 / 确认 / 关闭
+        const pickExp = this.skillLvPicks.reduce((s, id2) => {
+          const o2 = this.db.inventory.cards.find(x => x.instId === id2);
+          const c2 = o2 && getCard(o2.cardId);
+          return s + (c2 ? skillExpOf(c2) : 0);
+        }, 0);
+        const canGo = this.skillLvPicks.length > 0;
+        this.text(`已选 ${this.skillLvPicks.length} 张 · 共 ${pickExp} 技能经验`, sx0 + 30, sy0 + sh - 40, 14, '#f0e6cc', 'left', 'bold');
+        glassButton(ctx, sx0 + sw - 300, sy0 + sh - 58, 130, 40, '确认升级', { kind: canGo ? 'green' : 'gray', hover: canGo && this.hover === 'skillLvGo', fontSize: 16 });
+        if (canGo) this.buttons.push({ x: sx0 + sw - 300, y: sy0 + sh - 58, w: 130, h: 40, id: 'skillLvGo' });
+        glassButton(ctx, sx0 + sw - 155, sy0 + sh - 58, 130, 40, '关 闭', { kind: 'gray', hover: this.hover === 'skillLvClose', fontSize: 16 });
+        this.buttons.push({ x: sx0 + sw - 155, y: sy0 + sh - 58, w: 130, h: 40, id: 'skillLvClose' });
+      }
+      return;
+    }
+
+    // ── 旧面板（非 wiki 复刻卡） ──
     const rdef = runtimeByLegacyId(card.id);
     const formRef = rdef ? (formOf(rdef, this.detailForm) ?? formOf(rdef, 'main')) : null;
     if (rdef && formRef) {
@@ -2455,6 +2739,31 @@ class SummonHall {
 
   private activateInv(id: string): void {
     const inv = this.db.inventory;
+    // 展示型详情关闭（仓库页打开的 cardDetail）
+    if (id === 'closeDetail') { this.cardDetail = null; this.detailInst = null; this.skillLvUpOpen = false; this.skillLvPicks = []; return; }
+    if (id.startsWith('wform:')) {
+      const n = parseInt(id.slice(6), 10);
+      if (Number.isFinite(n)) this.detailWForm = n;
+      return;
+    }
+    // 技能升级浮层
+    if (id === 'skillLvClose') { this.skillLvUpOpen = false; this.skillLvPicks = []; return; }
+    if (id.startsWith('skillPick:')) {
+      const instId = id.slice(10);
+      if (this.skillLvPicks.includes(instId)) this.skillLvPicks = this.skillLvPicks.filter(x => x !== instId);
+      else if (this.skillLvPicks.length < 10) this.skillLvPicks.push(instId);
+      return;
+    }
+    if (id === 'skillLvGo') {
+      const target = this.detailInst;
+      if (!target) return;
+      const r = LevelUpSkill(this.db, target, this.skillLvPicks);
+      if (r.ok) this.flashTeamMsg(`技能升级！Lv.${r.lvBefore} → Lv.${r.lvAfter}`);
+      else this.flashTeamMsg(r.reason || '升级失败');
+      this.skillLvUpOpen = false; this.skillLvPicks = [];
+      saveDB(this.db);
+      return;
+    }
     // 筛选 / 排序（复用 team 的 invFilter / invScroll，避免两套状态）
     if (id.startsWith('invf:')) { this.invFilter = id.slice(5); this.invScroll = 0; return; }
     if (id.startsWith('invs:')) { this.invSort = id.slice(5); this.invScroll = 0; return; }
@@ -2470,8 +2779,15 @@ class SummonHall {
         if (this.invSel.has(instId)) this.invSel.delete(instId); else this.invSel.add(instId);
         return;
       }
-      this.detailInst = instId;
-      this.detailForm = 'main';
+      // 卡点选：一律打开展示型详情面板（renderCardDetail）
+      const o2 = this.db.inventory.cards.find(c => c.instId === instId);
+      const c2 = o2 && getCard(o2.cardId);
+      if (c2) {
+        this.cardDetail = c2;
+        this.detailInst = o2!.instId;
+        this.detailForm = 'main';
+        this.detailWForm = Math.min(Math.max(0, o2!.evoStage), 3);
+      }
       return;
     }
     // 批量出售确认
@@ -2494,8 +2810,8 @@ class SummonHall {
     }
     // 详情内按钮
     if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
-    if (id === 'closeInvDetail') { this.detailInst = null; this.detailEquipOpen = false; return; }
-    if (id === 'closeDetail') { this.detailInst = null; this.detailEquipOpen = false; return; }
+    if (id === 'closeInvDetail') { this.detailInst = null; this.cardDetail = null; this.detailEquipOpen = false; return; }
+    if (id === 'closeDetail') { this.detailInst = null; this.cardDetail = null; this.detailEquipOpen = false; return; }
     if (id === 'equipOpen') { this.detailEquipOpen = !this.detailEquipOpen; return; }
     if (id === 'equipClose') { this.detailEquipOpen = false; return; }
     if (id === 'equipRemove') {
@@ -2543,6 +2859,39 @@ class SummonHall {
 
   private activateTeam(id: string): void {
     const inv = this.db.inventory;
+    // 展示型详情关闭（队伍页打开的 cardDetail）
+    if (id === 'closeDetail') { this.cardDetail = null; this.detailInst = null; this.skillLvUpOpen = false; this.skillLvPicks = []; return; }
+    if (id.startsWith('wform:')) {
+      const n = parseInt(id.slice(6), 10);
+      if (Number.isFinite(n)) this.detailWForm = n;
+      return;
+    }
+    // 技能升级浮层
+    if (id === 'skillLvClose') { this.skillLvUpOpen = false; this.skillLvPicks = []; return; }
+    if (id.startsWith('skillPick:')) {
+      const instId = id.slice(10);
+      if (this.skillLvPicks.includes(instId)) this.skillLvPicks = this.skillLvPicks.filter(x => x !== instId);
+      else if (this.skillLvPicks.length < 10) this.skillLvPicks.push(instId);
+      return;
+    }
+    if (id === 'skillLvGo') {
+      const target = this.detailInst;
+      if (!target) return;
+      const r = LevelUpSkill(this.db, target, this.skillLvPicks);
+      if (r.ok) this.flashTeamMsg(`技能升级！Lv.${r.lvBefore} → Lv.${r.lvAfter}`);
+      else this.flashTeamMsg(r.reason || '升级失败');
+      this.skillLvUpOpen = false; this.skillLvPicks = [];
+      saveDB(this.db);
+      return;
+    }
+    // 展示型详情操作按钮（一键强化 / 合卡 / 锁定）
+    if (id === 'quickEnhance') { this.doQuickEnhance(); return; }
+    if (id === 'quickEvolve') { this.doQuickEvolve(); return; }
+    if (id === 'lockCard') {
+      const o = this.db.inventory.cards.find(c => c.instId === this.detailInst);
+      if (o) { o.locked = !o.locked; this.flashTeamMsg(o.locked ? '已锁定' : '已解锁'); saveDB(this.db); }
+      return;
+    }
     // 关闭详情
     if (id.startsWith('form:')) { this.detailForm = id.slice(5) as 'main' | 'h' | 'x'; return; }
     if (id === 'closeTeamDetail') { this.detailInst = null; this.detailEquipOpen = false; this.enhanceMode = false; this.enhancePicks.clear(); return; }
@@ -2576,8 +2925,15 @@ class SummonHall {
         this.saveTeam();
         return;
       }
-      // 默认：打开详情
-      this.detailInst = instId;
+      // 默认：打开详情（一律展示型面板）
+      const oc = inv.cards.find(x => x.instId === instId);
+      const cc = oc && getCard(oc.cardId);
+      if (cc) {
+        this.cardDetail = cc;
+        this.detailInst = oc!.instId;
+        this.detailForm = 'main';
+        this.detailWForm = Math.min(Math.max(0, oc!.evoStage), 3);
+      }
       this.enhanceMode = false; this.enhancePicks.clear();
       return;
     }
@@ -2598,7 +2954,7 @@ class SummonHall {
       saveDB(this.db);
       return;
     }
-    if (id === 'enhanceStart') { this.enhanceMode = true; this.enhancePicks.clear(); this.detailInstKeep = this.detailInst; this.detailInst = null; this.page = 'team'; return; }
+    if (id === 'enhanceStart') { this.enhanceMode = true; this.enhancePicks.clear(); this.detailInstKeep = this.detailInst; this.detailInst = null; this.cardDetail = null; this.page = 'team'; return; }
     if (id === 'enhanceGo') {
       const target = this.detailInstKeep;
       if (!target || this.enhancePicks.size === 0) { this.flashTeamMsg('请先点选狗粮卡'); return; }
@@ -2670,6 +3026,7 @@ class SummonHall {
   private openEvolvePage(target: string | null): void {
     this.evolveFrom = this.page === 'team' ? 'team' : 'inventory';
     this.detailInst = null; this.detailInstKeep = null;
+    this.cardDetail = null; // 进入合成页关闭展示型详情（避免残留无法关闭）
     this.evolveMatSel = null; this.evolveMatPair = [];
     this.evolveBoosters = []; this.evolveBoostOpen = false;
     this.evolveTarget = null;
@@ -2694,14 +3051,15 @@ class SummonHall {
     }
   }
 
-  /** 同名素材候选：未锁定、星级差≤1；同星优先、等级高优先 */
+  /** 同名素材候选：官方卡需同形态；旧体系卡需星级差≤1；同形态/同星优先、等级高优先 */
+  /** 同名素材候选：任意星级（官方卡与旧体系卡一致）；同星优先、等级高优先 */
   private sameCardCandidates(t: OwnedCard): OwnedCard[] {
     return this.db.inventory.cards
-      .filter(o => o.instId !== t.instId && o.cardId === t.cardId && !o.locked && evolveRate(t.evoStage, o.evoStage) !== null)
+      .filter(o => o.instId !== t.instId && o.cardId === t.cardId && !o.locked)
       .sort((x, y) => (x.evoStage === t.evoStage ? 0 : 1) - (y.evoStage === t.evoStage ? 0 : 1) || y.lv - x.lv);
   }
 
-  /** 同稀有度素材候选：未锁定、非自身；等级高优先 */
+  /** 同稀有度素材候选：任意星级；未锁定、非自身；等级高优先 */
   private rarityCandidates(t: OwnedCard): OwnedCard[] {
     const rar = getCard(t.cardId)?.rarity;
     if (!rar) return [];
@@ -2790,15 +3148,26 @@ class SummonHall {
     }
     const res = new Set<string>();
     for (const o of this.db.inventory.cards) {
-      if (o.evoStage >= MAX_STAR) continue;
       const card = getCard(o.cardId); if (!card) continue;
-      // 同名：排除自身（未锁定时自身占一个同星名额）后存在星级差≤1 的素材
+      if (card.officialForms) {
+        // 官方形态卡：需有下一形态 + 素材（同名任意星×1 或 同稀有度任意星×2）
+        if (!hasForm(card, Math.min(o.evoStage + 1, 3))) continue;
+        let skippedSelf = o.locked;
+        const same = (stagesByCard.get(o.cardId) ?? []).some(s => {
+          if (!skippedSelf && s === o.evoStage) { skippedSelf = true; return false; }
+          return true;
+        });
+        const pair = (countByRarity.get(card.rarity) ?? 0) - (!o.locked ? 1 : 0) >= 2;
+        if (same || pair) res.add(o.instId);
+        continue;
+      }
+      // 旧体系卡
+      if (o.evoStage >= MAX_STAR) continue;
       let skippedSelf = o.locked;
       const same = (stagesByCard.get(o.cardId) ?? []).some(s => {
         if (!skippedSelf && s === o.evoStage) { skippedSelf = true; return false; }
         return evolveRate(o.evoStage, s) !== null;
       });
-      // 同稀有度：排除自身（未锁定时）后还有 ≥2 张
       const pair = (countByRarity.get(card.rarity) ?? 0) - (!o.locked ? 1 : 0) >= 2;
       if (same || pair) res.add(o.instId);
     }
@@ -2855,27 +3224,31 @@ class SummonHall {
     // 素材选择
     const matIds = this.evolveTab === 'same' ? (this.evolveMatSel ? [this.evolveMatSel] : []) : this.evolveMatPair;
     const mats = matIds.map(mid => this.db.inventory.cards.find(o => o.instId === mid)).filter((o): o is OwnedCard => !!o);
-    const rate = this.evolveTab === 'same'
-      ? (mats[0] ? evolveRate(t.evoStage, mats[0].evoStage) : null)
-      : (mats.length === 2 ? evolveRate(t.evoStage, t.evoStage) : null);
+    const isOfficial = !!tc.officialForms;
+    const rate = isOfficial
+      ? ((mats.length >= (this.evolveTab === 'same' ? 1 : 2)) ? formEvolveRate(t.evoStage + 1) : null)
+      : (this.evolveTab === 'same'
+        ? (mats[0] ? evolveRate(t.evoStage, mats[0].evoStage) : null)
+        : (mats.length === 2 ? evolveRate(t.evoStage, t.evoStage) : null));
     const needMats = this.evolveTab === 'same' ? 1 : 2;
+    const tFormName = formName(tc.rarity, t.evoStage);
 
     // 舞台：主卡 + 素材槽
     const cy = 310, cw = 180, ch = 254;
     const slotX = this.evolveTab === 'same' ? [W / 2 - 190, W / 2 + 190] : [W / 2 - 320, W / 2, W / 2 + 320];
-    drawCard(ctx, tc, slotX[0], cy, cw, ch, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1 });
+    drawCard(ctx, tc, slotX[0], cy, cw, ch, { showName: true, rainbowT: (this.last / 1000 * 0.3) % 1, ...this.cardIconOpts(t) });
     this.drawCardAura(slotX[0], cy, cw, ch, t.evoStage);
     this.buttons.push({ x: slotX[0] - cw / 2, y: cy - ch / 2, w: cw, h: ch, id: 'evoTgtClear' });
-    this.text(`主卡 Lv.${t.lv} ${'★'.repeat(t.evoStage) || '无星'}（点击可更换）`, slotX[0], cy + ch / 2 + 22, 13, '#ffe9a8', 'center', 'bold');
+    this.text(`主卡 ${tFormName} Lv.${t.lv}（点击可更换）`, slotX[0], cy + ch / 2 + 22, 13, '#ffe9a8', 'center', 'bold');
     for (let i = 0; i < needMats; i++) {
       const sx = slotX[i + 1];
       const m = mats[i];
       const mc = m ? getCard(m.cardId) : null;
       if (m && mc) {
-        drawCard(ctx, mc, sx, cy, cw, ch, { showName: true });
+        drawCard(ctx, mc, sx, cy, cw, ch, { showName: true, ...this.cardIconOpts(m) });
         this.drawCardAura(sx, cy, cw, ch, m.evoStage);
         const inTeam = this.teamInstIds.includes(m.instId);
-        this.text(`素材 Lv.${m.lv} ${'★'.repeat(m.evoStage) || '无星'}${inTeam ? '（出撃中，合成后下阵）' : ''}`, sx, cy + ch / 2 + 22, 13, '#cfc4a8', 'center', 'bold');
+        this.text(`素材 ${formName(mc.rarity, m.evoStage)} Lv.${m.lv}${inTeam ? '（出撃中，合成后下阵）' : ''}`, sx, cy + ch / 2 + 22, 13, '#cfc4a8', 'center', 'bold');
       } else {
         this.rr(sx - cw / 2, cy - ch / 2, cw, ch, 10);
         ctx.fillStyle = 'rgba(20,16,32,0.8)'; ctx.fill();
@@ -2898,16 +3271,20 @@ class SummonHall {
     const bonusTotal = Math.min(3, failStack) * 30;
 
     // 成功率 / 结果预览 / 合成按钮
+    const targetStage = t.evoStage + 1;
+    const targetForm = isOfficial ? formName(tc.rarity, targetStage) : null;
     if (rate !== null) {
       const finalRate = Math.min(100, rate + boostTotal + bonusTotal);
       const col = finalRate >= 80 ? '#6fce9a' : finalRate >= 50 ? '#ffd24d' : '#ff8c6a';
       this.text(`成功率 ${rate}%${boostTotal ? ` +${boostTotal}%加成卡` : ''}${bonusTotal ? ` +${bonusTotal}%补偿` : ''} = ${finalRate}%`, W / 2, 486, 22, col, 'center', 'bold', true);
-      this.text(`→ ${'★'.repeat(Math.max(t.evoStage, ...(this.evolveTab === 'same' && mats[0] ? [mats[0].evoStage] : [])) + 1)}`, W / 2, 514, 18, '#ffe14d', 'center', 'bold');
-      this.text(failStack > 0 ? `连续失败 ${failStack} 次（下次再失败 +30% 补偿，上限 +90%）` : '失败：素材损毁，主卡按保底降星（5★/7★ 不降）', W / 2, 538, 12, '#ff9c9c', 'center');
+      this.text(isOfficial
+        ? `→ ${targetForm}（${'★'.repeat(FORM_STAR_GLYPH[FORM_STAGES[targetStage] as FormStage]) || ''}）`
+        : `→ ${'★'.repeat(targetStage)}`, W / 2, 514, 18, '#ffe14d', 'center', 'bold');
+      this.text(failStack > 0 ? `连续失败 ${failStack} 次（下次再失败 +30% 补偿，上限 +90%）` : '失败：素材损毁，主卡保持当前形态', W / 2, 538, 12, '#ff9c9c', 'center');
     } else {
       this.text(this.evolveTab === 'same'
-        ? (mats[0] ? '星级差超过 1 不能合成' : '选择 1 张同名卡作为素材')
-        : (mats.length ? `再选 ${2 - mats.length} 张 ${tc.rarity} 卡作为素材` : `选择 2 张 ${tc.rarity} 卡作为素材`),
+        ? (isOfficial ? `选择 1 张同名 ${tFormName} 卡作为素材` : (mats[0] ? '星级差超过 1 不能合成' : '选择 1 张同名卡作为素材'))
+        : (mats.length ? `再选 ${2 - mats.length} 张同稀有度 ${tFormName} 卡作为素材` : `选择 2 张同稀有度 ${tFormName} 卡作为素材`),
         W / 2, 496, 15, '#8892a8', 'center', 'bold');
     }
     const can = rate !== null && !this.evolveAnim;
@@ -2974,17 +3351,52 @@ class SummonHall {
   }
 
   /** 星级视觉档：<3 默认 / 3-4 铜色发光 / 5-6 银色+白晕 / 7-9 金色+金晕 / 10 钻石+七彩晕 */
+  /** 元素 → 中文名 */
+  private elementZh(element: string): string {
+    switch ((element || '').toUpperCase()) {
+      case 'COOL': return '冰';
+      case 'DARK': return '暗';
+      case 'LIGHT': return '光';
+      case 'PASSION': return '火';
+      case 'SPECIAL': return '无';
+      default: return element || '—';
+    }
+  }
+
+  /** 官方形态卡的角标配置：左上元素水晶 + 右上字母糖果（升级后糖果随形态变化） */
+  private cardIconOpts(o: OwnedCard): { elementIcon?: string; candyTag?: string } {
+    const card = getCard(o.cardId);
+    if (!card?.officialForms) return {};
+    const element = (card.element || '').toUpperCase();
+    const valid = ['COOL', 'DARK', 'LIGHT', 'PASSION'].includes(element);
+    return {
+      elementIcon: valid ? element : undefined,
+      candyTag: formName(card.rarity, Math.min(o.evoStage, 3)),
+    };
+  }
+
+  /** 形态/星级视觉：官方形态档 → 显示星数（HUR=5 银 / GUR=7 金 / XUR=10 彩虹）；旧体系直接用星数 */
+  private visualStars(star: number): number {
+    if (star <= 0) return 0;
+    if (star === 1) return 5;   // H★
+    if (star === 2) return 7;   // G★
+    if (star >= 3) return 10;   // X★
+    return star;
+  }
+
   private starStyle(star: number): { color: string; halo: string | null; rainbow: boolean; glyph: string } {
-    if (star >= 10) return { color: '#bff3ff', halo: null, rainbow: true, glyph: '◆' };
-    if (star >= 7) return { color: '#ffd24d', halo: '#ffdf80', rainbow: false, glyph: '★' };
-    if (star >= 5) return { color: '#eef2fa', halo: '#ffffff', rainbow: false, glyph: '★' };
-    if (star >= 3) return { color: '#e0a060', halo: '#c8803c', rainbow: false, glyph: '★' };
+    const s = this.visualStars(star);
+    if (s >= 10) return { color: '#bff3ff', halo: null, rainbow: true, glyph: '◆' };
+    if (s >= 7) return { color: '#ffd24d', halo: '#ffdf80', rainbow: false, glyph: '★' };
+    if (s >= 5) return { color: '#eef2fa', halo: '#ffffff', rainbow: false, glyph: '★' };
+    if (s >= 3) return { color: '#e0a060', halo: '#c8803c', rainbow: false, glyph: '★' };
     return { color: '#ffe9a8', halo: null, rainbow: false, glyph: '★' };
   }
 
   /** 卡牌星级光晕（5 星起，drawCard 之后调用）；10 星七彩流动描边 */
   private drawCardAura(cx: number, cy: number, w: number, h: number, star: number): void {
-    if (star < 5) return;
+    const vs = this.visualStars(star);
+    if (vs < 5) return;
     const s = this.starStyle(star);
     const ctx = this.ctx;
     ctx.save();
@@ -2996,8 +3408,8 @@ class SummonHall {
       ctx.shadowColor = `hsla(${hue0},100%,70%,0.9)`; ctx.shadowBlur = 24;
       this.rr(cx - w / 2 - 4, cy - h / 2 - 4, w + 8, h + 8, 12); ctx.stroke();
     } else if (s.halo) {
-      ctx.strokeStyle = s.color; ctx.lineWidth = star >= 7 ? 4 : 2.5;
-      ctx.shadowColor = s.halo; ctx.shadowBlur = star >= 7 ? 22 : 14;
+      ctx.strokeStyle = s.color; ctx.lineWidth = vs >= 7 ? 4 : 2.5;
+      ctx.shadowColor = s.halo; ctx.shadowBlur = vs >= 7 ? 22 : 14;
       ctx.globalAlpha = 0.9;
       this.rr(cx - w / 2 - 3, cy - h / 2 - 3, w + 6, h + 6, 11); ctx.stroke();
     }
@@ -3027,17 +3439,18 @@ class SummonHall {
     ctx.restore();
   }
 
-  /** Lv + 星级文字（按星级着色发光；10 星显示 ◆ 钻） */
+  /** Lv + 星级文字（官方形态档映射为显示星数：H★=5银 / G★=7金 / X★=10◆） */
   private drawLvStars(cx: number, y: number, lv: number, star: number, fontSize = 10): void {
+    const vs = this.visualStars(star);
     const s = this.starStyle(star);
-    const label = `Lv.${lv}${star > 0 ? ' ' + s.glyph.repeat(star) : ''}`;
+    const label = `Lv.${lv}${vs > 0 ? ' ' + s.glyph.repeat(vs) : ''}`;
     const ctx = this.ctx;
     ctx.save();
-    if (star >= 3) {
+    if (vs >= 3) {
       ctx.shadowColor = s.rainbow ? `hsla(${(this.last / 6) % 360},100%,70%,0.95)` : s.halo!;
       ctx.shadowBlur = 10;
     }
-    this.text(label, cx, y, fontSize, star > 0 ? s.color : '#ffe9a8', 'center', 'bold');
+    this.text(label, cx, y, fontSize, vs > 0 ? s.color : '#ffe9a8', 'center', 'bold');
     ctx.restore();
   }
 
@@ -3173,7 +3586,9 @@ class SummonHall {
         ctx.fillRect(px, py, 6, 6);
       }
       ctx.restore();
-      this.text(`合成失败……素材损毁，主卡降至 ${Math.max(0, ea.tgtStar - 1)} 星`, W / 2, cy + ch / 2 + 52, 22, '#8a8498', 'center', 'bold');
+      this.text(ea.tgtCard.officialForms
+        ? `合成失败……素材损毁，主卡保持 ${formName(ea.tgtCard.rarity, ea.tgtStar)}`
+        : `合成失败……素材损毁，主卡降至 ${Math.max(0, ea.tgtStar - 1)} 星`, W / 2, cy + ch / 2 + 52, 22, '#8a8498', 'center', 'bold');
     }
 
     if (flash > 0) {
@@ -3273,7 +3688,7 @@ class SummonHall {
       const isDetail = this.detailInst === o.instId;
       ctx.save();
       if (picked) { ctx.shadowColor = '#ff5c5c'; ctx.shadowBlur = 16; }
-      drawCard(ctx, c, x, y, icw, ich, { showName: false, isNew: fresh, rainbowT: (this.last / 1000 * 0.3) % 1 });
+      drawCard(ctx, c, x, y, icw, ich, { showName: false, isNew: fresh, rainbowT: (this.last / 1000 * 0.3) % 1, ...this.cardIconOpts(o) });
       ctx.restore();
       this.drawCardAura(x, y, icw, ich, o.evoStage);
       if (inTeam) { this.pill(x - 26, y - ich / 2 + 2, 52, 16, '#3a2a08', '#ffd24d'); this.text('出撃', x, y - ich / 2 + 10, 10, '#ffd24d', 'center', 'bold'); }
@@ -3299,7 +3714,7 @@ class SummonHall {
 
     if (this.teamMsg && this.teamMsgT < 2.5) this.renderToast();
 
-    if (this.detailInst) this.renderInvDetail();
+    if (this.detailInst && !this.cardDetail) this.renderInvDetail();
     this.renderDragLayer();
   }
 
@@ -3601,7 +4016,8 @@ class SummonHall {
       if (sel) { ctx.shadowColor = '#ffe14d'; ctx.shadowBlur = 20; }
       if (slot) {
         if (this.drag?.started && this.drag.fromSlot === i) ctx.globalAlpha = 0.3;
-        drawCard(ctx, slot.card, sx + cw / 2, sy + ch / 2, cw, ch, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1 });
+        const slotOwned = this.db.inventory.cards.find(oc => oc.instId === slot.instId);
+        drawCard(ctx, slot.card, sx + cw / 2, sy + ch / 2, cw, ch, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1, ...(slotOwned ? this.cardIconOpts(slotOwned) : {}) });
       } else {
         this.rr(sx, sy, cw, ch, 8); ctx.fillStyle = 'rgba(20,16,32,0.8)'; ctx.fill();
         ctx.strokeStyle = '#444'; ctx.setLineDash([5, 4]); this.rr(sx, sy, cw, ch, 8); ctx.stroke(); ctx.setLineDash([]);
@@ -3683,7 +4099,7 @@ class SummonHall {
       ctx.save();
       if (picked) { ctx.shadowColor = '#6fce9a'; ctx.shadowBlur = 16; }
       if (this.drag?.started && this.drag.instId === o.instId) ctx.globalAlpha = 0.3;
-      drawCard(ctx, c, x, y, icw, ich, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1 });
+      drawCard(ctx, c, x, y, icw, ich, { showName: false, rainbowT: (this.last / 1000 * 0.3) % 1, ...this.cardIconOpts(o) });
       ctx.restore();
       this.drawCardAura(x, y, icw, ich, o.evoStage);
       if (inTeam) {
@@ -3728,8 +4144,8 @@ class SummonHall {
       this.buttons.push({ x: W / 2 + 250, y: 340, w: 120, h: 36, id: 'enhancePotion' });
     }
 
-    // 详情弹层
-    if (this.detailInst) this.renderTeamDetail();
+    // 详情弹层（展示型面板打开时旧面板不渲染）
+    if (this.detailInst && !this.cardDetail) this.renderTeamDetail();
 
     // 拖动跟随层（最上层）：落点槽高亮 + 卡片跟随鼠标
     if (this.drag?.started) {
@@ -4776,7 +5192,7 @@ class SummonHall {
     this.rateCards.forEach((c, i) => {
       const cx = ox + 30 + (i % cols) * (cw + gx) + cw / 2;
       const cy = ry + 44 + Math.floor(i / cols) * (ch + gy) + ch / 2;
-      drawCard(ctx, c, cx, cy, cw, ch, {});
+      drawCard(ctx, c, cx, cy, cw, ch, { elementIcon: c.element, candyTag: c.rarity });
       this.buttons.push({ x: cx - cw / 2, y: cy - ch / 2, w: cw, h: ch, id: `card:${i}` });
     });
 
@@ -4789,7 +5205,7 @@ class SummonHall {
     ctx.restore();
   }
 
-  private wrapText(str: string, x: number, y: number, maxW: number, lh: number, size: number, color: string, weight = 'normal'): void {
+  private wrapText(str: string, x: number, y: number, maxW: number, lh: number, size: number, color: string, weight = 'normal'): number {
     const ctx = this.ctx;
     ctx.save();
     ctx.font = `${weight} ${size}px "Cinzel", "Kaiti SC", "STKaiti", "Cinzel", "Kaiti SC", "STKaiti", system-ui, sans-serif`;
@@ -4803,6 +5219,7 @@ class SummonHall {
     }
     if (line) ctx.fillText(line, x, yy);
     ctx.restore();
+    return yy + lh;
   }
 
   private renderConfirm(): void {
@@ -5187,7 +5604,10 @@ class SummonHall {
       ctx.globalAlpha = Math.min(1, flipP * 2.2);
       if (showFront) {
         drawCard(ctx, cur.card, 0, 0, 240, 340, {
-          isNew: cur.isNew, rainbowT: (this.last / 1000 * 0.35) % 1, showMeta: highCard,
+          isNew: cur.isNew, rainbowT: (this.last / 1000 * 0.35) % 1, showMeta: false,
+          elementIcon: cur.card.element,
+          candyTag: cur.card.rarity,
+          iconSize: 52,
         });
       } else {
         this.drawCardBack(ctx, 0, 0, 240, 340, col, this.last / 1000, 1);
@@ -5587,7 +6007,8 @@ class SummonHall {
     if (pulls.length === 1) {
       const s = Math.max(0.02, Ease.outBack(Math.min(1, this.phase.t / 0.5)));
       drawCard(ctx, pulls[0].card, W / 2, H / 2 - 20, 250 * s, 360 * s,
-        { isNew: pulls[0].isNew, rainbowT: (t * 0.3) % 1, showMeta: true });
+        { isNew: pulls[0].isNew, rainbowT: (t * 0.3) % 1, showMeta: true,
+          elementIcon: pulls[0].card.element, candyTag: pulls[0].card.rarity });
       if (this.phase.t > 0.5) this.buttons.push({ x: W / 2 - 125, y: H / 2 - 20 - 180, w: 250, h: 360, id: 'card:0' });
     } else {
       const cols = 5, cw = 150, ch = 212, gx = 24, gy = 28;
@@ -5607,7 +6028,8 @@ class SummonHall {
         ctx.translate(x, y + (1 - lp) * 40);
         ctx.scale(s, s * flipY);
         drawCard(ctx, p.card, 0, 0, cw, ch,
-          { isNew: p.isNew, rainbowT: (t * 0.3) % 1, showMeta: true, showName: false });
+          { isNew: p.isNew, rainbowT: (t * 0.3) % 1, showMeta: true, showName: false,
+            elementIcon: p.card.element, candyTag: p.card.rarity });
         // 极品卡落定后短促光环
         if (RANK[p.card.rarity] >= 5 && lp > 0.85) {
           ctx.globalCompositeOperation = 'lighter';
