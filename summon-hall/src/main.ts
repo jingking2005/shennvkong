@@ -2475,6 +2475,23 @@ class SummonHall {
 
     // 节点（浮岛关卡）
     const nodes = this.mapNodes();
+    // 连接路径：按解锁顺序 1→2→3… 由弱到强（已通金实线 / 已解锁亮紫 / 未解锁灰虚线）
+    for (let i = 1; i < nodes.length; i++) {
+      const a = nodes[i - 1], bn = nodes[i];
+      const prevDone = this.db.stages[a.idx]?.firstClear === true;
+      const curUnlocked = !bn.locked;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      // 轻微弧线，避免直线穿过中间节点
+      const mx = (a.x + bn.x) / 2, my = (a.y + bn.y) / 2 - 18;
+      ctx.quadraticCurveTo(mx, my, bn.x, bn.y);
+      if (prevDone) { ctx.strokeStyle = '#ffd24d'; ctx.lineWidth = 3; ctx.setLineDash([]); }
+      else if (curUnlocked) { ctx.strokeStyle = '#c05ce8'; ctx.lineWidth = 2.5; ctx.setLineDash([]); }
+      else { ctx.strokeStyle = '#4a5060'; ctx.lineWidth = 2; ctx.setLineDash([6, 7]); }
+      ctx.stroke();
+      ctx.restore();
+    }
     for (const n of nodes) {
       const hov = !n.locked && this.hover === `node:${n.idx}`;
       // 翅膀/龙图标
@@ -2497,6 +2514,8 @@ class SummonHall {
       ctx.fillStyle = n.locked ? '#4a4f5a' : n.done ? '#aab' : '#fff';
       ctx.beginPath(); ctx.arc(0, 4, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.restore();
+      // 序号（1→2→3… 由弱到强）
+      this.text(String(n.idx + 1), n.x, n.y + 8, 10, n.locked ? '#2a2e38' : '#1a1030', 'center', 'bold');
       const ns = this.db.stages[n.idx];
       if (ns) this.text(ns.name, n.x, n.y + 32, 10, n.locked ? '#4a5060' : '#e8d5a8', 'center', 'bold');
       if (n.locked) this.text('🔒', n.x, n.y + 4, 14, '#8892a8', 'center');
@@ -2600,6 +2619,7 @@ class SummonHall {
     else if (r.firstClear && r.firstClearReward) { msg = r.firstClearReward; color = '#ffe14d'; }
     else if (r.event === 'loot') { msg = `拾取：金币+${r.lootGold}${r.lootGems ? ` 宝石+${r.lootGems}` : ''}${r.lootCardRarity ? ` ${r.lootCardRarity}卡` : ''}${r.lootPotion ? ` 强化药水×${r.lootPotion}` : ''}`; color = '#8fe8a8'; }
     else if (r.event === 'mob') { msg = `遭遇小怪！快速胜利 金币+${r.lootGold} 狗粮+1`; color = '#ffd24d'; }
+    else if (r.event === 'chest') { msg = `🎁 发现宝箱！金币+${r.lootGold} 宝石+${r.lootGems}${r.lootCardRarity ? ` ${r.lootCardRarity}卡` : ''}`; color = '#ffe14d'; }
     else if (r.event === 'witch') {
       const raid = r.witchRaidId ? this.db.raids.find(x => x.raidId === r.witchRaidId) : null;
       msg = raid?.archWitch ? '☠ 超·幻想大魔女降临！' : '⚠ 魔女降临！';

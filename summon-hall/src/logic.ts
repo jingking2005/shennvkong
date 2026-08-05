@@ -205,7 +205,7 @@ export interface ExploreResult {
   energySpent: number;
   progressGain: number;
   newProgress: number;
-  event: 'none' | 'loot' | 'mob' | 'witch';
+  event: 'none' | 'loot' | 'mob' | 'chest' | 'witch';
   lootGold: number;
   lootGems: number;
   lootCardRarity?: string;
@@ -219,8 +219,9 @@ export interface ExploreResult {
 /**
  * ExploreStage：点「进军」走一步
  * - 固定扣 10 点行动力
- * - 每步推进 10%~20%（约 6~8 步通关）
- * - 遇敌节奏：每 5~6 步必遇魔女；通关那一步必是大魔女
+ * - 每关固定 totalSteps 步，每步推进 100%/N（早期 5 步、后期 10 步）
+ * - 途中随机：魔女 25% / 小怪 40% / 拾取 20% / 宝箱 15%
+ * - 通关那一步（100%）必遇魔女
  */
 export function ExploreStage(db: DB, stage: Stage, seed: number): ExploreResult {
   const rng = mulberry32(seed);
@@ -237,48 +238,41 @@ export function ExploreStage(db: DB, stage: Stage, seed: number): ExploreResult 
   res.ok = true;
 
   stage.stepsTaken = (stage.stepsTaken || 0) + 1;
-  const step = stage.stepsTaken;
 
-  // 每步 10%~20%，百分比真实推进并反映到进度条
-  const gain = 0.10 + rng() * 0.10;
+  // 固定步数：每步推进 100%/totalSteps
+  const total = Math.max(1, stage.totalSteps || 5);
+  const gain = 1 / total;
   res.progressGain = gain;
   const wasBelow = stage.progress < 1;
   stage.progress = Math.min(1, stage.progress + gain);
   res.newProgress = stage.progress;
 
-  // 到达 100%（通关那一步必是大魔女）
+  // 到达 100%（通关那一步必是魔女）
   const atEnd = stage.progress >= 1 && wasBelow;
   if (atEnd) {
     res.completed = true;
+    res.event = 'witch';
+    // 首通强制大魔女，之后通关普通魔女守关
+    const forceArch = !stage.archEncountered;
+    res.witchRaidId = spawnWitch(db, stage, rng, '', forceArch);
+    if (forceArch) stage.archEncountered = true;
+    stage.witchEncounters += 1;
+    return res;
   }
 
-  // ── 遇敌节奏（有保底，不是糊弄人的假百分比）──
-  // 每 5~6 步必遇魔女：第 5、11、17、23…步
-  const witchStep = step % 6 === 5;
-  // 通关步：强制大魔女
-  if (atEnd && !stage.archEncountered) {
-    res.event = 'witch';
-    res.witchRaidId = spawnWitch(db, stage, rng, '', true);
-    stage.archEncountered = true;
-    stage.witchEncounters += 1;
-  } else if (atEnd && stage.archEncountered) {
-    // 大魔女已遇过：结尾再来一只普通魔女守住
+  // ── 途中随机事件：魔女 25% / 小怪 40% / 拾取 20% / 宝箱 15% ──
+  const roll = rng();
+  if (roll < 0.25) {
     res.event = 'witch';
     res.witchRaidId = spawnWitch(db, stage, rng, '', false);
     stage.witchEncounters += 1;
-  } else if (witchStep) {
-    // 保底：第 5 / 11 / 17 步必遇魔女
-    res.event = 'witch';
-    res.witchRaidId = spawnWitch(db, stage, rng, '', false);
-    stage.witchEncounters += 1;
-  } else if (rng() < 0.4) {
-    // 其余步：40% 拾取 / 60% 小怪
+  } else if (roll < 0.65) {
     res.event = 'mob';
     res.lootGold = Math.floor(150 + rng() * 400);
     db.user.gold += res.lootGold;
     res.lootCardRarity = 'N';
     grantLootCard(db, 'N', rng);
-  } else {
+  } else if (roll < 0.85) {
     res.event = 'loot';
     res.lootGold = Math.floor(200 + rng() * 800);
     res.lootGems = rng() < 0.25 ? Math.floor(1 + rng() * 5) : 0;
@@ -288,10 +282,20 @@ export function ExploreStage(db: DB, stage: Stage, seed: number): ExploreResult 
       res.lootCardRarity = rng() < 0.85 ? 'N' : 'R';
       grantLootCard(db, res.lootCardRarity as Rarity, rng);
     } else if (rng() < 0.5) {
-      // 35% 概率掉 1~2 瓶强化药水
       const n = 1 + (rng() < 0.3 ? 1 : 0);
       db.inventory.materials.upgradePotion = (db.inventory.materials.upgradePotion || 0) + n;
       res.lootPotion = n;
+    }
+  } else {
+    // 宝箱：金币 + 宝石，30% 掉 R 卡
+    res.event = 'chest';
+    res.lootGold = Math.floor(500 + rng() * 1000);
+    res.lootGems = Math.floor(1 + rng() * 8);
+    db.user.gold += res.lootGold;
+    db.user.gems += res.lootGems;
+    if (rng() < 0.3) {
+      res.lootCardRarity = 'R';
+      grantLootCard(db, 'R', rng);
     }
   }
   return res;
@@ -304,11 +308,12 @@ export function spawnWitch(
   const level = 80 + Math.floor(db.eventPoint.raidKills * 0.8 + rng() * 120);
   const arch = forceArch || rng() < 0.08;
   // ── HP 平衡：关卡基础难度（由弱到强）与队伍动态适配取高 ──
-  // 目标战斗长度：普通魔女约 6 轮输出、大魔女约 14 轮
+  // 目标战斗长度由关卡 targetRounds 决定（早期 3 回合弱、后期 7 回合强）；大魔女约 2.2 倍
+  const rounds = Math.max(2, stage.targetRounds || 6);
   const dpt = estimateTeamDPT(db);
   const avgHp = estimateTeamHP(db);
   const hpMax = Math.floor(
-    Math.max(stage.enemyPower * (arch ? 4 : 1.5), dpt * (arch ? 14 : 6)) * (0.9 + rng() * 0.2),
+    Math.max(stage.enemyPower * (arch ? 4 : 1.5), dpt * rounds * (arch ? 2.2 : 1)) * (0.9 + rng() * 0.2),
   );
   // ── 攻击平衡：普通魔女每击约打掉单卡 10% HP、大魔女 18%（用户反馈打不过，下调）──
   const attack = Math.floor(
