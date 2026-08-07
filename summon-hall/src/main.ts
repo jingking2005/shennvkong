@@ -111,6 +111,12 @@ interface BattleFx {
 
 const RANK: Record<string, number> = { N: 1, R: 2, SR: 3, UR: 4, LR: 5, X: 6, VR: 7 };
 
+/** 定点召唤专属动画：抽中对应卡时置顶播放（无声音、不可跳过、播完点确认慢淡化） */
+const FEATURED_ANIM: Record<string, string> = {
+  'wiki-calamity': 'summon-anim/Calamity.mp4',
+  'wiki-miss-lunar-new-year': 'summon-anim/Miss_Lunar_New_Year.mp4',
+};
+
 /** 商店：累计充值大礼包（按 paidGems 累计宝石数达标领取，每档一次） */
 const PAID_PACKS: { threshold: number; gems: number; gold: number; tickets: number; potions: number }[] = [
   { threshold: 99, gems: 300, gold: 30000, tickets: 1, potions: 0 },
@@ -192,6 +198,10 @@ class SummonHall {
   /** LR/VR 揭晓前景特效（v3 移植；legacy 走旧逻辑） */
   private revealFx = new RevealFxV3();
   private revealFxVer: 'v3' | 'legacy' = localStorage.getItem('vc_reveal_fx') === 'legacy' ? 'legacy' : 'v3';
+  /** 定点召唤专属动画状态：idle=无 / playing=播放中(不可跳) / done=播完待确认 / fading=慢淡化 */
+  private featVideoState: 'idle' | 'playing' | 'done' | 'fading' = 'idle';
+  private featVideo!: HTMLVideoElement;
+  private featHint!: HTMLDivElement;
   /** VC 归档纹理：卡池选项卡背景 / 选中大图 / 中间栏背景（随机映射） */
   private bannerCourse = new Map<string, string>();
   private bannerCampaign = new Map<string, string>();
@@ -276,6 +286,32 @@ class SummonHall {
     this.canvas.width = W; this.canvas.height = H;
     this.ctx = this.canvas.getContext('2d')!;
     root.appendChild(this.canvas);
+    // 定点召唤专属动画：置顶 video（静音）+ 确认提示
+    const fv = document.createElement('video');
+    fv.muted = true;
+    fv.playsInline = true;
+    fv.preload = 'auto';
+    fv.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;object-fit:contain;'
+      + 'background:rgba(0,0,0,0.95);z-index:60;display:none;opacity:1;transition:opacity 1.2s ease;'
+      + 'pointer-events:none;';
+    root.appendChild(fv);
+    fv.addEventListener('ended', () => {
+      if (this.featVideoState !== 'playing') return;
+      this.featVideoState = 'done';
+      this.featHint.style.display = 'block';
+    });
+    this.featVideo = fv;
+    const fh = document.createElement('div');
+    fh.textContent = '点击确认';
+    fh.style.cssText = 'position:fixed;left:50%;bottom:10%;transform:translateX(-50%);z-index:61;display:none;'
+      + 'padding:10px 36px;border-radius:26px;background:rgba(20,12,40,0.92);border:2px solid #ffd24d;'
+      + 'color:#ffe9a8;font-size:20px;font-weight:bold;letter-spacing:2px;';
+    root.appendChild(fh);
+    fh.addEventListener('pointerup', e => {
+      e.stopPropagation();
+      this.confirmFeaturedVideo();
+    });
+    this.featHint = fh;
     this.fit();
     window.addEventListener('resize', () => this.fit());
     this.canvas.addEventListener('pointermove', e => this.onMove(e));
@@ -561,6 +597,9 @@ class SummonHall {
       // 点击加速爆破（参考 ducdat breakSkip）
       this.phase.t = Math.max(this.phase.t, this.summonDuration() - 0.12);
     } else if (this.phase.kind === 'reveal') {
+      // 定点专属动画：播放中不可跳过；播完点击=确认（慢淡化）
+      if (this.featVideoState === 'playing') return;
+      if (this.featVideoState === 'done') { this.confirmFeaturedVideo(); return; }
       // 点击跳到下一张；最后一张则进结算（VR 卡不可跳过）
       const pulls = this.phase.pulls;
       if (this.isVrCard(pulls[this.phase.idx])) return;
@@ -667,6 +706,11 @@ class SummonHall {
       return;
     }
     if (id === 'skipAll' && (this.phase.kind === 'reveal' || this.phase.kind === 'summon')) {
+      // 定点卡专属动画必须完整看完，不可一键跳过
+      if (this.phase.pulls.some(p => FEATURED_ANIM[p.card.id])) {
+        this.flashTeamMsg('定点卡降临！专属动画不可跳过');
+        return;
+      }
       if (this.phase.kind === 'reveal' && this.isVrCard(this.phase.pulls[this.phase.idx])) {
         this.flashTeamMsg('VR 出现！圣光礼花不可跳过');
         return;
@@ -780,6 +824,7 @@ class SummonHall {
       const unlocked = idx === 0 || this.db.stages[idx - 1]?.firstClear === true;
       if (!unlocked) return;
       this.activeStage = s;
+      this.displayProg = s.progress; // 进关卡进度条立即归位（新关 0%）
       this.page = 'sortie';
       this.syncBgm();
       return;
@@ -1094,15 +1139,48 @@ class SummonHall {
     const col = RARITY_COLOR[top];
     this.burst(col, RANK[top] >= 5 ? 90 : RANK[top] >= 4 ? 50 : 28);
     this.flashColor = '#ffffff';
-    this.flashV = RANK[top] >= 5 ? 0.85 : 0.55;
+    this.flashV = RANK[top] >= 5 ? 0.45 : 0.3;
     this.shake = RANK[top] >= 5 ? 0.7 : 0.35;
     this.phase = { kind: 'reveal', pulls: this.phase.pulls, idx: 0, t: 0 };
     // 触发第一张的入场特效
     this.onRevealCard(this.phase.pulls[0]);
   }
 
+  /** 置顶播放定点专属动画：播放中不可跳过；播完显示「点击确认」 */
+  private playFeaturedVideo(url: string): void {
+    const v = this.featVideo;
+    this.featVideoState = 'playing';
+    this.featHint.style.display = 'none';
+    v.style.transition = 'none';
+    v.style.opacity = '1';
+    v.style.display = 'block';
+    v.src = url;
+    v.play().catch(e => {
+      this.featVideoState = 'idle';
+      v.style.display = 'none';
+    });
+  }
+
+  /** 播完后点击确认：视频慢淡化，露出下方卡牌揭示 */
+  private confirmFeaturedVideo(): void {
+    if (this.featVideoState !== 'done') return;
+    this.featVideoState = 'fading';
+    this.featHint.style.display = 'none';
+    const v = this.featVideo;
+    v.style.transition = 'opacity 1.2s ease';
+    v.style.opacity = '0';
+    setTimeout(() => {
+      v.style.display = 'none';
+      v.removeAttribute('src');
+      if (this.featVideoState === 'fading') this.featVideoState = 'idle';
+    }, 1250);
+  }
+
   private onRevealCard(pull: Pull | undefined): void {
     if (!pull) return;
+    // 定点召唤专属动画：置顶播放，播完点确认才慢淡化（不可跳过）
+    const anim = FEATURED_ANIM[pull.card.id];
+    if (anim) this.playFeaturedVideo(anim);
     const col = RARITY_COLOR[pull.card.rarity];
     const rank = RANK[pull.card.rarity];
     // v3 特效：切卡时重置（含点击跳过/自动推进）
@@ -1124,7 +1202,7 @@ class SummonHall {
       this.burst(col, rank >= 5 ? 80 : 40);
       this.shake = rank >= 5 ? 0.55 : 0.3;
       this.flashColor = col;
-      this.flashV = rank >= 5 ? 0.6 : 0.32;
+      this.flashV = rank >= 5 ? 0.4 : 0.24;
     } else if (rank >= 3) {
       this.burst(col, 18);
       this.shake = 0.15;
@@ -1305,6 +1383,8 @@ class SummonHall {
       }
       if (this.phase.t >= dur) this.beginReveal();
     } else if (this.phase.kind === 'reveal') {
+      // 定点动画播放中/播完待确认：揭示计时冻结（fading 时恢复，卡随淡化露出）
+      if (this.featVideoState === 'playing' || this.featVideoState === 'done') return;
       this.phase.t += dt;
       const pulls = this.phase.pulls;
       // v3 前景特效推进（仅 LR/X/VR；旧版不启用）
@@ -5512,10 +5592,10 @@ class SummonHall {
         const k = (revealLocal - T) / (1 - T); // 0..1 转换段
         if (ani) drawCoverTex(ctx, ani, 0, 0, W, H, Math.min(1, k * 2.6) * 0.92);
         if (moon) drawCoverTex(ctx, moon, 0, 0, W, H, Math.max(0, 1 - k * 2.6) * 0.92);
-        // 切换瞬间白闪
+        // 切换瞬间轻闪（v3 前景特效已有实体化强闪光，这里只保留过渡提示）
         const fl = Math.max(0, 1 - Math.abs(k - 0.1) / 0.1);
         if (fl > 0) {
-          ctx.fillStyle = `rgba(255,250,230,${fl * 0.85})`;
+          ctx.fillStyle = `rgba(255,250,230,${(fl * 0.3).toFixed(3)})`;
           ctx.fillRect(0, 0, W, H);
         }
       }
