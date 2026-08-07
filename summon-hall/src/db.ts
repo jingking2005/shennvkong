@@ -164,14 +164,14 @@ export interface DB {
  * totalSteps：本关步数（每步固定推进 100%/N；早期 5 步短平快，后期 10 步长线）
  * targetRounds：魔女目标回合数（前期弱、后期强） */
 const STAGE_DEFS: { regionId: string; stageId: string; name: string; energyCost: number; enemyPower: number; totalSteps: number; targetRounds: number }[] = [
-  { regionId: 'r1', stageId: 'r1-s1', name: '战斗少女的修练场', energyCost: 10, enemyPower: 8000, totalSteps: 5, targetRounds: 3 },
-  { regionId: 'r1', stageId: 'r1-s2', name: '神界地图 2', energyCost: 10, enemyPower: 15000, totalSteps: 5, targetRounds: 4 },
-  { regionId: 'r1', stageId: 'r1-s3', name: '圣炎回廊', energyCost: 15, enemyPower: 32000, totalSteps: 6, targetRounds: 4 },
-  { regionId: 'r1', stageId: 'r1-s4', name: '苍雷王座', energyCost: 20, enemyPower: 60000, totalSteps: 6, targetRounds: 5 },
-  { regionId: 'r1', stageId: 'r1-s5', name: '暗渊之门', energyCost: 25, enemyPower: 95000, totalSteps: 8, targetRounds: 5 },
-  { regionId: 'r2', stageId: 'r2-s1', name: '时空间隙', energyCost: 30, enemyPower: 140000, totalSteps: 8, targetRounds: 6 },
-  { regionId: 'r2', stageId: 'r2-s2', name: '星天回廊', energyCost: 35, enemyPower: 200000, totalSteps: 10, targetRounds: 6 },
-  { regionId: 'r2', stageId: 'r2-s3', name: '诸神黄昏', energyCost: 40, enemyPower: 300000, totalSteps: 10, targetRounds: 7 },
+  { regionId: 'r1', stageId: 'r1-s1', name: '1-1 修练场', energyCost: 10, enemyPower: 8000, totalSteps: 5, targetRounds: 3 },
+  { regionId: 'r1', stageId: 'r1-s2', name: '1-2 神界郊野', energyCost: 10, enemyPower: 15000, totalSteps: 5, targetRounds: 4 },
+  { regionId: 'r1', stageId: 'r1-s3', name: '1-3 圣炎回廊', energyCost: 15, enemyPower: 32000, totalSteps: 6, targetRounds: 4 },
+  { regionId: 'r1', stageId: 'r1-s4', name: '1-4 苍雷王座', energyCost: 20, enemyPower: 60000, totalSteps: 6, targetRounds: 5 },
+  { regionId: 'r1', stageId: 'r1-s5', name: '1-5 暗渊之门', energyCost: 25, enemyPower: 95000, totalSteps: 8, targetRounds: 5 },
+  { regionId: 'r2', stageId: 'r2-s1', name: '2-1 时空间隙', energyCost: 30, enemyPower: 140000, totalSteps: 8, targetRounds: 6 },
+  { regionId: 'r2', stageId: 'r2-s2', name: '2-2 星天回廊', energyCost: 35, enemyPower: 200000, totalSteps: 10, targetRounds: 6 },
+  { regionId: 'r2', stageId: 'r2-s3', name: '2-3 诸神黄昏', energyCost: 40, enemyPower: 300000, totalSteps: 10, targetRounds: 7 },
 ];
 
 /** 体力数值平衡：上限 600（3min/点），出战一趟扣 10 */
@@ -257,12 +257,13 @@ export function loadDB(): DB | null {
     for (const def of STAGE_DEFS) {
       if (!db.stages.some(s => s.stageId === def.stageId)) db.stages.push(newStage(def));
     }
-    // 关卡迁移：旧存档补齐 totalSteps / targetRounds（固定步数 + 目标回合数）
+    // 关卡迁移：旧存档补齐 totalSteps / targetRounds（固定步数 + 目标回合数），名字随定义更新
     for (const s of db.stages) {
       const def = STAGE_DEFS.find(d => d.stageId === s.stageId);
       if (!def) continue;
       if (typeof s.totalSteps !== 'number') s.totalSteps = def.totalSteps;
       if (typeof s.targetRounds !== 'number') s.targetRounds = def.targetRounds;
+      if (s.name !== def.name) s.name = def.name;
     }
     // 形态体系迁移（v1 → v2 合卡重构）：旧存档星级全部重置为 0（UR 基础形态），
     // 由玩家按官方形态体系重新合卡；一次性标记。

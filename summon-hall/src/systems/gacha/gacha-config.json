@@ -1,6 +1,6 @@
 {
   "_provenance": "original-fill",
-  "_note": "离线演示配置：全部概率/保底为原创填充值，非 Nubee 原版数据。友情 N50/R30/SR15/UR4/LR1；命运之门 SR85/UR10/LR5、80抽保底LR；金色传说全稀有度 VR0.5/LR5、50抽保底LR；LR确定 10连必出LR、LR权重10；VR确定 10连必出VR、VR10/LR20。",
+  "_note": "离线演示配置：全部概率/保底为原创填充值，非 Nubee 原版数据。友情 N50/R30/SR15/UR4/LR1；命运之门 SR85/UR10/LR5、80抽保底LR；活动召唤定点 2 张 UR 各1% + 全 SR/R/N、50抽保底定点；LR确定 10连必出LR、LR权重10；VR确定 10连必出VR、VR10/LR20。",
   "banners": [
     {
       "id": "fate",
@@ -33,48 +33,37 @@
     },
     {
       "id": "legend",
-      "name": "金色传说",
-      "sub": "全稀有度 · 50抽保底 LR",
+      "name": "活动召唤",
+      "sub": "定点召唤 · Calamity / Miss Lunar New Year 各1% · 50抽保底",
       "accent": "#e8b23b",
       "costSingle": 500,
       "costTen": 5000,
       "pool": [
         {
           "rarity": "N",
-          "weight": 30
+          "weight": 40
         },
         {
           "rarity": "R",
-          "weight": 29.5
+          "weight": 35
         },
         {
           "rarity": "SR",
-          "weight": 24
-        },
-        {
-          "rarity": "UR",
-          "weight": 10
-        },
-        {
-          "rarity": "LR",
-          "weight": 5
-        },
-        {
-          "rarity": "X",
-          "weight": 1
-        },
-        {
-          "rarity": "VR",
-          "weight": 0.5
+          "weight": 23
         }
       ],
-      "softPity": "UR",
-      "hardPities": [
+      "softPity": "SR",
+      "featured": [
         {
-          "rarity": "LR",
-          "threshold": 50
+          "cardId": "wiki-calamity",
+          "rate": 0.01
+        },
+        {
+          "cardId": "wiki-miss-lunar-new-year",
+          "rate": 0.01
         }
-      ]
+      ],
+      "featuredPity": 50
     },
     {
       "id": "oracle",

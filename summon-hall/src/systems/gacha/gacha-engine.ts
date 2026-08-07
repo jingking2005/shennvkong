@@ -25,9 +25,16 @@ export interface Banner {
   hardPities?: HardPity[];
   up?: { cardId: string; upRate: number }[];
   limitedTo?: string[];
+  /** 定点召唤：指定卡各按绝对概率命中（如各 1%），其余概率走 pool 权重 */
+  featured?: { cardId: string; rate: number }[];
+  /** 定点保底：N 抽必出至少 1 张定点卡 */
+  featuredPity?: number;
   /** 卡池来源：'summon'（默认，排除 SPECIAL 道具/经验卡）| 'all'（含 X 狗粮等 SPECIAL 卡） */
   poolSource?: 'summon' | 'all';
 }
+
+/** 定点保底计数在 per-banner 计数表中的伪稀有度键 */
+const FEATURED_KEY = 'FEATURED' as Rarity;
 
 /** 概率/保底唯一事实源：gacha-config.json */
 export const BANNERS: Banner[] = (configJson as { banners: Banner[] }).banners;
@@ -112,6 +119,35 @@ export class Gacha {
     const cnt = this.counters.get(banner.id) || new Map<Rarity, number>();
     this.counters.set(banner.id, cnt);
 
+    // ── 定点召唤：先判定定点卡（绝对概率 + N 抽保底），未中则走 pool 权重 ──
+    if (banner.featured?.length) {
+      const since = cnt.get(FEATURED_KEY) || 0;
+      const pity = banner.featuredPity ?? 50;
+      let fCard: Card | null = null;
+      let fPity = false;
+      if (since + 1 >= pity) {
+        fCard = this.pickFeatured(banner);
+        fPity = true;
+      } else {
+        const roll = this.rand();
+        let acc = 0;
+        for (const f of banner.featured) {
+          acc += f.rate;
+          if (roll < acc) { fCard = ALL_CARDS.find(c => c.id === f.cardId) ?? null; break; }
+        }
+      }
+      if (fCard) {
+        cnt.set(FEATURED_KEY, 0);
+        for (const t of tiers) {
+          cnt.set(t.rarity, atLeast(fCard.rarity, t.rarity) ? 0 : (cnt.get(t.rarity) || 0) + 1);
+        }
+        const isNew = !this.owned.has(fCard.id);
+        this.owned.add(fCard.id);
+        return { card: fCard, isNew, isPity: fPity };
+      }
+      cnt.set(FEATURED_KEY, since + 1);
+    }
+
     // 到阈值的最高档触发硬保底
     let forced: Rarity | null = null;
     for (const t of tiers) {
@@ -165,6 +201,19 @@ export class Gacha {
     if (!all.length) return null;
     const top = all[all.length - 1];
     return { current: top.current, threshold: top.threshold };
+  }
+
+  /** 定点保底进度（活动召唤 UI 展示用） */
+  featuredPityProgress(banner: Banner): { current: number; threshold: number } | null {
+    if (!banner.featured?.length) return null;
+    const cnt = this.counters.get(banner.id);
+    return { current: cnt?.get(FEATURED_KEY) || 0, threshold: banner.featuredPity ?? 50 };
+  }
+
+  /** 保底触发时随机选一张定点卡 */
+  private pickFeatured(banner: Banner): Card {
+    const f = banner.featured![Math.floor(this.rand() * banner.featured!.length)];
+    return ALL_CARDS.find(c => c.id === f.cardId) ?? ALL_CARDS[0];
   }
 
   private rollWeighted(pool: PoolEntry[]): Rarity {

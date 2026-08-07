@@ -305,19 +305,26 @@ export function ExploreStage(db: DB, stage: Stage, seed: number): ExploreResult 
 export function spawnWitch(
   db: DB, stage: Stage, rng: () => number, bossCardId = '', forceArch = false,
 ): string {
-  const level = 80 + Math.floor(db.eventPoint.raidKills * 0.8 + rng() * 120);
   const arch = forceArch || rng() < 0.08;
-  // ── HP 平衡：关卡基础难度（由弱到强）与队伍动态适配取高 ──
+  // ── 关卡由弱到强：stageScale 0.5（第一关）→ 1.5（末关）──
+  const idx = Math.max(0, db.stages.indexOf(stage));
+  const stageScale = 0.5 + (idx / Math.max(1, db.stages.length - 1)) * 1.0;
+  // 等级整体减半（用户反馈太强），再按关卡缩放：1-1 明显弱于 1-2 …
+  const level = Math.max(5, Math.floor(
+    ((80 + db.eventPoint.raidKills * 0.8 + rng() * 120) / 2) * stageScale,
+  ));
+  // ── HP 平衡：关卡基础难度（由弱到强）与队伍动态适配取高，整体减半 ──
   // 目标战斗长度由关卡 targetRounds 决定（早期 3 回合弱、后期 7 回合强）；大魔女约 2.2 倍
   const rounds = Math.max(2, stage.targetRounds || 6);
   const dpt = estimateTeamDPT(db);
   const avgHp = estimateTeamHP(db);
   const hpMax = Math.floor(
-    Math.max(stage.enemyPower * (arch ? 4 : 1.5), dpt * rounds * (arch ? 2.2 : 1)) * (0.9 + rng() * 0.2),
+    Math.max(stage.enemyPower * (arch ? 4 : 1.5), dpt * rounds * (arch ? 2.2 : 1))
+    * stageScale * 0.5 * (0.9 + rng() * 0.2),
   );
-  // ── 攻击平衡：普通魔女每击约打掉单卡 10% HP、大魔女 18%（用户反馈打不过，下调）──
+  // ── 攻击平衡：整体减半（用户反馈打不过）；普通魔女每击约单卡 5% HP、大魔女 9% ──
   const attack = Math.floor(
-    Math.max(stage.enemyPower * 0.12, avgHp * (arch ? 0.18 : 0.10)) * (0.9 + rng() * 0.2),
+    Math.max(stage.enemyPower * 0.12, avgHp * (arch ? 0.18 : 0.10)) * 0.5 * (0.9 + rng() * 0.2),
   );
   const raid: WitchRaidBoss = {
     raidId: newInstId(),

@@ -20,9 +20,10 @@ describe('配置加载', () => {
     }
   });
 
-  it('保底阈值符合需求：命运之门 LR 80，金色传说 LR 50', () => {
+  it('保底阈值符合需求：命运之门 LR 80，活动召唤定点 50 抽保底', () => {
     expect(fate.hardPities).toEqual([{ rarity: 'LR', threshold: 80 }]);
-    expect(legend.hardPities).toEqual([{ rarity: 'LR', threshold: 50 }]);
+    expect(legend.featuredPity).toBe(50);
+    expect(legend.featured?.length).toBe(2);
   });
 
   it('各池概率符合配置规格', () => {
@@ -36,8 +37,9 @@ describe('配置加载', () => {
     expect(fate.pool.map(e => e.rarity)).toEqual(['SR', 'UR', 'LR']);
     expect(w('fate', 'SR')).toBe(85); expect(w('fate', 'UR')).toBe(10);
     expect(w('fate', 'LR')).toBe(5);
-    // 金色传说：全稀有度，VR 0.5 / LR 5
-    expect(w('legend', 'VR')).toBe(0.5); expect(w('legend', 'LR')).toBe(5);
+    // 活动召唤：定点 2 张 UR 各 1% + 全 SR/R/N（普通池无 UR/LR/VR）
+    expect(legend.pool.map(e => e.rarity).sort()).toEqual(['N', 'R', 'SR']);
+    expect(legend.featured?.every(f => f.rate === 0.01)).toBe(true);
     // LR 确定：10连必出 LR，LR 权重 10
     expect(w('lr-guaranteed', 'LR')).toBe(10);
     expect(BANNERS.find(b => b.id === 'lr-guaranteed')!.hardPities)
